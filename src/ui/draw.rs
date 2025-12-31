@@ -67,7 +67,7 @@ pub fn redraw(
     Ok(())
 }
 
-fn draw_tabs(
+pub(crate) fn draw_tabs(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
     tabs_len: usize,
