@@ -19,7 +19,7 @@ pub struct RenderTheme {
 pub fn theme_from_config(cfg: Option<&Config>) -> RenderTheme {
     let name = cfg
         .and_then(|c| c.theme.as_deref())
-        .unwrap_or("dark")
+        .unwrap_or("light")
         .to_ascii_lowercase();
     if name == "light" {
         RenderTheme {
@@ -40,19 +40,29 @@ pub fn theme_from_config(cfg: Option<&Config>) -> RenderTheme {
     }
 }
 
-pub fn messages_to_text(messages: &[Message], width: usize, theme: &RenderTheme) -> Text<'static> {
+pub fn messages_to_text(
+    messages: &[Message],
+    width: usize,
+    theme: &RenderTheme,
+    label_suffixes: &[(usize, String)],
+) -> Text<'static> {
     let mut lines: Vec<Line<'static>> = Vec::new();
-    for msg in messages {
-        let mut msg_lines = render_message_lines(msg, width, theme);
+    for (idx, msg) in messages.iter().enumerate() {
+        let suffix = suffix_for_index(label_suffixes, idx);
+        let mut msg_lines = render_message_lines(msg, width, theme, suffix);
         lines.append(&mut msg_lines);
         lines.push(Line::from(""));
     }
     Text::from(lines)
 }
 
-pub fn messages_to_plain_lines(messages: &[Message], width: usize, theme: &RenderTheme) -> Vec<String> {
+pub fn messages_to_plain_lines(
+    messages: &[Message],
+    width: usize,
+    theme: &RenderTheme,
+) -> Vec<String> {
     let mut out = Vec::new();
-    let text = messages_to_text(messages, width, theme);
+    let text = messages_to_text(messages, width, theme, &[]);
     for line in text.lines {
         let mut s = String::new();
         for span in line.spans {
@@ -63,10 +73,15 @@ pub fn messages_to_plain_lines(messages: &[Message], width: usize, theme: &Rende
     out
 }
 
-fn render_message_lines(msg: &Message, width: usize, theme: &RenderTheme) -> Vec<Line<'static>> {
+fn render_message_lines(
+    msg: &Message,
+    width: usize,
+    theme: &RenderTheme,
+    label_suffix: Option<&str>,
+) -> Vec<Line<'static>> {
     match msg.role.as_str() {
         "user" => {
-            let mut lines = vec![label_line("你>", theme)];
+            let mut lines = vec![label_line("👤", theme)];
             lines.extend(render_markdown_lines(
                 &msg.content,
                 width,
@@ -75,7 +90,14 @@ fn render_message_lines(msg: &Message, width: usize, theme: &RenderTheme) -> Vec
             lines
         }
         "assistant" => {
-            let mut lines = vec![label_line("AI>", theme)];
+            let mut label = "🤖".to_string();
+            if let Some(suffix) = label_suffix {
+                if !suffix.is_empty() {
+                    label.push(' ');
+                    label.push_str(suffix);
+                }
+            }
+            let mut lines = vec![label_line(&label, theme)];
             lines.extend(render_markdown_lines(
                 &msg.content,
                 width,
@@ -85,6 +107,13 @@ fn render_message_lines(msg: &Message, width: usize, theme: &RenderTheme) -> Vec
         }
         _ => Vec::new(),
     }
+}
+
+fn suffix_for_index<'a>(suffixes: &'a [(usize, String)], idx: usize) -> Option<&'a str> {
+    suffixes
+        .iter()
+        .find(|(i, _)| *i == idx)
+        .map(|(_, s)| s.as_str())
 }
 
 fn label_line(text: &str, theme: &RenderTheme) -> Line<'static> {
