@@ -1,4 +1,4 @@
-use crate::render::{messages_to_text, RenderTheme};
+use crate::render::RenderTheme;
 use crate::ui::input::cursor_position;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -22,23 +22,15 @@ pub fn redraw(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     app: &App,
     theme: &RenderTheme,
-    label_suffixes: &[(usize, String)],
+    text: &Text<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
     let (msg_area, input_area) = layout_chunks(size);
-    let msg_width = inner_width(msg_area, PADDING_X);
-    let text = messages_to_text(
-        &app.messages,
-        msg_width,
-        theme,
-        label_suffixes,
-        app.pending_assistant,
-    );
     terminal.draw(|f| {
         draw_messages(
             f,
             msg_area,
-            &text,
+            text,
             app.scroll,
             theme,
             app.focus == Focus::Chat,

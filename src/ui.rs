@@ -4,7 +4,7 @@ mod net;
 mod state;
 
 use crate::args::Args;
-use crate::render::{messages_to_text, RenderTheme};
+use crate::render::{messages_to_text_cached, RenderCacheEntry, RenderTheme};
 use crate::session::save_session;
 use crate::types::Message;
 use crossterm::event::{self, Event, MouseEventKind};
@@ -42,6 +42,7 @@ pub fn run(
 
     let mut app = App::new(&args.system);
     let mut last_session_id: Option<String> = None;
+    let mut render_cache: Vec<RenderCacheEntry> = Vec::new();
     let (tx, rx) = mpsc::channel::<LlmEvent>();
 
     loop {
@@ -58,12 +59,13 @@ pub fn run(
             String::new()
         };
         let label_suffixes = build_label_suffixes(&app, &timer_text);
-        let text = messages_to_text(
+        let text = messages_to_text_cached(
             &app.messages,
             msg_width,
             theme,
             &label_suffixes,
             app.pending_assistant,
+            &mut render_cache,
         );
         let total_lines = text.lines.len();
         let view_height = inner_height(msg_area, 0) as usize;
@@ -74,7 +76,7 @@ pub fn run(
         } else if app.scroll > max_scroll {
             app.scroll = max_scroll;
         }
-        redraw(&mut terminal, &app, theme, &label_suffixes)?;
+        redraw(&mut terminal, &app, theme, &text)?;
         if app.focus == Focus::Input && !app.busy {
             terminal.show_cursor()?;
         } else {
@@ -97,7 +99,15 @@ pub fn run(
             app.pending_reasoning = None;
             app.stream_buffer.clear();
             let label_suffixes = build_label_suffixes(&app, &format_timer(0));
-            redraw(&mut terminal, &app, theme, &label_suffixes)?;
+            let text = messages_to_text_cached(
+                &app.messages,
+                msg_width,
+                theme,
+                &label_suffixes,
+                app.pending_assistant,
+                &mut render_cache,
+            );
+            redraw(&mut terminal, &app, theme, &text)?;
 
             let url = url.clone();
             let api_key = api_key.clone();

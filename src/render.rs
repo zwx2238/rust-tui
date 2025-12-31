@@ -7,6 +7,8 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 use textwrap::wrap;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 pub struct RenderTheme {
     pub bg: Color,
@@ -14,6 +16,16 @@ pub struct RenderTheme {
     pub code_bg: Color,
     pub code_theme: &'static str,
     pub heading_fg: Option<Color>,
+}
+
+pub struct RenderCacheEntry {
+    role: String,
+    content_hash: u64,
+    content_len: usize,
+    width: usize,
+    theme_key: u64,
+    streaming: bool,
+    lines: Vec<Line<'static>>,
 }
 
 pub fn theme_from_config(cfg: Option<&Config>) -> RenderTheme {
@@ -47,13 +59,67 @@ pub fn messages_to_text(
     label_suffixes: &[(usize, String)],
     streaming_idx: Option<usize>,
 ) -> Text<'static> {
+    let mut cache = Vec::new();
+    messages_to_text_cached(
+        messages,
+        width,
+        theme,
+        label_suffixes,
+        streaming_idx,
+        &mut cache,
+    )
+}
+
+pub fn messages_to_text_cached(
+    messages: &[Message],
+    width: usize,
+    theme: &RenderTheme,
+    label_suffixes: &[(usize, String)],
+    streaming_idx: Option<usize>,
+    cache: &mut Vec<RenderCacheEntry>,
+) -> Text<'static> {
+    let theme_key = theme_cache_key(theme);
+    if cache.len() > messages.len() {
+        cache.truncate(messages.len());
+    }
     let mut lines: Vec<Line<'static>> = Vec::new();
     for (idx, msg) in messages.iter().enumerate() {
+        if cache.len() <= idx {
+            cache.push(RenderCacheEntry {
+                role: String::new(),
+                content_hash: 0,
+                content_len: 0,
+                width: 0,
+                theme_key,
+                streaming: false,
+                lines: Vec::new(),
+            });
+        }
         let suffix = suffix_for_index(label_suffixes, idx);
         let streaming = streaming_idx == Some(idx);
-        let mut msg_lines = render_message_lines(msg, width, theme, suffix, streaming);
-        lines.append(&mut msg_lines);
-        lines.push(Line::from(""));
+        let entry = &mut cache[idx];
+        let content_hash = hash_message(&msg.role, &msg.content);
+        let content_len = msg.content.len();
+        if entry.role != msg.role
+            || entry.content_hash != content_hash
+            || entry.content_len != content_len
+            || entry.width != width
+            || entry.theme_key != theme_key
+            || entry.streaming != streaming
+        {
+            entry.role = msg.role.clone();
+            entry.content_hash = content_hash;
+            entry.content_len = content_len;
+            entry.width = width;
+            entry.theme_key = theme_key;
+            entry.streaming = streaming;
+            entry.lines = render_message_content_lines(msg, width, theme, streaming);
+        }
+        if let Some(label) = label_for_role(&msg.role, suffix) {
+            lines.push(label_line(&label, theme));
+            lines.extend(entry.lines.clone());
+            lines.push(Line::from(""));
+        }
     }
     Text::from(lines)
 }
@@ -75,40 +141,28 @@ pub fn messages_to_plain_lines(
     out
 }
 
-fn render_message_lines(
+fn render_message_content_lines(
     msg: &Message,
     width: usize,
     theme: &RenderTheme,
-    label_suffix: Option<&str>,
     streaming: bool,
 ) -> Vec<Line<'static>> {
     match msg.role.as_str() {
         "user" => {
-            let mut lines = vec![label_line("👤", theme)];
             let content = if streaming {
                 close_unbalanced_code_fence(&msg.content)
             } else {
                 msg.content.clone()
             };
-            lines.extend(render_markdown_lines(&content, width, theme));
-            lines
+            render_markdown_lines(&content, width, theme)
         }
         "assistant" => {
-            let mut label = "🤖".to_string();
-            if let Some(suffix) = label_suffix {
-                if !suffix.is_empty() {
-                    label.push(' ');
-                    label.push_str(suffix);
-                }
-            }
-            let mut lines = vec![label_line(&label, theme)];
             let content = if streaming {
                 close_unbalanced_code_fence(&msg.content)
             } else {
                 msg.content.clone()
             };
-            lines.extend(render_markdown_lines(&content, width, theme));
-            lines
+            render_markdown_lines(&content, width, theme)
         }
         _ => Vec::new(),
     }
@@ -119,6 +173,40 @@ fn suffix_for_index<'a>(suffixes: &'a [(usize, String)], idx: usize) -> Option<&
         .iter()
         .find(|(i, _)| *i == idx)
         .map(|(_, s)| s.as_str())
+}
+
+fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String> {
+    match role {
+        "user" => Some("👤".to_string()),
+        "assistant" => {
+            let mut label = "🤖".to_string();
+            if let Some(s) = suffix {
+                if !s.is_empty() {
+                    label.push(' ');
+                    label.push_str(s);
+                }
+            }
+            Some(label)
+        }
+        _ => None,
+    }
+}
+
+fn theme_cache_key(theme: &RenderTheme) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    theme.bg.hash(&mut hasher);
+    theme.fg.hash(&mut hasher);
+    theme.code_bg.hash(&mut hasher);
+    theme.code_theme.hash(&mut hasher);
+    theme.heading_fg.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn hash_message(role: &str, content: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    role.hash(&mut hasher);
+    content.hash(&mut hasher);
+    hasher.finish()
 }
 
 fn close_unbalanced_code_fence(input: &str) -> String {
