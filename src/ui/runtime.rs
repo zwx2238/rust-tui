@@ -5,6 +5,7 @@ use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{
     start_tab_request, PreheatResult, PreheatTask, TabState, PERF_QUESTIONS,
 };
+use crate::model_registry::build_model_registry;
 use crate::ui::runtime_loop::run_loop;
 use crossterm::event::{
     DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
@@ -23,7 +24,7 @@ use std::time::Instant;
 pub fn run(
     args: Args,
     api_key: String,
-    _cfg: Option<crate::config::Config>,
+    cfg: Option<crate::config::Config>,
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
@@ -38,8 +39,7 @@ pub fn run(
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let base_url = args.base_url.trim_end_matches('/');
-    let url = format!("{base_url}/chat/completions");
+    let registry = build_model_registry(cfg.as_ref(), &args, Some(&api_key));
 
     let initial_tabs = if args.perf_batch {
         10
@@ -49,7 +49,7 @@ pub fn run(
         1
     };
     let mut tabs = (0..initial_tabs)
-        .map(|_| TabState::new(&args.system, args.perf))
+        .map(|_| TabState::new(&args.system, args.perf, &registry.default_key))
         .collect::<Vec<_>>();
     let mut active_tab: usize = 0;
     let mut last_session_id: Option<String> = None;
@@ -63,12 +63,15 @@ pub fn run(
             let question = PERF_QUESTIONS
                 .get(i)
                 .unwrap_or(&"请简短说明 Rust 的优势。");
+            let model = registry
+                .get(&tab_state.app.model_key)
+                .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
             start_tab_request(
                 tab_state,
                 question,
-                &url,
-                &api_key,
-                &args.model,
+                &model.base_url,
+                &model.api_key,
+                &model.model,
                 args.show_reasoning,
                 &tx,
                 i,
@@ -86,8 +89,7 @@ pub fn run(
         &tx,
         &preheat_tx,
         &preheat_res_rx,
-        &url,
-        &api_key,
+        &registry,
         &args,
         theme,
         start_time,

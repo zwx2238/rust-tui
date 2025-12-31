@@ -2,7 +2,7 @@ use crate::types::Message;
 use crate::ui::net::LlmEvent;
 use crate::ui::state::App;
 
-pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_secs: u64) -> bool {
+pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> bool {
     match event {
         LlmEvent::Chunk(s) => {
             app.stream_buffer.push_str(&s);
@@ -22,9 +22,9 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_secs: u64) ->
         }
         LlmEvent::Done { usage } => {
             flush_remaining_buffer(app);
-            let stats = format_stats(usage.as_ref(), elapsed_secs);
+            let stats = format_stats(usage.as_ref(), elapsed_ms);
             if let Some(idx) = app.pending_assistant.take() {
-                app.assistant_stats = Some((idx, stats));
+                app.assistant_stats.insert(idx, stats);
             }
             app.pending_reasoning = None;
             true
@@ -34,7 +34,7 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_secs: u64) ->
 
 pub fn build_label_suffixes(app: &App, timer_text: &str) -> Vec<(usize, String)> {
     let mut out = Vec::new();
-    if let Some((idx, stats)) = &app.assistant_stats {
+    for (idx, stats) in &app.assistant_stats {
         out.push((*idx, stats.clone()));
     }
     if app.busy {
@@ -47,13 +47,14 @@ pub fn build_label_suffixes(app: &App, timer_text: &str) -> Vec<(usize, String)>
     out
 }
 
-pub fn format_timer(secs: u64) -> String {
-    if secs < 60 {
-        format!("{}s", secs)
+pub fn format_timer(ms: u64) -> String {
+    let secs = ms as f64 / 1000.0;
+    if secs < 60.0 {
+        format!("{:.1}s", secs)
     } else {
-        let m = secs / 60;
-        let s = secs % 60;
-        format!("{}m{:02}s", m, s)
+        let m = (secs / 60.0).floor() as u64;
+        let s = secs - (m as f64 * 60.0);
+        format!("{}m{:04.1}s", m, s)
     }
 }
 
@@ -98,8 +99,8 @@ pub fn drain_events() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn format_stats(usage: Option<&crate::types::Usage>, elapsed_secs: u64) -> String {
-    let time = format_timer(elapsed_secs);
+fn format_stats(usage: Option<&crate::types::Usage>, elapsed_ms: u64) -> String {
+    let time = format_timer(elapsed_ms);
     let tokens = if let Some(u) = usage {
         let p = u.prompt_tokens.unwrap_or(0);
         let c = u.completion_tokens.unwrap_or(0);
@@ -174,9 +175,22 @@ fn append_reasoning(app: &mut App, text: &str) {
     app.pending_reasoning = Some(insert_at);
     app.dirty_indices.push(insert_at);
     app.cache_shift = Some(insert_at);
+    shift_stats_after_insert(app, insert_at);
     if let Some(idx) = app.pending_assistant {
         app.pending_assistant = Some(idx.saturating_add(1));
     }
+}
+
+fn shift_stats_after_insert(app: &mut App, insert_at: usize) {
+    if app.assistant_stats.is_empty() {
+        return;
+    }
+    let mut shifted = std::collections::BTreeMap::new();
+    for (idx, val) in app.assistant_stats.iter() {
+        let new_idx = if *idx >= insert_at { idx + 1 } else { *idx };
+        shifted.insert(new_idx, val.clone());
+    }
+    app.assistant_stats = shifted;
 }
 
 fn set_pending_assistant_content(app: &mut App, content: &str) {

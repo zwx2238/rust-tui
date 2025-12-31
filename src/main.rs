@@ -1,5 +1,6 @@
 mod args;
 mod config;
+mod model_registry;
 mod render;
 mod session;
 mod ui;
@@ -37,9 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let cfg = load_config(&cfg_path)
         .map_err(|_| format!("无法读取配置文件：{}", cfg_path.display()))?;
-    let api_key = cfg
-        .api_key
-        .ok_or("配置文件缺少 api_key")?;
+    let api_key = cfg.api_key.clone().unwrap_or_default();
 
     ui::run(args, api_key, cfg_for_theme, &theme)?;
     Ok(())

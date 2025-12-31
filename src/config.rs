@@ -8,7 +8,26 @@ pub struct Config {
     #[serde(default)]
     pub api_key: Option<String>,
     #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
     pub theme: Option<String>,
+    #[serde(default)]
+    pub default_model: Option<String>,
+    #[serde(default)]
+    pub models: Option<Vec<ModelItem>>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct ModelItem {
+    pub key: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub api_key: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
 }
 
 pub fn default_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {

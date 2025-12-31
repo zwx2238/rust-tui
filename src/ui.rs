@@ -1,4 +1,5 @@
 mod draw;
+mod draw_input;
 mod input_click;
 mod input;
 mod logic;
@@ -6,6 +7,7 @@ mod net;
 mod perf;
 mod clipboard;
 mod jump;
+mod model_popup;
 mod runtime;
 mod runtime_events;
 mod runtime_helpers;

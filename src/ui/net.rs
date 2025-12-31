@@ -1,4 +1,4 @@
-use crate::types::{ChatRequest, Message, Usage};
+use crate::types::{ChatRequest, Message, StreamOptions, Usage};
 use std::io::{BufRead, BufReader};
 use std::sync::mpsc::Sender;
 
@@ -24,6 +24,8 @@ struct StreamResponse {
 #[derive(serde::Deserialize)]
 struct StreamChoice {
     delta: StreamDelta,
+    #[serde(default)]
+    usage: Option<Usage>,
 }
 
 #[derive(serde::Deserialize)]
@@ -47,6 +49,7 @@ pub fn request_llm_stream(
         model,
         messages,
         stream: true,
+        stream_options: Some(StreamOptions { include_usage: true }),
     };
     let resp = client.post(url).bearer_auth(api_key).json(&req).send();
     match resp {
@@ -97,6 +100,12 @@ pub fn request_llm_stream(
                     Ok(chunk) => {
                         if let Some(u) = chunk.usage {
                             usage = Some(u);
+                        } else {
+                            for choice in &chunk.choices {
+                                if let Some(u) = &choice.usage {
+                                    usage = Some(u.clone());
+                                }
+                            }
                         }
                         for choice in chunk.choices {
                             if let Some(content) = choice.delta.content {

@@ -1,5 +1,6 @@
 use crate::types::Message;
 use tui_textarea::TextArea;
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -21,17 +22,18 @@ pub struct App {
     pub pending_assistant: Option<usize>,
     pub pending_reasoning: Option<usize>,
     pub stream_buffer: String,
-    pub assistant_stats: Option<(usize, String)>,
+    pub assistant_stats: BTreeMap<usize, String>,
     pub scrollbar_dragging: bool,
     pub chat_selecting: bool,
     pub chat_selection: Option<crate::ui::selection::Selection>,
     pub input_selecting: bool,
+    pub model_key: String,
     pub dirty_indices: Vec<usize>,
     pub cache_shift: Option<usize>,
 }
 
 impl App {
-    pub fn new(system_prompt: &str) -> Self {
+    pub fn new(system_prompt: &str, default_model: &str) -> Self {
         let mut messages = Vec::new();
         if !system_prompt.trim().is_empty() {
             messages.push(Message {
@@ -52,11 +54,12 @@ impl App {
             pending_assistant: None,
             pending_reasoning: None,
             stream_buffer: String::new(),
-            assistant_stats: None,
+            assistant_stats: BTreeMap::new(),
             scrollbar_dragging: false,
             chat_selecting: false,
             chat_selection: None,
             input_selecting: false,
+            model_key: default_model.to_string(),
             dirty_indices: Vec::new(),
             cache_shift: None,
         }

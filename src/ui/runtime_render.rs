@@ -1,6 +1,7 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::redraw;
+use crate::ui::draw::{redraw, redraw_with_overlay};
 use crate::ui::jump::{build_jump_rows, max_preview_width, redraw_jump, JumpRow};
+use crate::ui::model_popup::draw_model_popup;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::{ViewMode, ViewState};
 use crate::ui::summary::redraw_summary;
@@ -23,6 +24,7 @@ pub(crate) fn render_view(
     text: &Text<'_>,
     total_lines: usize,
     view: &mut ViewState,
+    models: &[crate::model_registry::ModelProfile],
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
     let jump_rows = if view.mode == ViewMode::Jump {
         tabs.get(active_tab)
@@ -90,6 +92,28 @@ pub(crate) fn render_view(
                     active_tab,
                     startup_text,
                     input_height,
+                )?;
+            }
+        }
+        ViewMode::Model => {
+            let tabs_len = tabs.len();
+            if let Some(tab_state) = tabs.get_mut(active_tab) {
+                if !models.is_empty() {
+                    view.model_selected = view.model_selected.min(models.len() - 1);
+                }
+                redraw_with_overlay(
+                    terminal,
+                    &mut tab_state.app,
+                    theme,
+                    text,
+                    total_lines,
+                    tabs_len,
+                    active_tab,
+                    startup_text,
+                    input_height,
+                    |f| {
+                        draw_model_popup(f, f.area(), models, view.model_selected, theme);
+                    },
                 )?;
             }
         }

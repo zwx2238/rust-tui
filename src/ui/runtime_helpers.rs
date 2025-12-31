@@ -29,8 +29,8 @@ pub(crate) struct PreheatResult {
 }
 
 impl TabState {
-    pub(crate) fn new(system: &str, perf: bool) -> Self {
-        let mut app = App::new(system);
+    pub(crate) fn new(system: &str, perf: bool, default_model: &str) -> Self {
+        let mut app = App::new(system, default_model);
         if perf {
             seed_perf_messages(&mut app);
             app.dirty_indices = (0..app.messages.len()).collect();
@@ -91,7 +91,7 @@ pub(crate) const PERF_QUESTIONS: [&str; 10] = [
 pub(crate) fn start_tab_request(
     tab_state: &mut TabState,
     question: &str,
-    url: &str,
+    base_url: &str,
     api_key: &str,
     model: &str,
     show_reasoning: bool,
@@ -112,6 +112,14 @@ pub(crate) fn start_tab_request(
     } else {
         return;
     }
+    if api_key.trim().is_empty() {
+        app.messages.push(Message {
+            role: "assistant".to_string(),
+            content: "缺少 API Key，无法请求模型。".to_string(),
+        });
+        return;
+    }
+    let outbound_messages = app.messages.clone();
     let idx = app.messages.len();
     app.messages.push(Message {
         role: "assistant".to_string(),
@@ -124,8 +132,9 @@ pub(crate) fn start_tab_request(
     app.stream_buffer.clear();
     app.follow = true;
     app.dirty_indices.push(idx);
-    let messages = app.messages.clone();
-    let url = url.to_string();
+    let messages = outbound_messages;
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let url = format!("{base_url}/chat/completions");
     let api_key = api_key.to_string();
     let model = model.to_string();
     let tx = tx.clone();

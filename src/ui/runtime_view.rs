@@ -5,6 +5,7 @@ pub(crate) enum ViewMode {
     Chat,
     Summary,
     Jump,
+    Model,
 }
 
 pub(crate) struct ViewState {
@@ -12,12 +13,15 @@ pub(crate) struct ViewState {
     pub(crate) summary_selected: usize,
     pub(crate) jump_selected: usize,
     pub(crate) jump_scroll: usize,
+    pub(crate) model_selected: usize,
 }
 
 pub(crate) enum ViewAction {
     None,
     SwitchTab(usize),
     JumpTo(usize),
+    SelectModel(usize),
+    CycleModel,
 }
 
 pub(crate) fn apply_view_action(
@@ -42,6 +46,7 @@ pub(crate) fn apply_view_action(
             }
             true
         }
+        ViewAction::SelectModel(_) | ViewAction::CycleModel => false,
         ViewAction::None => false,
     }
 }
@@ -53,6 +58,7 @@ impl ViewState {
             summary_selected: 0,
             jump_selected: 0,
             jump_scroll: 0,
+            model_selected: 0,
         }
     }
 
@@ -68,6 +74,18 @@ pub(crate) fn handle_view_key(
     jump_len: usize,
     active_tab: usize,
 ) -> ViewAction {
+    if key.code == KeyCode::F(3) {
+        return ViewAction::CycleModel;
+    }
+    if key.code == KeyCode::F(4) {
+        view.mode = if view.mode == ViewMode::Model {
+            ViewMode::Chat
+        } else {
+            ViewMode::Model
+        };
+        return ViewAction::None;
+    }
+
     match key.code {
         KeyCode::F(1) => {
             view.mode = if view.mode == ViewMode::Summary {
@@ -158,6 +176,25 @@ pub(crate) fn handle_view_key(
             }
             _ => ViewAction::None,
         },
+        ViewMode::Model => match key.code {
+            KeyCode::Esc => {
+                view.mode = ViewMode::Chat;
+                ViewAction::None
+            }
+            KeyCode::Up => {
+                view.model_selected = view.model_selected.saturating_sub(1);
+                ViewAction::None
+            }
+            KeyCode::Down => {
+                view.model_selected = view.model_selected.saturating_add(1);
+                ViewAction::None
+            }
+            KeyCode::Enter => {
+                view.mode = ViewMode::Chat;
+                ViewAction::SelectModel(view.model_selected)
+            }
+            _ => ViewAction::None,
+        },
     }
 }
 
@@ -187,6 +224,13 @@ pub(crate) fn handle_view_mouse(
             if matches!(kind, MouseEventKind::Down(_)) && row < jump_len {
                 view.mode = ViewMode::Chat;
                 return ViewAction::JumpTo(row);
+            }
+        }
+        ViewMode::Model => {
+            view.model_selected = row;
+            if matches!(kind, MouseEventKind::Down(_)) {
+                view.mode = ViewMode::Chat;
+                return ViewAction::SelectModel(row);
             }
         }
         ViewMode::Chat => {}

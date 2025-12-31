@@ -18,7 +18,7 @@ pub(crate) fn compute_layout(
     tabs: &[TabState],
     active_tab: usize,
 ) -> LayoutInfo {
-    if mode != ViewMode::Chat {
+    if matches!(mode, ViewMode::Summary | ViewMode::Jump) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(1), Constraint::Min(3)].as_ref())

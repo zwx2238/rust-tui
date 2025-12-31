@@ -10,10 +10,11 @@ use crate::ui::runtime_helpers::{
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::{
-    apply_view_action, handle_view_key, handle_view_mouse, ViewMode, ViewState,
+    apply_view_action, handle_view_key, handle_view_mouse, ViewAction, ViewMode, ViewState,
 };
 use crate::ui::summary::summary_row_at;
 use crate::ui::jump::jump_row_at;
+use crate::ui::model_popup::model_row_at;
 use crossterm::event::{self, Event};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{sync::mpsc, time::{Duration, Instant}};
@@ -26,8 +27,7 @@ pub(crate) fn run_loop(
     tx: &mpsc::Sender<UiEvent>,
     preheat_tx: &mpsc::Sender<PreheatTask>,
     preheat_res_rx: &mpsc::Receiver<PreheatResult>,
-    url: &str,
-    api_key: &str,
+    registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     theme: &RenderTheme,
     start_time: Instant,
@@ -57,7 +57,7 @@ pub(crate) fn run_loop(
                 let elapsed = tab_state
                     .app
                     .busy_since
-                    .map(|t| t.elapsed().as_secs())
+                    .map(|t| t.elapsed().as_millis() as u64)
                     .unwrap_or(0);
                 if handle_stream_event(&mut tab_state.app, event, elapsed) {
                     done_tabs.push(tab);
@@ -89,11 +89,11 @@ pub(crate) fn run_loop(
             let tab_state = &mut tabs[*active_tab];
             let app = &mut tab_state.app;
             let timer_text = if app.busy {
-                let secs = app
+                let ms = app
                     .busy_since
-                    .map(|t| t.elapsed().as_secs())
+                    .map(|t| t.elapsed().as_millis() as u64)
                     .unwrap_or(0);
-                format_timer(secs)
+                format_timer(ms)
             } else {
                 String::new()
             };
@@ -152,6 +152,7 @@ pub(crate) fn run_loop(
             &text,
             total_lines,
             &mut view,
+            &registry.models,
         )?;
         if startup_elapsed.is_none() {
             startup_elapsed = Some(start_time.elapsed());
@@ -160,12 +161,13 @@ pub(crate) fn run_loop(
         if let Some(line) = pending_line.take() {
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
                 tab_state.app.pending_send = Some(line);
+                let model = resolve_model(registry, &tab_state.app.model_key);
                 start_tab_request(
                     tab_state,
                     "",
-                    url,
-                    api_key,
-                    &args.model,
+                    &model.base_url,
+                    &model.api_key,
+                    &model.model,
                     args.show_reasoning,
                     tx,
                     *active_tab,
@@ -182,7 +184,29 @@ pub(crate) fn run_loop(
                         jump_rows.len(),
                         *active_tab,
                     );
+                    if matches!(action, ViewAction::CycleModel) {
+                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                            cycle_model(registry, &mut tab_state.app.model_key);
+                        }
+                        continue;
+                    }
+                    if let ViewAction::SelectModel(idx) = action {
+                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                            if let Some(model) = registry.models.get(idx) {
+                                tab_state.app.model_key = model.key.clone();
+                            }
+                        }
+                        continue;
+                    }
                     if apply_view_action(action, &jump_rows, tabs, active_tab) {
+                        continue;
+                    }
+                    if key.code == crossterm::event::KeyCode::F(4) {
+                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                            if let Some(idx) = registry.index_of(&tab_state.app.model_key) {
+                                view.model_selected = idx;
+                            }
+                        }
                         continue;
                     }
                     if !view.is_chat() {
@@ -191,7 +215,7 @@ pub(crate) fn run_loop(
                     if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                         match key.code {
                             crossterm::event::KeyCode::Char('t') => {
-                                tabs.push(TabState::new(&args.system, args.perf));
+                                tabs.push(TabState::new(&args.system, args.perf, &registry.default_key));
                                 *active_tab = tabs.len().saturating_sub(1);
                                 continue;
                             }
@@ -273,6 +297,12 @@ pub(crate) fn run_loop(
                             ViewMode::Jump => {
                                 jump_row_at(msg_area, jump_rows.len(), m.row, view.jump_scroll)
                             }
+                            ViewMode::Model => model_row_at(
+                                size,
+                                registry.models.len(),
+                                m.column,
+                                m.row,
+                            ),
                             ViewMode::Chat => None,
                         };
                         let action = handle_view_mouse(
@@ -282,6 +312,14 @@ pub(crate) fn run_loop(
                             jump_rows.len(),
                             m.kind,
                         );
+                        if let ViewAction::SelectModel(idx) = action {
+                            if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                                if let Some(model) = registry.models.get(idx) {
+                                    tab_state.app.model_key = model.key.clone();
+                                }
+                            }
+                            continue;
+                        }
                         let _ = apply_view_action(action, &jump_rows, tabs, active_tab);
                     }
                 }
@@ -291,4 +329,23 @@ pub(crate) fn run_loop(
     }
 
     Ok(())
+}
+
+fn resolve_model<'a>(
+    registry: &'a crate::model_registry::ModelRegistry,
+    key: &str,
+) -> &'a crate::model_registry::ModelProfile {
+    registry
+        .get(key)
+        .or_else(|| registry.get(&registry.default_key))
+        .expect("model registry is empty")
+}
+
+fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {
+    if registry.models.is_empty() {
+        return;
+    }
+    let idx = registry.index_of(key).unwrap_or(0);
+    let next = (idx + 1) % registry.models.len();
+    *key = registry.models[next].key.clone();
 }

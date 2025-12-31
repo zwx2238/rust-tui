@@ -133,6 +133,7 @@ pub fn handle_command(
                 .find(|m| m.role == "system")
                 .cloned();
             app.messages.clear();
+            app.assistant_stats.clear();
             if let Some(sys) = system {
                 app.messages.push(sys);
             }

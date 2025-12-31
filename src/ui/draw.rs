@@ -3,15 +3,15 @@ use crate::ui::logic::tab_label;
 use unicode_width::UnicodeWidthStr;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use ratatui::text::Text;
 use ratatui::widgets::block::Padding;
 use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
-use tui_textarea::TextArea;
 use crate::ui::scroll_debug::{self, ScrollDebug};
+use crate::ui::draw_input::draw_input;
 use crate::ui::selection::{apply_selection_to_text, Selection};
 
 pub fn layout_chunks(size: Rect, input_height: u16) -> (Rect, Rect, Rect) {
@@ -62,7 +62,52 @@ pub fn redraw(
             theme,
             app.focus == Focus::Input,
             app.busy,
+            &app.model_key,
         );
+    })?;
+    Ok(())
+}
+
+pub fn redraw_with_overlay<F>(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    app: &mut App,
+    theme: &RenderTheme,
+    text: &Text<'_>,
+    total_lines: usize,
+    tabs_len: usize,
+    active_tab: usize,
+    startup_text: Option<&str>,
+    input_height: u16,
+    overlay: F,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: FnOnce(&mut ratatui::Frame<'_>),
+{
+    let size = terminal.size()?;
+    let size = Rect::new(0, 0, size.width, size.height);
+    let (tabs_area, msg_area, input_area) = layout_chunks(size, input_height);
+    terminal.draw(|f| {
+        draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
+        draw_messages(
+            f,
+            msg_area,
+            text,
+            app.scroll,
+            theme,
+            app.focus == Focus::Chat,
+            total_lines,
+            app.chat_selection,
+        );
+        draw_input(
+            f,
+            input_area,
+            &mut app.input,
+            theme,
+            app.focus == Focus::Input,
+            app.busy,
+            &app.model_key,
+        );
+        overlay(f);
     })?;
     Ok(())
 }
@@ -203,55 +248,6 @@ fn draw_messages(
             .track_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
         f.render_stateful_widget(scrollbar, scroll_area, &mut state);
     }
-}
-
-fn draw_input(
-    f: &mut ratatui::Frame<'_>,
-    area: Rect,
-    input: &mut TextArea<'_>,
-    theme: &RenderTheme,
-    focused: bool,
-    busy: bool,
-) {
-    let style = Style::default()
-        .bg(theme.bg)
-        .fg(theme.fg.unwrap_or(Color::White));
-    let border_style = if focused {
-        Style::default().fg(Color::Blue)
-    } else {
-        Style::default().fg(theme.fg.unwrap_or(Color::White))
-    };
-    let (line_idx, col) = input.cursor();
-    let total_lines = input.lines().len().max(1);
-    let status = format!(
-        "{} · 行 {}/{} 列 {}",
-        if busy { "输入(禁用)" } else { "输入" },
-        line_idx + 1,
-        total_lines,
-        col + 1
-    );
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title_top(status)
-        .title_top(ratatui::text::Line::from("Enter 发送 · Ctrl+J 换行").right_aligned())
-        .padding(Padding::new(PADDING_X, PADDING_X, PADDING_Y, PADDING_Y))
-        .style(style)
-        .border_style(border_style);
-    input.set_block(block);
-    input.set_style(style);
-    input.set_selection_style(Style::default().bg(Color::DarkGray));
-    input.set_cursor_style(if focused && !busy {
-        Style::default().add_modifier(Modifier::REVERSED)
-    } else {
-        Style::default()
-    });
-    input.set_placeholder_text(if busy {
-        "正在生成回复，输入已禁用"
-    } else {
-        "输入内容后按 Enter 发送"
-    });
-    input.set_placeholder_style(Style::default().fg(Color::DarkGray));
-    f.render_widget(&*input, area);
 }
 
 pub fn inner_area(area: Rect, padding_x: u16, padding_y: u16) -> Rect {
