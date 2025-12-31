@@ -45,11 +45,13 @@ pub fn messages_to_text(
     width: usize,
     theme: &RenderTheme,
     label_suffixes: &[(usize, String)],
+    streaming_idx: Option<usize>,
 ) -> Text<'static> {
     let mut lines: Vec<Line<'static>> = Vec::new();
     for (idx, msg) in messages.iter().enumerate() {
         let suffix = suffix_for_index(label_suffixes, idx);
-        let mut msg_lines = render_message_lines(msg, width, theme, suffix);
+        let streaming = streaming_idx == Some(idx);
+        let mut msg_lines = render_message_lines(msg, width, theme, suffix, streaming);
         lines.append(&mut msg_lines);
         lines.push(Line::from(""));
     }
@@ -62,7 +64,7 @@ pub fn messages_to_plain_lines(
     theme: &RenderTheme,
 ) -> Vec<String> {
     let mut out = Vec::new();
-    let text = messages_to_text(messages, width, theme, &[]);
+    let text = messages_to_text(messages, width, theme, &[], None);
     for line in text.lines {
         let mut s = String::new();
         for span in line.spans {
@@ -78,15 +80,17 @@ fn render_message_lines(
     width: usize,
     theme: &RenderTheme,
     label_suffix: Option<&str>,
+    streaming: bool,
 ) -> Vec<Line<'static>> {
     match msg.role.as_str() {
         "user" => {
             let mut lines = vec![label_line("👤", theme)];
-            lines.extend(render_markdown_lines(
-                &msg.content,
-                width,
-                theme,
-            ));
+            let content = if streaming {
+                close_unbalanced_code_fence(&msg.content)
+            } else {
+                msg.content.clone()
+            };
+            lines.extend(render_markdown_lines(&content, width, theme));
             lines
         }
         "assistant" => {
@@ -98,11 +102,12 @@ fn render_message_lines(
                 }
             }
             let mut lines = vec![label_line(&label, theme)];
-            lines.extend(render_markdown_lines(
-                &msg.content,
-                width,
-                theme,
-            ));
+            let content = if streaming {
+                close_unbalanced_code_fence(&msg.content)
+            } else {
+                msg.content.clone()
+            };
+            lines.extend(render_markdown_lines(&content, width, theme));
             lines
         }
         _ => Vec::new(),
@@ -114,6 +119,26 @@ fn suffix_for_index<'a>(suffixes: &'a [(usize, String)], idx: usize) -> Option<&
         .iter()
         .find(|(i, _)| *i == idx)
         .map(|(_, s)| s.as_str())
+}
+
+fn close_unbalanced_code_fence(input: &str) -> String {
+    let mut fence_count = 0usize;
+    for line in input.lines() {
+        if line.trim_start().starts_with("```") {
+            fence_count += 1;
+        }
+    }
+    if fence_count % 2 == 1 {
+        let mut out = String::with_capacity(input.len() + 4);
+        out.push_str(input);
+        if !input.ends_with('\n') {
+            out.push('\n');
+        }
+        out.push_str("```");
+        out
+    } else {
+        input.to_string()
+    }
 }
 
 fn label_line(text: &str, theme: &RenderTheme) -> Line<'static> {
@@ -169,24 +194,47 @@ fn render_code_block_lines(
     let lines: Vec<&str> = text.lines().collect();
     let max_digits = lines.len().max(1).to_string().len();
     let mut out = Vec::new();
+    let code_fg = theme.fg.unwrap_or(Color::White);
+    let code_bg = theme.bg;
+    let bg_luma = color_luma(code_bg);
     for (i, raw) in lines.iter().enumerate() {
+        let mut line_with_nl = String::with_capacity(raw.len() + 1);
+        line_with_nl.push_str(raw);
+        line_with_nl.push('\n');
         let ranges = highlighter
-            .highlight_line(raw, &ss)
+            .highlight_line(&line_with_nl, &ss)
             .unwrap_or_default();
         let line_no = format!("{:>width$} | ", i + 1, width = max_digits);
         let mut spans = Vec::new();
         spans.push(Span::styled(
             line_no,
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(code_fg).bg(code_bg),
         ));
         for (style, part) in ranges {
             let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
-            let span_style = Style::default().fg(fg).bg(theme.code_bg);
+            let span_fg = if (color_luma(fg) as i16 - bg_luma as i16).abs() < 80 {
+                code_fg
+            } else {
+                fg
+            };
+            let span_style = Style::default().fg(span_fg).bg(code_bg);
             spans.push(Span::styled(part.to_string(), span_style));
         }
         out.push(Line::from(spans));
     }
     out
+}
+
+fn color_luma(color: Color) -> u8 {
+    match color {
+        Color::Rgb(r, g, b) => {
+            let l = 0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32;
+            l.round().clamp(0.0, 255.0) as u8
+        }
+        Color::Black => 0,
+        Color::White => 255,
+        _ => 128,
+    }
 }
 
 fn render_markdown_lines(text: &str, width: usize, theme: &RenderTheme) -> Vec<Line<'static>> {

@@ -1,24 +1,46 @@
-use crate::types::{ChatRequest, ChatResponse, Message, Usage};
+use crate::types::{ChatRequest, Message, Usage};
+use std::io::{BufRead, BufReader};
+use std::sync::mpsc::Sender;
 
-pub struct LlmResult {
-    pub assistant: Option<String>,
-    pub reasoning: Option<String>,
-    pub error: Option<String>,
-    pub usage: Option<Usage>,
+pub enum LlmEvent {
+    Chunk(String),
+    Reasoning(String),
+    Error(String),
+    Done { usage: Option<Usage> },
 }
 
-pub fn request_llm(
+#[derive(serde::Deserialize)]
+struct StreamResponse {
+    choices: Vec<StreamChoice>,
+    #[serde(default)]
+    usage: Option<Usage>,
+}
+
+#[derive(serde::Deserialize)]
+struct StreamChoice {
+    delta: StreamDelta,
+}
+
+#[derive(serde::Deserialize)]
+struct StreamDelta {
+    content: Option<String>,
+    #[serde(rename = "reasoning_content")]
+    reasoning_content: Option<String>,
+}
+
+pub fn request_llm_stream(
     url: &str,
     api_key: &str,
     model: &str,
     show_reasoning: bool,
     messages: &[Message],
-) -> LlmResult {
+    tx: Sender<LlmEvent>,
+) {
     let client = reqwest::blocking::Client::new();
     let req = ChatRequest {
         model,
         messages,
-        stream: false,
+        stream: true,
     };
     let resp = client.post(url).bearer_auth(api_key).json(&req).send();
     match resp {
@@ -26,49 +48,62 @@ pub fn request_llm(
             if !resp.status().is_success() {
                 let status = resp.status();
                 let body = resp.text().unwrap_or_default();
-                return LlmResult {
-                    assistant: None,
-                    reasoning: None,
-                    error: Some(format!("请求失败：{status} {body}")),
-                    usage: None,
-                };
+                let _ = tx.send(LlmEvent::Error(format!("请求失败：{status} {body}")));
+                return;
             }
-            let data: Result<ChatResponse, _> = resp.json();
-            match data {
-                Ok(data) => {
-                    let Some(choice) = data.choices.into_iter().next() else {
-                        return LlmResult {
-                            assistant: None,
-                            reasoning: None,
-                            error: Some("响应中没有 choices。".to_string()),
-                            usage: None,
-                        };
-                    };
-                    let reasoning = if show_reasoning {
-                        choice.message.reasoning_content.clone()
-                    } else {
-                        None
-                    };
-                    LlmResult {
-                        assistant: Some(choice.message.content.unwrap_or_default()),
-                        reasoning,
-                        error: None,
-                        usage: data.usage.clone(),
+            let mut reader = BufReader::new(resp);
+            let mut line = String::new();
+            let mut usage: Option<Usage> = None;
+            loop {
+                line.clear();
+                let read = match reader.read_line(&mut line) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        let _ = tx.send(LlmEvent::Error(format!("读取失败：{e}")));
+                        return;
+                    }
+                };
+                if read == 0 {
+                    break;
+                }
+                let trimmed = line.trim_end();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let Some(data) = trimmed.strip_prefix("data: ") else {
+                    continue;
+                };
+                if data == "[DONE]" {
+                    let _ = tx.send(LlmEvent::Done { usage });
+                    return;
+                }
+                let parsed: Result<StreamResponse, _> = serde_json::from_str(data);
+                match parsed {
+                    Ok(chunk) => {
+                        if let Some(u) = chunk.usage {
+                            usage = Some(u);
+                        }
+                        for choice in chunk.choices {
+                            if let Some(content) = choice.delta.content {
+                                let _ = tx.send(LlmEvent::Chunk(content));
+                            }
+                            if show_reasoning {
+                                if let Some(r) = choice.delta.reasoning_content {
+                                    let _ = tx.send(LlmEvent::Reasoning(r));
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send(LlmEvent::Error(format!("解析失败：{e}")));
+                        return;
                     }
                 }
-                Err(e) => LlmResult {
-                    assistant: None,
-                    reasoning: None,
-                    error: Some(format!("解析失败：{e}")),
-                    usage: None,
-                },
             }
+            let _ = tx.send(LlmEvent::Done { usage });
         }
-        Err(e) => LlmResult {
-            assistant: None,
-            reasoning: None,
-            error: Some(format!("请求失败：{e}")),
-            usage: None,
-        },
+        Err(e) => {
+            let _ = tx.send(LlmEvent::Error(format!("请求失败：{e}")));
+        }
     }
 }

@@ -72,11 +72,16 @@ pub fn handle_key(
                 }
             } else {
                 if app.focus == Focus::Chat {
-                    app.follow = true;
+                    app.scroll = u16::MAX;
+                    app.follow = false;
                 } else if app.focus == Focus::Input {
                     app.cursor = app.input.len();
                 }
             }
+        }
+        KeyCode::F(12) => {
+            app.scroll = u16::MAX;
+            app.follow = true;
         }
         KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.focus == Focus::Input {
@@ -100,6 +105,7 @@ pub fn handle_key(
         }
         KeyCode::Down => {
             app.scroll = app.scroll.saturating_add(1);
+            app.follow = false;
         }
         KeyCode::PageUp => {
             app.scroll = app.scroll.saturating_sub(10);
@@ -107,6 +113,7 @@ pub fn handle_key(
         }
         KeyCode::PageDown => {
             app.scroll = app.scroll.saturating_add(10);
+            app.follow = false;
         }
         KeyCode::Char(c) => {
             if key.modifiers.contains(KeyModifiers::CONTROL) {

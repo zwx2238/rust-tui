@@ -27,7 +27,13 @@ pub fn redraw(
     let size = terminal.size()?;
     let (msg_area, input_area) = layout_chunks(size);
     let msg_width = inner_width(msg_area, PADDING_X);
-    let text = messages_to_text(&app.messages, msg_width, theme, label_suffixes);
+    let text = messages_to_text(
+        &app.messages,
+        msg_width,
+        theme,
+        label_suffixes,
+        app.pending_assistant,
+    );
     terminal.draw(|f| {
         draw_messages(
             f,
@@ -74,7 +80,7 @@ fn draw_messages(
     let total_lines = text.lines.len();
     let lines_above = scroll as usize;
     let lines_below = total_lines.saturating_sub(lines_above + content_height as usize);
-    let right_title = Title::from(format!("↑{} ↓{}", lines_above, lines_below))
+    let right_title = Title::from(format!("{} {}", lines_above, lines_below))
         .alignment(Alignment::Right);
     let block = Block::default()
         .borders(Borders::ALL)

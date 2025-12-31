@@ -18,6 +18,8 @@ pub struct App {
     pub pending_send: Option<String>,
     pub busy_since: Option<Instant>,
     pub pending_assistant: Option<usize>,
+    pub pending_reasoning: Option<usize>,
+    pub stream_buffer: String,
     pub assistant_stats: Option<(usize, String)>,
 }
 
@@ -41,6 +43,8 @@ impl App {
             pending_send: None,
             busy_since: None,
             pending_assistant: None,
+            pending_reasoning: None,
+            stream_buffer: String::new(),
             assistant_stats: None,
         }
     }
