@@ -11,6 +11,7 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
 use tui_textarea::TextArea;
+use crate::ui::scroll_debug::{self, ScrollDebug};
 
 pub fn layout_chunks(size: Rect, input_height: u16) -> (Rect, Rect, Rect) {
     let layout = Layout::default()
@@ -149,8 +150,23 @@ fn draw_messages(
     let content_height = inner.height;
     let lines_above = scroll as usize;
     let lines_below = total_lines.saturating_sub(lines_above + content_height as usize);
-    let right_title = ratatui::text::Line::from(format!("{} {}", lines_above, lines_below))
-        .right_aligned();
+    let mut right_text = format!("{} {}", lines_above, lines_below);
+    if scroll_debug::enabled() {
+        let max_scroll = total_lines
+            .saturating_sub(content_height as usize)
+            .min(u16::MAX as usize) as u16;
+        let info = ScrollDebug {
+            total_lines,
+            scroll,
+            content_height,
+            max_scroll,
+            viewport_len: content_height as usize,
+            scroll_area_height: scrollbar_area(area).height,
+        };
+        right_text.push_str(" | ");
+        right_text.push_str(&scroll_debug::format(&info));
+    }
+    let right_title = ratatui::text::Line::from(right_text).right_aligned();
     let block = Block::default()
         .borders(Borders::ALL)
         .title_top("对话")
@@ -167,8 +183,13 @@ fn draw_messages(
     f.render_widget(paragraph, area);
 
     if total_lines > content_height as usize {
+        let viewport_len = content_height as usize;
+        let max_scroll = total_lines.saturating_sub(viewport_len);
+        let scrollbar_content_len = max_scroll.saturating_add(1).max(1);
         let scroll_area = scrollbar_area(area);
-        let mut state = ScrollbarState::new(total_lines).position(scroll as usize);
+        let mut state = ScrollbarState::new(scrollbar_content_len)
+            .position(scroll as usize)
+            .viewport_content_length(viewport_len);
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .thumb_style(Style::default().fg(Color::Blue))
             .track_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
