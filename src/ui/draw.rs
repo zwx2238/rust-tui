@@ -63,6 +63,7 @@ pub fn redraw(
             app.focus == Focus::Input,
             app.busy,
             &app.model_key,
+            &app.prompt_key,
         );
     })?;
     Ok(())
@@ -106,6 +107,7 @@ where
             app.focus == Focus::Input,
             app.busy,
             &app.model_key,
+            &app.prompt_key,
         );
         overlay(f);
     })?;

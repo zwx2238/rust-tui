@@ -29,8 +29,8 @@ pub(crate) struct PreheatResult {
 }
 
 impl TabState {
-    pub(crate) fn new(system: &str, perf: bool, default_model: &str) -> Self {
-        let mut app = App::new(system, default_model);
+    pub(crate) fn new(system: &str, perf: bool, default_model: &str, default_prompt: &str) -> Self {
+        let mut app = App::new(system, default_model, default_prompt);
         if perf {
             seed_perf_messages(&mut app);
             app.dirty_indices = (0..app.messages.len()).collect();

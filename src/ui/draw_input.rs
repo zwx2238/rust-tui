@@ -16,6 +16,7 @@ pub(crate) fn draw_input(
     focused: bool,
     busy: bool,
     model_key: &str,
+    prompt_key: &str,
 ) {
     let style = Style::default()
         .bg(theme.bg)
@@ -28,9 +29,10 @@ pub(crate) fn draw_input(
     let (line_idx, col) = input.cursor();
     let total_lines = input.lines().len().max(1);
     let status = format!(
-        "{} · 模型 {} · 行 {}/{} 列 {}",
+        "{} · 模型 {} · 角色 {} · 行 {}/{} 列 {}",
         if busy { "输入(禁用)" } else { "输入" },
         model_key,
+        prompt_key,
         line_idx + 1,
         total_lines,
         col + 1

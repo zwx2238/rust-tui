@@ -28,12 +28,13 @@ pub struct App {
     pub chat_selection: Option<crate::ui::selection::Selection>,
     pub input_selecting: bool,
     pub model_key: String,
+    pub prompt_key: String,
     pub dirty_indices: Vec<usize>,
     pub cache_shift: Option<usize>,
 }
 
 impl App {
-    pub fn new(system_prompt: &str, default_model: &str) -> Self {
+    pub fn new(system_prompt: &str, default_model: &str, default_prompt: &str) -> Self {
         let mut messages = Vec::new();
         if !system_prompt.trim().is_empty() {
             messages.push(Message {
@@ -60,8 +61,27 @@ impl App {
             chat_selection: None,
             input_selecting: false,
             model_key: default_model.to_string(),
+            prompt_key: default_prompt.to_string(),
             dirty_indices: Vec::new(),
             cache_shift: None,
+        }
+    }
+
+    pub fn set_system_prompt(&mut self, key: &str, content: &str) {
+        self.prompt_key = key.to_string();
+        if let Some(msg) = self.messages.iter_mut().find(|m| m.role == "system") {
+            msg.content = content.to_string();
+            return;
+        }
+        if !content.trim().is_empty() {
+            self.messages.insert(
+                0,
+                Message {
+                    role: "system".to_string(),
+                    content: content.to_string(),
+                },
+            );
+            self.cache_shift = Some(0);
         }
     }
 }

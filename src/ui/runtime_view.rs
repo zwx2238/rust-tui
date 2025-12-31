@@ -6,6 +6,7 @@ pub(crate) enum ViewMode {
     Summary,
     Jump,
     Model,
+    Prompt,
 }
 
 pub(crate) struct ViewState {
@@ -14,6 +15,8 @@ pub(crate) struct ViewState {
     pub(crate) jump_selected: usize,
     pub(crate) jump_scroll: usize,
     pub(crate) model_selected: usize,
+    pub(crate) prompt_selected: usize,
+    pub(crate) prompt_scroll: usize,
 }
 
 pub(crate) enum ViewAction {
@@ -22,6 +25,7 @@ pub(crate) enum ViewAction {
     JumpTo(usize),
     SelectModel(usize),
     CycleModel,
+    SelectPrompt(usize),
 }
 
 pub(crate) fn apply_view_action(
@@ -46,7 +50,7 @@ pub(crate) fn apply_view_action(
             }
             true
         }
-        ViewAction::SelectModel(_) | ViewAction::CycleModel => false,
+        ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
         ViewAction::None => false,
     }
 }
@@ -59,6 +63,8 @@ impl ViewState {
             jump_selected: 0,
             jump_scroll: 0,
             model_selected: 0,
+            prompt_selected: 0,
+            prompt_scroll: 0,
         }
     }
 
@@ -103,6 +109,15 @@ pub(crate) fn handle_view_key(
                 view.jump_selected = 0;
                 view.jump_scroll = 0;
                 ViewMode::Jump
+            };
+            return ViewAction::None;
+        }
+        KeyCode::F(5) => {
+            view.mode = if view.mode == ViewMode::Prompt {
+                ViewMode::Chat
+            } else {
+                view.prompt_scroll = 0;
+                ViewMode::Prompt
             };
             return ViewAction::None;
         }
@@ -195,6 +210,28 @@ pub(crate) fn handle_view_key(
             }
             _ => ViewAction::None,
         },
+        ViewMode::Prompt => match key.code {
+            KeyCode::Esc => {
+                view.mode = ViewMode::Chat;
+                ViewAction::None
+            }
+            KeyCode::Up => {
+                view.prompt_selected = view.prompt_selected.saturating_sub(1);
+                if view.prompt_selected < view.prompt_scroll {
+                    view.prompt_scroll = view.prompt_selected;
+                }
+                ViewAction::None
+            }
+            KeyCode::Down => {
+                view.prompt_selected = view.prompt_selected.saturating_add(1);
+                ViewAction::None
+            }
+            KeyCode::Enter => {
+                view.mode = ViewMode::Chat;
+                ViewAction::SelectPrompt(view.prompt_selected)
+            }
+            _ => ViewAction::None,
+        },
     }
 }
 
@@ -231,6 +268,13 @@ pub(crate) fn handle_view_mouse(
             if matches!(kind, MouseEventKind::Down(_)) {
                 view.mode = ViewMode::Chat;
                 return ViewAction::SelectModel(row);
+            }
+        }
+        ViewMode::Prompt => {
+            view.prompt_selected = row;
+            if matches!(kind, MouseEventKind::Down(_)) {
+                view.mode = ViewMode::Chat;
+                return ViewAction::SelectPrompt(row);
             }
         }
         ViewMode::Chat => {}

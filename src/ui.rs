@@ -8,6 +8,7 @@ mod perf;
 mod clipboard;
 mod jump;
 mod model_popup;
+mod prompt_popup;
 mod runtime;
 mod runtime_events;
 mod runtime_helpers;

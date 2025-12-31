@@ -15,6 +15,7 @@ use crate::ui::runtime_view::{
 use crate::ui::summary::summary_row_at;
 use crate::ui::jump::jump_row_at;
 use crate::ui::model_popup::model_row_at;
+use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
 use crossterm::event::{self, Event};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{sync::mpsc, time::{Duration, Instant}};
@@ -28,6 +29,7 @@ pub(crate) fn run_loop(
     preheat_tx: &mpsc::Sender<PreheatTask>,
     preheat_res_rx: &mpsc::Receiver<PreheatResult>,
     registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::system_prompts::PromptRegistry,
     args: &Args,
     theme: &RenderTheme,
     start_time: Instant,
@@ -145,6 +147,7 @@ pub(crate) fn run_loop(
             *active_tab,
             theme,
             startup_text.as_deref(),
+            size,
             input_height,
             msg_area,
             tabs_area,
@@ -153,6 +156,7 @@ pub(crate) fn run_loop(
             total_lines,
             &mut view,
             &registry.models,
+            &prompt_registry.prompts,
         )?;
         if startup_elapsed.is_none() {
             startup_elapsed = Some(start_time.elapsed());
@@ -177,6 +181,19 @@ pub(crate) fn run_loop(
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(key) => {
+                    if key.code == crossterm::event::KeyCode::F(5) {
+                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                            if !can_change_prompt(&tab_state.app) {
+                                tab_state.app.messages.push(crate::types::Message {
+                                    role: "assistant".to_string(),
+                                    content:
+                                        "已开始对话，无法切换系统提示词，请新开 tab。"
+                                            .to_string(),
+                                });
+                                continue;
+                            }
+                        }
+                    }
                     let action = handle_view_key(
                         &mut view,
                         key,
@@ -190,10 +207,59 @@ pub(crate) fn run_loop(
                         }
                         continue;
                     }
+                    if key.code == crossterm::event::KeyCode::F(5)
+                        && view.mode == ViewMode::Prompt
+                    {
+                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                            if let Some(idx) = prompt_registry
+                                .prompts
+                                .iter()
+                                .position(|p| p.key == tab_state.app.prompt_key)
+                            {
+                                view.prompt_selected = idx;
+                                let viewport_rows =
+                                    prompt_visible_rows(size, prompt_registry.prompts.len());
+                                let max_scroll = prompt_registry
+                                    .prompts
+                                    .len()
+                                    .saturating_sub(viewport_rows)
+                                    .max(1)
+                                    .saturating_sub(1);
+                                if viewport_rows > 0 {
+                                    view.prompt_scroll = view
+                                        .prompt_selected
+                                        .saturating_sub(viewport_rows.saturating_sub(1))
+                                        .min(max_scroll);
+                                } else {
+                                    view.prompt_scroll = 0;
+                                }
+                            }
+                        }
+                        continue;
+                    }
                     if let ViewAction::SelectModel(idx) = action {
                         if let Some(tab_state) = tabs.get_mut(*active_tab) {
                             if let Some(model) = registry.models.get(idx) {
                                 tab_state.app.model_key = model.key.clone();
+                            }
+                        }
+                        continue;
+                    }
+                    if let ViewAction::SelectPrompt(idx) = action {
+                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                            if can_change_prompt(&tab_state.app) {
+                                if let Some(prompt) = prompt_registry.prompts.get(idx) {
+                                    tab_state
+                                        .app
+                                        .set_system_prompt(&prompt.key, &prompt.content);
+                                }
+                            } else {
+                                tab_state.app.messages.push(crate::types::Message {
+                                    role: "assistant".to_string(),
+                                    content:
+                                        "已开始对话，无法切换系统提示词，请新开 tab。"
+                                            .to_string(),
+                                });
                             }
                         }
                         continue;
@@ -215,7 +281,15 @@ pub(crate) fn run_loop(
                     if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                         match key.code {
                             crossterm::event::KeyCode::Char('t') => {
-                                tabs.push(TabState::new(&args.system, args.perf, &registry.default_key));
+                                tabs.push(TabState::new(
+                                    prompt_registry
+                                        .get(&prompt_registry.default_key)
+                                        .map(|p| p.content.as_str())
+                                        .unwrap_or(&args.system),
+                                    args.perf,
+                                    &registry.default_key,
+                                    &prompt_registry.default_key,
+                                ));
                                 *active_tab = tabs.len().saturating_sub(1);
                                 continue;
                             }
@@ -292,6 +366,29 @@ pub(crate) fn run_loop(
                                 _ => {}
                             }
                         }
+                        if view.mode == ViewMode::Prompt {
+                            let viewport_rows =
+                                prompt_visible_rows(size, prompt_registry.prompts.len());
+                            let max_scroll = prompt_registry
+                                .prompts
+                                .len()
+                                .saturating_sub(viewport_rows)
+                                .max(1)
+                                .saturating_sub(1);
+                            match m.kind {
+                                crossterm::event::MouseEventKind::ScrollUp => {
+                                    view.prompt_scroll = view.prompt_scroll.saturating_sub(3);
+                                }
+                                crossterm::event::MouseEventKind::ScrollDown => {
+                                    view.prompt_scroll = view.prompt_scroll.saturating_add(3);
+                                }
+                                _ => {}
+                            }
+                            view.prompt_scroll = view.prompt_scroll.min(max_scroll);
+                            if view.prompt_selected < view.prompt_scroll {
+                                view.prompt_selected = view.prompt_scroll;
+                            }
+                        }
                         let row = match view.mode {
                             ViewMode::Summary => summary_row_at(msg_area, tabs.len(), m.row),
                             ViewMode::Jump => {
@@ -300,6 +397,13 @@ pub(crate) fn run_loop(
                             ViewMode::Model => model_row_at(
                                 size,
                                 registry.models.len(),
+                                m.column,
+                                m.row,
+                            ),
+                            ViewMode::Prompt => prompt_row_at(
+                                size,
+                                prompt_registry.prompts.len(),
+                                view.prompt_scroll,
                                 m.column,
                                 m.row,
                             ),
@@ -316,6 +420,25 @@ pub(crate) fn run_loop(
                             if let Some(tab_state) = tabs.get_mut(*active_tab) {
                                 if let Some(model) = registry.models.get(idx) {
                                     tab_state.app.model_key = model.key.clone();
+                                }
+                            }
+                            continue;
+                        }
+                        if let ViewAction::SelectPrompt(idx) = action {
+                            if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                                if can_change_prompt(&tab_state.app) {
+                                    if let Some(prompt) = prompt_registry.prompts.get(idx) {
+                                        tab_state
+                                            .app
+                                            .set_system_prompt(&prompt.key, &prompt.content);
+                                    }
+                                } else {
+                                    tab_state.app.messages.push(crate::types::Message {
+                                        role: "assistant".to_string(),
+                                        content:
+                                            "已开始对话，无法切换系统提示词，请新开 tab。"
+                                                .to_string(),
+                                    });
                                 }
                             }
                             continue;
@@ -348,4 +471,8 @@ fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String
     let idx = registry.index_of(key).unwrap_or(0);
     let next = (idx + 1) % registry.models.len();
     *key = registry.models[next].key.clone();
+}
+
+fn can_change_prompt(app: &crate::ui::state::App) -> bool {
+    !app.messages.iter().any(|m| m.role == "user")
 }

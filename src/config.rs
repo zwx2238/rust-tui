@@ -17,6 +17,8 @@ pub struct Config {
     pub default_model: Option<String>,
     #[serde(default)]
     pub models: Option<Vec<ModelItem>>,
+    #[serde(default)]
+    pub prompts_dir: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]

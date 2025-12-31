@@ -1,6 +1,8 @@
 mod args;
 mod config;
 mod model_registry;
+mod prompt_pack;
+mod system_prompts;
 mod render;
 mod session;
 mod ui;

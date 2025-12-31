@@ -6,6 +6,7 @@ use crate::ui::runtime_helpers::{
     start_tab_request, PreheatResult, PreheatTask, TabState, PERF_QUESTIONS,
 };
 use crate::model_registry::build_model_registry;
+use crate::system_prompts::load_prompts;
 use crate::ui::runtime_loop::run_loop;
 use crossterm::event::{
     DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
@@ -40,6 +41,11 @@ pub fn run(
     terminal.clear()?;
 
     let registry = build_model_registry(cfg.as_ref(), &args, Some(&api_key));
+    let prompt_registry = load_prompts(
+        cfg.as_ref().and_then(|c| c.prompts_dir.as_deref()),
+        "default",
+        &args.system,
+    );
 
     let initial_tabs = if args.perf_batch {
         10
@@ -49,7 +55,17 @@ pub fn run(
         1
     };
     let mut tabs = (0..initial_tabs)
-        .map(|_| TabState::new(&args.system, args.perf, &registry.default_key))
+        .map(|_| {
+            TabState::new(
+                prompt_registry
+                    .get(&prompt_registry.default_key)
+                    .map(|p| p.content.as_str())
+                    .unwrap_or(&args.system),
+                args.perf,
+                &registry.default_key,
+                &prompt_registry.default_key,
+            )
+        })
         .collect::<Vec<_>>();
     let mut active_tab: usize = 0;
     let mut last_session_id: Option<String> = None;
@@ -90,6 +106,7 @@ pub fn run(
         &preheat_tx,
         &preheat_res_rx,
         &registry,
+        &prompt_registry,
         &args,
         theme,
         start_time,
