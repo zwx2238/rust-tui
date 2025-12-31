@@ -1,15 +1,17 @@
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
+use crate::ui::popup_table::{draw_table_popup, popup_row_at, TablePopup};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Cell, Row, Table, TableState};
+use ratatui::widgets::{Cell, Row};
 
 pub fn draw_model_popup(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
     models: &[ModelProfile],
     selected: usize,
+    scroll: usize,
     theme: &RenderTheme,
 ) {
     let popup = model_popup_area(area, models.len());
@@ -30,25 +32,20 @@ pub fn draw_model_popup(
             Cell::from(m.base_url.clone()),
         ])
     });
-    let mut state = TableState::default();
-    if !models.is_empty() {
-        state.select(Some(selected.min(models.len() - 1)));
-    }
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title_top(Line::from("模型切换 · Enter 确认 · Esc 取消 · F3 快速切换"))
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-        .border_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
-    let table = Table::new(body, [
-        Constraint::Length(12),
-        Constraint::Length(22),
-        Constraint::Min(10),
-    ])
-    .header(header)
-    .row_highlight_style(Style::default().bg(selection_bg(theme.bg)))
-    .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-    .block(block);
-    f.render_stateful_widget(table, popup, &mut state);
+    let popup_spec = TablePopup {
+        title: Line::from("模型切换 · Enter 确认 · Esc 取消 · F3 快速切换"),
+        header,
+        rows: body.collect(),
+        widths: vec![
+            Constraint::Length(12),
+            Constraint::Length(22),
+            Constraint::Min(10),
+        ],
+        selected,
+        scroll,
+        theme,
+    };
+    draw_table_popup(f, popup, popup_spec);
 }
 
 pub fn model_popup_area(area: Rect, rows: usize) -> Rect {
@@ -57,22 +54,7 @@ pub fn model_popup_area(area: Rect, rows: usize) -> Rect {
 
 pub fn model_row_at(area: Rect, rows: usize, mouse_x: u16, mouse_y: u16) -> Option<usize> {
     let popup = model_popup_area(area, rows);
-    if mouse_x < popup.x || mouse_x >= popup.x + popup.width {
-        return None;
-    }
-    if mouse_y < popup.y || mouse_y >= popup.y + popup.height {
-        return None;
-    }
-    let inner_y = mouse_y.saturating_sub(popup.y + 1);
-    if inner_y == 0 {
-        return None;
-    }
-    let row = inner_y.saturating_sub(1) as usize;
-    if row < rows {
-        Some(row)
-    } else {
-        None
-    }
+    popup_row_at(popup, rows, 0, mouse_x, mouse_y)
 }
 
 fn popup_height(rows: usize) -> u16 {
@@ -88,9 +70,4 @@ fn centered_rect(area: Rect, percent_x: u16, height: u16) -> Rect {
     Rect { x, y, width, height: h }
 }
 
-fn selection_bg(bg: Color) -> Color {
-    match bg {
-        Color::White => Color::Gray,
-        _ => Color::DarkGray,
-    }
-}
+// selection color handled by popup_table

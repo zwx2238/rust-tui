@@ -1,9 +1,10 @@
 use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
+use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Cell, Row, Table, TableState};
+use ratatui::widgets::{Cell, Row};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 pub fn draw_prompt_popup(
@@ -30,24 +31,16 @@ pub fn draw_prompt_popup(
             )),
         ])
     });
-    let mut state = TableState::default().with_offset(scroll);
-    if !prompts.is_empty() {
-        state.select(Some(selected.min(prompts.len() - 1)));
-    }
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title_top(Line::from("系统提示词 · Enter 确认 · Esc 取消"))
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-        .border_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
-    let table = Table::new(
-        body,
-        [Constraint::Length(role_width), Constraint::Min(10)],
-    )
-        .header(header)
-        .row_highlight_style(Style::default().bg(selection_bg(theme.bg)))
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-        .block(block);
-    f.render_stateful_widget(table, popup, &mut state);
+    let popup_spec = TablePopup {
+        title: Line::from("系统提示词 · Enter 确认 · Esc 取消"),
+        header,
+        rows: body.collect(),
+        widths: vec![Constraint::Length(role_width), Constraint::Min(10)],
+        selected,
+        scroll,
+        theme,
+    };
+    draw_table_popup(f, popup, popup_spec);
 }
 
 pub fn prompt_popup_area(area: Rect, rows: usize) -> Rect {
@@ -62,31 +55,12 @@ pub fn prompt_row_at(
     mouse_y: u16,
 ) -> Option<usize> {
     let popup = prompt_popup_area(area, rows);
-    if mouse_x < popup.x || mouse_x >= popup.x + popup.width {
-        return None;
-    }
-    if mouse_y < popup.y || mouse_y >= popup.y + popup.height {
-        return None;
-    }
-    let inner_y = mouse_y.saturating_sub(popup.y + 1);
-    if inner_y == 0 {
-        return None;
-    }
-    let row = inner_y.saturating_sub(1) as usize;
-    let row = row.saturating_add(scroll);
-    if row < rows {
-        Some(row)
-    } else {
-        None
-    }
+    popup_row_at(popup, rows, scroll, mouse_x, mouse_y)
 }
 
 pub fn prompt_visible_rows(area: Rect, rows: usize) -> usize {
     let popup = prompt_popup_area(area, rows);
-    popup
-        .height
-        .saturating_sub(3)
-        .max(1) as usize
+    popup_visible_rows(popup)
 }
 
 fn max_preview_width(area: Rect, role_width: u16) -> usize {
@@ -118,12 +92,7 @@ fn centered_rect(area: Rect, percent_x: u16, height: u16) -> Rect {
     Rect { x, y, width, height: h }
 }
 
-fn selection_bg(bg: Color) -> Color {
-    match bg {
-        Color::White => Color::Gray,
-        _ => Color::DarkGray,
-    }
-}
+// selection color handled by popup_table
 
 fn collapse_text(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")

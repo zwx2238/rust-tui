@@ -3,22 +3,22 @@ use crate::render::{insert_empty_cache_entry, messages_to_viewport_text_cached, 
 use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{build_label_suffixes, drain_events, format_timer, handle_stream_event};
 use crate::ui::net::UiEvent;
-use crate::ui::runtime_events::{handle_key_event, handle_mouse_event, handle_paste_event};
-use crate::ui::runtime_helpers::{
-    enqueue_preheat_tasks, start_tab_request, PreheatResult, PreheatTask, TabState,
+use crate::ui::runtime_dispatch::{
+    handle_key_event_loop, handle_mouse_event_loop, start_pending_request, DispatchContext,
+    LayoutContext,
 };
+use crate::ui::runtime_events::handle_paste_event;
+use crate::ui::runtime_helpers::{enqueue_preheat_tasks, PreheatResult, PreheatTask, TabState};
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_render::render_view;
-use crate::ui::runtime_view::{
-    apply_view_action, handle_view_key, handle_view_mouse, ViewAction, ViewMode, ViewState,
-};
-use crate::ui::summary::summary_row_at;
-use crate::ui::jump::jump_row_at;
-use crate::ui::model_popup::model_row_at;
-use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
+use crate::ui::runtime_view::ViewState;
 use crossterm::event::{self, Event};
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{sync::mpsc, time::{Duration, Instant}};
+use std::{
+    sync::mpsc,
+    time::{Duration, Instant},
+};
+
 pub(crate) fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     tabs: &mut Vec<TabState>,
@@ -165,173 +165,31 @@ pub(crate) fn run_loop(
         if let Some(line) = pending_line.take() {
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
                 tab_state.app.pending_send = Some(line);
-                let model = resolve_model(registry, &tab_state.app.model_key);
-                start_tab_request(
-                    tab_state,
-                    "",
-                    &model.base_url,
-                    &model.api_key,
-                    &model.model,
-                    args.show_reasoning,
-                    tx,
-                    *active_tab,
-                );
+                start_pending_request(registry, args, tx, *active_tab, tab_state);
             }
         }
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(key) => {
-                    if key.code == crossterm::event::KeyCode::F(5) {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            if !can_change_prompt(&tab_state.app) {
-                                tab_state.app.messages.push(crate::types::Message {
-                                    role: "assistant".to_string(),
-                                    content:
-                                        "已开始对话，无法切换系统提示词，请新开 tab。"
-                                            .to_string(),
-                                });
-                                continue;
-                            }
-                        }
-                    }
-                    let action = handle_view_key(
-                        &mut view,
-                        key,
-                        tabs.len(),
-                        jump_rows.len(),
-                        *active_tab,
-                    );
-                    if matches!(action, ViewAction::CycleModel) {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            cycle_model(registry, &mut tab_state.app.model_key);
-                        }
-                        continue;
-                    }
-                    if key.code == crossterm::event::KeyCode::F(5)
-                        && view.mode == ViewMode::Prompt
-                    {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            if let Some(idx) = prompt_registry
-                                .prompts
-                                .iter()
-                                .position(|p| p.key == tab_state.app.prompt_key)
-                            {
-                                view.prompt_selected = idx;
-                                let viewport_rows =
-                                    prompt_visible_rows(size, prompt_registry.prompts.len());
-                                let max_scroll = prompt_registry
-                                    .prompts
-                                    .len()
-                                    .saturating_sub(viewport_rows)
-                                    .max(1)
-                                    .saturating_sub(1);
-                                if viewport_rows > 0 {
-                                    view.prompt_scroll = view
-                                        .prompt_selected
-                                        .saturating_sub(viewport_rows.saturating_sub(1))
-                                        .min(max_scroll);
-                                } else {
-                                    view.prompt_scroll = 0;
-                                }
-                            }
-                        }
-                        continue;
-                    }
-                    if let ViewAction::SelectModel(idx) = action {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            if let Some(model) = registry.models.get(idx) {
-                                tab_state.app.model_key = model.key.clone();
-                            }
-                        }
-                        continue;
-                    }
-                    if let ViewAction::SelectPrompt(idx) = action {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            if can_change_prompt(&tab_state.app) {
-                                if let Some(prompt) = prompt_registry.prompts.get(idx) {
-                                    tab_state
-                                        .app
-                                        .set_system_prompt(&prompt.key, &prompt.content);
-                                }
-                            } else {
-                                tab_state.app.messages.push(crate::types::Message {
-                                    role: "assistant".to_string(),
-                                    content:
-                                        "已开始对话，无法切换系统提示词，请新开 tab。"
-                                            .to_string(),
-                                });
-                            }
-                        }
-                        continue;
-                    }
-                    if apply_view_action(action, &jump_rows, tabs, active_tab) {
-                        continue;
-                    }
-                    if key.code == crossterm::event::KeyCode::F(4) {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            if let Some(idx) = registry.index_of(&tab_state.app.model_key) {
-                                view.model_selected = idx;
-                            }
-                        }
-                        continue;
-                    }
-                    if !view.is_chat() {
-                        continue;
-                    }
-                    if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
-                        match key.code {
-                            crossterm::event::KeyCode::Char('t') => {
-                                tabs.push(TabState::new(
-                                    prompt_registry
-                                        .get(&prompt_registry.default_key)
-                                        .map(|p| p.content.as_str())
-                                        .unwrap_or(&args.system),
-                                    args.perf,
-                                    &registry.default_key,
-                                    &prompt_registry.default_key,
-                                ));
-                                *active_tab = tabs.len().saturating_sub(1);
-                                continue;
-                            }
-                            crossterm::event::KeyCode::Char('w') => {
-                                if tabs.len() > 1 {
-                                    tabs.remove(*active_tab);
-                                    if *active_tab >= tabs.len() {
-                                        *active_tab = tabs.len().saturating_sub(1);
-                                    }
-                                    continue;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    match key.code {
-                        crossterm::event::KeyCode::F(8) => {
-                            if !tabs.is_empty() {
-                                *active_tab = if *active_tab == 0 {
-                                    tabs.len().saturating_sub(1)
-                                } else {
-                                    *active_tab - 1
-                                };
-                            }
-                            continue;
-                        }
-                        crossterm::event::KeyCode::F(9) => {
-                            if !tabs.is_empty() {
-                                *active_tab = (*active_tab + 1) % tabs.len();
-                            }
-                            continue;
-                        }
-                        _ => {}
-                    }
-                    if handle_key_event(
-                        key,
+                    let mut ctx = DispatchContext {
                         tabs,
-                        *active_tab,
+                        active_tab,
                         last_session_id,
                         msg_width,
                         theme,
-                    )? {
+                        registry,
+                        prompt_registry,
+                        args,
+                    };
+                    let layout_ctx = LayoutContext {
+                        size,
+                        tabs_area,
+                        msg_area,
+                        input_area,
+                        view_height,
+                        total_lines,
+                    };
+                    if handle_key_event_loop(key, &mut ctx, layout_ctx, &mut view, &jump_rows)? {
                         break;
                     }
                 }
@@ -341,110 +199,25 @@ pub(crate) fn run_loop(
                     }
                 }
                 Event::Mouse(m) => {
-                    if view.is_chat() {
-                        handle_mouse_event(
-                            m,
-                            tabs,
-                            active_tab,
-                            tabs_area,
-                            msg_area,
-                            input_area,
-                            msg_width,
-                            view_height,
-                            total_lines,
-                            theme,
-                        );
-                    } else {
-                        if view.mode == ViewMode::Jump {
-                            match m.kind {
-                                crossterm::event::MouseEventKind::ScrollUp => {
-                                    view.jump_scroll = view.jump_scroll.saturating_sub(3);
-                                }
-                                crossterm::event::MouseEventKind::ScrollDown => {
-                                    view.jump_scroll = view.jump_scroll.saturating_add(3);
-                                }
-                                _ => {}
-                            }
-                        }
-                        if view.mode == ViewMode::Prompt {
-                            let viewport_rows =
-                                prompt_visible_rows(size, prompt_registry.prompts.len());
-                            let max_scroll = prompt_registry
-                                .prompts
-                                .len()
-                                .saturating_sub(viewport_rows)
-                                .max(1)
-                                .saturating_sub(1);
-                            match m.kind {
-                                crossterm::event::MouseEventKind::ScrollUp => {
-                                    view.prompt_scroll = view.prompt_scroll.saturating_sub(3);
-                                }
-                                crossterm::event::MouseEventKind::ScrollDown => {
-                                    view.prompt_scroll = view.prompt_scroll.saturating_add(3);
-                                }
-                                _ => {}
-                            }
-                            view.prompt_scroll = view.prompt_scroll.min(max_scroll);
-                            if view.prompt_selected < view.prompt_scroll {
-                                view.prompt_selected = view.prompt_scroll;
-                            }
-                        }
-                        let row = match view.mode {
-                            ViewMode::Summary => summary_row_at(msg_area, tabs.len(), m.row),
-                            ViewMode::Jump => {
-                                jump_row_at(msg_area, jump_rows.len(), m.row, view.jump_scroll)
-                            }
-                            ViewMode::Model => model_row_at(
-                                size,
-                                registry.models.len(),
-                                m.column,
-                                m.row,
-                            ),
-                            ViewMode::Prompt => prompt_row_at(
-                                size,
-                                prompt_registry.prompts.len(),
-                                view.prompt_scroll,
-                                m.column,
-                                m.row,
-                            ),
-                            ViewMode::Chat => None,
-                        };
-                        let action = handle_view_mouse(
-                            &mut view,
-                            row,
-                            tabs.len(),
-                            jump_rows.len(),
-                            m.kind,
-                        );
-                        if let ViewAction::SelectModel(idx) = action {
-                            if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                                if let Some(model) = registry.models.get(idx) {
-                                    tab_state.app.model_key = model.key.clone();
-                                }
-                            }
-                            continue;
-                        }
-                        if let ViewAction::SelectPrompt(idx) = action {
-                            if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                                if can_change_prompt(&tab_state.app) {
-                                    if let Some(prompt) = prompt_registry.prompts.get(idx) {
-                                        tab_state
-                                            .app
-                                            .set_system_prompt(&prompt.key, &prompt.content);
-                                    }
-                                } else {
-                                    tab_state.app.messages.push(crate::types::Message {
-                                        role: "assistant".to_string(),
-                                        content:
-                                            "已开始对话，无法切换系统提示词，请新开 tab。"
-                                                .to_string(),
-                                    });
-                                }
-                            }
-                            continue;
-                        }
-                        let _ = apply_view_action(action, &jump_rows, tabs, active_tab);
-                    }
+                    let mut ctx = DispatchContext {
+                        tabs,
+                        active_tab,
+                        last_session_id,
+                        msg_width,
+                        theme,
+                        registry,
+                        prompt_registry,
+                        args,
+                    };
+                    let layout_ctx = LayoutContext {
+                        size,
+                        tabs_area,
+                        msg_area,
+                        input_area,
+                        view_height,
+                        total_lines,
+                    };
+                    handle_mouse_event_loop(m, &mut ctx, layout_ctx, &mut view, &jump_rows);
                 }
                 _ => {}
             }
@@ -452,27 +225,4 @@ pub(crate) fn run_loop(
     }
 
     Ok(())
-}
-
-fn resolve_model<'a>(
-    registry: &'a crate::model_registry::ModelRegistry,
-    key: &str,
-) -> &'a crate::model_registry::ModelProfile {
-    registry
-        .get(key)
-        .or_else(|| registry.get(&registry.default_key))
-        .expect("model registry is empty")
-}
-
-fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {
-    if registry.models.is_empty() {
-        return;
-    }
-    let idx = registry.index_of(key).unwrap_or(0);
-    let next = (idx + 1) % registry.models.len();
-    *key = registry.models[next].key.clone();
-}
-
-fn can_change_prompt(app: &crate::ui::state::App) -> bool {
-    !app.messages.iter().any(|m| m.role == "user")
 }

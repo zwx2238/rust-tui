@@ -1,0 +1,170 @@
+use crate::ui::prompt_popup::prompt_visible_rows;
+use crate::ui::runtime_view::{
+    apply_view_action, handle_view_key, ViewAction, ViewMode, ViewState,
+};
+use crate::ui::runtime_events::handle_key_event;
+use crossterm::event::KeyEvent;
+
+use super::{can_change_prompt, cycle_model, DispatchContext, LayoutContext};
+
+pub(crate) fn handle_key_event_loop(
+    key: KeyEvent,
+    ctx: &mut DispatchContext<'_>,
+    layout: LayoutContext,
+    view: &mut ViewState,
+    jump_rows: &[crate::ui::jump::JumpRow],
+) -> Result<bool, Box<dyn std::error::Error>> {
+    if key.code == crossterm::event::KeyCode::F(5) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if !can_change_prompt(&tab_state.app) {
+                tab_state.app.messages.push(crate::types::Message {
+                    role: "assistant".to_string(),
+                    content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
+                });
+                return Ok(false);
+            }
+        }
+    }
+    let action = handle_view_key(
+        view,
+        key,
+        ctx.tabs.len(),
+        jump_rows.len(),
+        *ctx.active_tab,
+    );
+    if matches!(action, ViewAction::CycleModel) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            cycle_model(ctx.registry, &mut tab_state.app.model_key);
+        }
+        return Ok(false);
+    }
+    if key.code == crossterm::event::KeyCode::F(5) && view.mode == ViewMode::Prompt {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if let Some(idx) = ctx
+                .prompt_registry
+                .prompts
+                .iter()
+                .position(|p| p.key == tab_state.app.prompt_key)
+            {
+                view.prompt_selected = idx;
+                let viewport_rows =
+                    prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
+                let max_scroll = ctx
+                    .prompt_registry
+                    .prompts
+                    .len()
+                    .saturating_sub(viewport_rows)
+                    .max(1)
+                    .saturating_sub(1);
+                if viewport_rows > 0 {
+                    view.prompt_scroll = view
+                        .prompt_selected
+                        .saturating_sub(viewport_rows.saturating_sub(1))
+                        .min(max_scroll);
+                } else {
+                    view.prompt_scroll = 0;
+                }
+            }
+        }
+        return Ok(false);
+    }
+    if let ViewAction::SelectModel(idx) = action {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if let Some(model) = ctx.registry.models.get(idx) {
+                tab_state.app.model_key = model.key.clone();
+            }
+        }
+        return Ok(false);
+    }
+    if let ViewAction::SelectPrompt(idx) = action {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if can_change_prompt(&tab_state.app) {
+                if let Some(prompt) = ctx.prompt_registry.prompts.get(idx) {
+                    tab_state
+                        .app
+                        .set_system_prompt(&prompt.key, &prompt.content);
+                }
+            } else {
+                tab_state.app.messages.push(crate::types::Message {
+                    role: "assistant".to_string(),
+                    content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
+                });
+            }
+        }
+        return Ok(false);
+    }
+    if apply_view_action(action, jump_rows, ctx.tabs, ctx.active_tab) {
+        return Ok(false);
+    }
+    if key.code == crossterm::event::KeyCode::F(4) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
+                view.model_selected = idx;
+            }
+        }
+        return Ok(false);
+    }
+    if !view.is_chat() {
+        return Ok(false);
+    }
+    if key
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
+    {
+        match key.code {
+            crossterm::event::KeyCode::Char('t') => {
+                ctx.tabs.push(crate::ui::runtime_helpers::TabState::new(
+                    ctx.prompt_registry
+                        .get(&ctx.prompt_registry.default_key)
+                        .map(|p| p.content.as_str())
+                        .unwrap_or(&ctx.args.system),
+                    ctx.args.perf,
+                    &ctx.registry.default_key,
+                    &ctx.prompt_registry.default_key,
+                ));
+                *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+                return Ok(false);
+            }
+            crossterm::event::KeyCode::Char('w') => {
+                if ctx.tabs.len() > 1 {
+                    ctx.tabs.remove(*ctx.active_tab);
+                    if *ctx.active_tab >= ctx.tabs.len() {
+                        *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+                    }
+                    return Ok(false);
+                }
+            }
+            _ => {}
+        }
+    }
+    match key.code {
+        crossterm::event::KeyCode::F(8) => {
+            if !ctx.tabs.is_empty() {
+                *ctx.active_tab = if *ctx.active_tab == 0 {
+                    ctx.tabs.len().saturating_sub(1)
+                } else {
+                    *ctx.active_tab - 1
+                };
+            }
+            return Ok(false);
+        }
+        crossterm::event::KeyCode::F(9) => {
+            if !ctx.tabs.is_empty() {
+                *ctx.active_tab = (*ctx.active_tab + 1) % ctx.tabs.len();
+            }
+            return Ok(false);
+        }
+        _ => {}
+    }
+    if handle_key_event(
+        key,
+        ctx.tabs,
+        *ctx.active_tab,
+        ctx.last_session_id,
+        ctx.msg_width,
+        ctx.theme,
+    )? {
+        return Ok(true);
+    }
+    Ok(false)
+}

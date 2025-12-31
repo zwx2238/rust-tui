@@ -115,7 +115,14 @@ pub(crate) fn render_view(
                     startup_text,
                     input_height,
                     |f| {
-                        draw_model_popup(f, f.area(), models, view.model_selected, theme);
+                        draw_model_popup(
+                            f,
+                            f.area(),
+                            models,
+                            view.model_selected,
+                            0,
+                            theme,
+                        );
                     },
                 )?;
             }
