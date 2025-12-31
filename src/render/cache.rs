@@ -2,10 +2,11 @@ use crate::render::markdown::{
     close_unbalanced_code_fence, count_markdown_lines, render_markdown_lines,
 };
 use crate::render::theme::{theme_cache_key, RenderTheme};
-use crate::render::util::{hash_message, label_for_role, label_line, ranges_overlap, suffix_for_index};
+use crate::render::util::{
+    hash_message, label_for_role, label_line, ranges_overlap, suffix_for_index,
+};
 use crate::types::Message;
 use ratatui::text::{Line, Text};
-
 #[derive(Clone)]
 pub struct RenderCacheEntry {
     pub(crate) role: String,
@@ -89,7 +90,6 @@ pub fn messages_to_viewport_text_cached(
     let end = start.saturating_add(height as usize);
     let mut out: Vec<Line<'static>> = Vec::new();
     let mut line_cursor = 0usize;
-
     for (idx, msg) in messages.iter().enumerate() {
         if cache.len() <= idx {
             cache.push(RenderCacheEntry {
@@ -131,7 +131,6 @@ pub fn messages_to_viewport_text_cached(
                 out.push(label_line(&label, theme));
             }
             line_cursor += 1;
-
             if !entry.rendered && ranges_overlap(start, end, line_cursor, line_cursor + entry.line_count)
             {
                 entry.lines = render_message_content_lines(msg, width, theme, streaming);
@@ -155,14 +154,12 @@ pub fn messages_to_viewport_text_cached(
                     }
                 }
             }
-
             if line_cursor >= start && line_cursor < end {
                 out.push(Line::from(""));
             }
             line_cursor += 1;
         }
     }
-
     (Text::from(out), line_cursor)
 }
 pub fn update_cache_for_message(
@@ -265,7 +262,6 @@ pub fn set_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, entry: Ren
     }
     cache[idx] = entry;
 }
-
 fn render_message_content_lines(
     msg: &Message,
     width: usize,
@@ -279,12 +275,11 @@ fn render_message_content_lines(
             } else {
                 msg.content.clone()
             };
-            render_markdown_lines(&content, width, theme)
+            render_markdown_lines(&content, width, theme, streaming)
         }
         _ => Vec::new(),
     }
 }
-
 fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
     match msg.role.as_str() {
         "user" | "assistant" => {
