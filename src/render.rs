@@ -10,6 +10,7 @@ use textwrap::wrap;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
+#[derive(Clone)]
 pub struct RenderTheme {
     pub bg: Color,
     pub fg: Option<Color>,
@@ -18,6 +19,7 @@ pub struct RenderTheme {
     pub heading_fg: Option<Color>,
 }
 
+#[derive(Clone)]
 pub struct RenderCacheEntry {
     role: String,
     content_hash: u64,
@@ -26,6 +28,8 @@ pub struct RenderCacheEntry {
     theme_key: u64,
     streaming: bool,
     lines: Vec<Line<'static>>,
+    line_count: usize,
+    rendered: bool,
 }
 
 pub fn theme_from_config(cfg: Option<&Config>) -> RenderTheme {
@@ -137,6 +141,8 @@ pub fn messages_to_viewport_text_cached(
                 theme_key,
                 streaming: false,
                 lines: Vec::new(),
+                line_count: 0,
+                rendered: false,
             });
         }
         let suffix = suffix_for_index(label_suffixes, idx);
@@ -157,7 +163,9 @@ pub fn messages_to_viewport_text_cached(
             entry.width = width;
             entry.theme_key = theme_key;
             entry.streaming = streaming;
-            entry.lines = render_message_content_lines(msg, width, theme, streaming);
+            entry.lines.clear();
+            entry.rendered = false;
+            entry.line_count = count_message_lines(msg, width, streaming);
         }
         if let Some(label) = label_for_role(&msg.role, suffix) {
             if line_cursor >= start && line_cursor < end {
@@ -165,16 +173,26 @@ pub fn messages_to_viewport_text_cached(
             }
             line_cursor += 1;
 
-            let content_len = entry.lines.len();
+            if !entry.rendered && ranges_overlap(start, end, line_cursor, line_cursor + entry.line_count)
+            {
+                entry.lines = render_message_content_lines(msg, width, theme, streaming);
+                entry.rendered = true;
+                entry.line_count = entry.lines.len();
+            }
+            let content_len = entry.line_count;
             if content_len > 0 {
                 if line_cursor + content_len <= start || line_cursor >= end {
                     line_cursor += content_len;
                 } else {
-                    for line in &entry.lines {
-                        if line_cursor >= start && line_cursor < end {
-                            out.push(line.clone());
+                    if entry.rendered {
+                        for line in &entry.lines {
+                            if line_cursor >= start && line_cursor < end {
+                                out.push(line.clone());
+                            }
+                            line_cursor += 1;
                         }
-                        line_cursor += 1;
+                    } else {
+                        line_cursor += content_len;
                     }
                 }
             }
@@ -187,6 +205,114 @@ pub fn messages_to_viewport_text_cached(
     }
 
     (Text::from(out), line_cursor)
+}
+
+pub fn update_cache_for_message(
+    cache: &mut Vec<RenderCacheEntry>,
+    idx: usize,
+    msg: &Message,
+    width: usize,
+    theme: &RenderTheme,
+    streaming: bool,
+) {
+    let theme_key = theme_cache_key(theme);
+    if cache.len() <= idx {
+        cache.resize_with(idx + 1, || RenderCacheEntry {
+            role: String::new(),
+            content_hash: 0,
+            content_len: 0,
+            width: 0,
+            theme_key,
+            streaming: false,
+            lines: Vec::new(),
+            line_count: 0,
+            rendered: false,
+        });
+    }
+    let entry = &mut cache[idx];
+    let content_hash = hash_message(&msg.role, &msg.content);
+    let content_len = msg.content.len();
+    if entry.role != msg.role
+        || entry.content_hash != content_hash
+        || entry.content_len != content_len
+        || entry.width != width
+        || entry.theme_key != theme_key
+        || entry.streaming != streaming
+    {
+        entry.role = msg.role.clone();
+        entry.content_hash = content_hash;
+        entry.content_len = content_len;
+        entry.width = width;
+        entry.theme_key = theme_key;
+        entry.streaming = streaming;
+        entry.lines = render_message_content_lines(msg, width, theme, streaming);
+        entry.line_count = entry.lines.len();
+        entry.rendered = true;
+    }
+}
+
+pub fn insert_empty_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, theme: &RenderTheme) {
+    let theme_key = theme_cache_key(theme);
+    let entry = RenderCacheEntry {
+        role: String::new(),
+        content_hash: 0,
+        content_len: 0,
+        width: 0,
+        theme_key,
+        streaming: false,
+        lines: Vec::new(),
+        line_count: 0,
+        rendered: false,
+    };
+    if idx > cache.len() {
+        cache.resize_with(idx, || entry.clone());
+    }
+    cache.insert(idx, entry);
+}
+
+pub fn build_cache_entry(
+    msg: &Message,
+    width: usize,
+    theme: &RenderTheme,
+    streaming: bool,
+) -> RenderCacheEntry {
+    let theme_key = theme_cache_key(theme);
+    let content_hash = hash_message(&msg.role, &msg.content);
+    let content_len = msg.content.len();
+    let lines = render_message_content_lines(msg, width, theme, streaming);
+    let line_count = lines.len();
+    RenderCacheEntry {
+        role: msg.role.clone(),
+        content_hash,
+        content_len,
+        width,
+        theme_key,
+        streaming,
+        lines,
+        line_count,
+        rendered: true,
+    }
+}
+
+pub fn set_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, entry: RenderCacheEntry) {
+    if cache.len() <= idx {
+        cache.resize_with(idx + 1, || RenderCacheEntry {
+            role: String::new(),
+            content_hash: 0,
+            content_len: 0,
+            width: 0,
+            theme_key: entry.theme_key,
+            streaming: false,
+            lines: Vec::new(),
+            line_count: 0,
+            rendered: false,
+        });
+    }
+    cache[idx] = entry;
+}
+
+fn ranges_overlap(start: usize, end: usize, a: usize, b: usize) -> bool {
+    a < end && b > start
 }
 
 fn render_message_content_lines(
@@ -214,6 +340,75 @@ fn render_message_content_lines(
         }
         _ => Vec::new(),
     }
+}
+
+fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
+    match msg.role.as_str() {
+        "user" | "assistant" => {
+            let content = if streaming {
+                close_unbalanced_code_fence(&msg.content)
+            } else {
+                msg.content.clone()
+            };
+            count_markdown_lines(&content, width)
+        }
+        _ => 0,
+    }
+}
+
+fn count_markdown_lines(text: &str, width: usize) -> usize {
+    let parser = MdParser::new(text);
+    let mut buf = String::new();
+    let mut code_buf = String::new();
+    let mut in_code = false;
+    let mut count = 0usize;
+
+    for event in parser {
+        match event {
+            Event::Start(Tag::Paragraph) => {}
+            Event::End(TagEnd::Paragraph) => {
+                if !buf.trim().is_empty() {
+                    count += wrap(buf.trim(), width.max(10)).len();
+                }
+                buf.clear();
+            }
+            Event::Start(Tag::Heading { .. }) => {}
+            Event::End(TagEnd::Heading(_)) => {
+                if !buf.trim().is_empty() {
+                    count += 3;
+                }
+                buf.clear();
+            }
+            Event::Start(Tag::CodeBlock(_)) => {
+                in_code = true;
+                code_buf.clear();
+            }
+            Event::End(TagEnd::CodeBlock) => {
+                in_code = false;
+                count += code_buf.lines().count();
+                code_buf.clear();
+            }
+            Event::Text(t) => {
+                if in_code {
+                    code_buf.push_str(&t);
+                } else {
+                    buf.push_str(&t);
+                }
+            }
+            Event::SoftBreak | Event::HardBreak => {
+                if in_code {
+                    code_buf.push('\n');
+                } else {
+                    buf.push('\n');
+                }
+            }
+            _ => {}
+        }
+    }
+    if !buf.trim().is_empty() {
+        count += wrap(buf.trim(), width.max(10)).len();
+    }
+    count
 }
 
 fn suffix_for_index<'a>(suffixes: &'a [(usize, String)], idx: usize) -> Option<&'a str> {

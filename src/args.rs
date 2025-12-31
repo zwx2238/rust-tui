@@ -30,4 +30,8 @@ pub struct Args {
     /// 填充历史消息用于性能手工测试
     #[arg(long, default_value_t = false)]
     pub perf: bool,
+
+    /// 启动时批量创建 10 个 tab 并发起提问
+    #[arg(long, default_value_t = false)]
+    pub perf_batch: bool,
 }

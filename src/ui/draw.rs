@@ -1,4 +1,6 @@
 use crate::render::RenderTheme;
+use crate::ui::logic::tab_label;
+use unicode_width::UnicodeWidthStr;
 use crate::ui::input::cursor_position;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -10,12 +12,19 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
 
-pub fn layout_chunks(size: Rect) -> (Rect, Rect) {
+pub fn layout_chunks(size: Rect) -> (Rect, Rect, Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(3), Constraint::Length(5)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(1),
+                Constraint::Min(3),
+                Constraint::Length(5),
+            ]
+            .as_ref(),
+        )
         .split(size);
-    (layout[0], layout[1])
+    (layout[0], layout[1], layout[2])
 }
 
 pub fn redraw(
@@ -24,10 +33,14 @@ pub fn redraw(
     theme: &RenderTheme,
     text: &Text<'_>,
     total_lines: usize,
+    tabs_len: usize,
+    active_tab: usize,
+    startup_text: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
-    let (msg_area, input_area) = layout_chunks(size);
+    let (tabs_area, msg_area, input_area) = layout_chunks(size);
     terminal.draw(|f| {
+        draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
         draw_messages(
             f,
             msg_area,
@@ -50,6 +63,56 @@ pub fn redraw(
     Ok(())
 }
 
+fn draw_tabs(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    tabs_len: usize,
+    active_tab: usize,
+    theme: &RenderTheme,
+    startup_text: Option<&str>,
+) {
+    let mut label = String::new();
+    for i in 0..tabs_len {
+        let tab = tab_label(i);
+        label.push_str(&tab);
+        if i + 1 < tabs_len {
+            label.push('│');
+        }
+    }
+    let mut spans = Vec::new();
+    let mut cursor = 0usize;
+    for (i, part) in label.split('│').enumerate() {
+        let style = if i == active_tab {
+            Style::default().fg(Color::Blue)
+        } else {
+            Style::default().fg(theme.fg.unwrap_or(Color::White))
+        };
+        spans.push(ratatui::text::Span::styled(part.to_string(), style));
+        cursor += part.width();
+        if i + 1 < tabs_len {
+            spans.push(ratatui::text::Span::styled(
+                "│",
+                Style::default().fg(theme.fg.unwrap_or(Color::White)),
+            ));
+            cursor += 1;
+        }
+    }
+    if let Some(text) = startup_text {
+        let width = area.width as usize;
+        let text_width = text.width();
+        if width > cursor + text_width {
+            let pad = width.saturating_sub(cursor + text_width);
+            spans.push(ratatui::text::Span::raw(" ".repeat(pad)));
+            spans.push(ratatui::text::Span::styled(
+                text.to_string(),
+                Style::default().fg(theme.heading_fg.or(theme.fg).unwrap_or(Color::White)),
+            ));
+        }
+    }
+    let line = ratatui::text::Line::from(spans);
+    let paragraph = Paragraph::new(line).style(Style::default().bg(theme.bg));
+    f.render_widget(paragraph, area);
+}
 const PADDING_X: u16 = 1;
 const PADDING_Y: u16 = 0;
 pub const SCROLLBAR_WIDTH: u16 = 2;

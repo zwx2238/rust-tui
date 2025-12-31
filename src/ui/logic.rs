@@ -1,11 +1,6 @@
 use crate::types::Message;
 use crate::ui::net::LlmEvent;
 use crate::ui::state::App;
-use std::sync::mpsc::Receiver;
-
-pub fn try_recv(rx: &Receiver<LlmEvent>) -> Option<LlmEvent> {
-    rx.try_recv().ok()
-}
 
 pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_secs: u64) -> bool {
     match event {
@@ -88,6 +83,14 @@ pub fn scroll_from_mouse(
     scroll.min(max_scroll)
 }
 
+pub fn tab_label(idx: usize) -> String {
+    format!(" {} ", idx + 1)
+}
+
+pub fn tab_label_width(idx: usize) -> u16 {
+    tab_label(idx).len() as u16
+}
+
 pub fn drain_events() -> Result<(), Box<dyn std::error::Error>> {
     while crossterm::event::poll(std::time::Duration::from_millis(0))? {
         let _ = crossterm::event::read()?;
@@ -127,12 +130,16 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
     if let Some(idx) = app.pending_assistant {
         if let Some(msg) = app.messages.get_mut(idx) {
             msg.content.push_str(text);
+            app.dirty_indices.push(idx);
         } else {
             app.messages.push(Message {
                 role: "assistant".to_string(),
                 content: text.to_string(),
             });
             app.pending_assistant = Some(app.messages.len().saturating_sub(1));
+            if let Some(idx) = app.pending_assistant {
+                app.dirty_indices.push(idx);
+            }
         }
     } else {
         app.messages.push(Message {
@@ -140,6 +147,9 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
             content: text.to_string(),
         });
         app.pending_assistant = Some(app.messages.len().saturating_sub(1));
+        if let Some(idx) = app.pending_assistant {
+            app.dirty_indices.push(idx);
+        }
     }
 }
 
@@ -162,6 +172,8 @@ fn append_reasoning(app: &mut App, text: &str) {
         },
     );
     app.pending_reasoning = Some(insert_at);
+    app.dirty_indices.push(insert_at);
+    app.cache_shift = Some(insert_at);
     if let Some(idx) = app.pending_assistant {
         app.pending_assistant = Some(idx.saturating_add(1));
     }
@@ -171,6 +183,7 @@ fn set_pending_assistant_content(app: &mut App, content: &str) {
     if let Some(idx) = app.pending_assistant {
         if let Some(msg) = app.messages.get_mut(idx) {
             msg.content = content.to_string();
+            app.dirty_indices.push(idx);
             return;
         }
     }
@@ -179,4 +192,7 @@ fn set_pending_assistant_content(app: &mut App, content: &str) {
         content: content.to_string(),
     });
     app.pending_assistant = Some(app.messages.len().saturating_sub(1));
+    if let Some(idx) = app.pending_assistant {
+        app.dirty_indices.push(idx);
+    }
 }

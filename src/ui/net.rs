@@ -9,6 +9,11 @@ pub enum LlmEvent {
     Done { usage: Option<Usage> },
 }
 
+pub struct UiEvent {
+    pub tab: usize,
+    pub event: LlmEvent,
+}
+
 #[derive(serde::Deserialize)]
 struct StreamResponse {
     choices: Vec<StreamChoice>,
@@ -34,7 +39,8 @@ pub fn request_llm_stream(
     model: &str,
     show_reasoning: bool,
     messages: &[Message],
-    tx: Sender<LlmEvent>,
+    tx: Sender<UiEvent>,
+    tab: usize,
 ) {
     let client = reqwest::blocking::Client::new();
     let req = ChatRequest {
@@ -48,7 +54,10 @@ pub fn request_llm_stream(
             if !resp.status().is_success() {
                 let status = resp.status();
                 let body = resp.text().unwrap_or_default();
-                let _ = tx.send(LlmEvent::Error(format!("请求失败：{status} {body}")));
+                let _ = tx.send(UiEvent {
+                    tab,
+                    event: LlmEvent::Error(format!("请求失败：{status} {body}")),
+                });
                 return;
             }
             let mut reader = BufReader::new(resp);
@@ -59,7 +68,10 @@ pub fn request_llm_stream(
                 let read = match reader.read_line(&mut line) {
                     Ok(n) => n,
                     Err(e) => {
-                        let _ = tx.send(LlmEvent::Error(format!("读取失败：{e}")));
+                        let _ = tx.send(UiEvent {
+                            tab,
+                            event: LlmEvent::Error(format!("读取失败：{e}")),
+                        });
                         return;
                     }
                 };
@@ -74,7 +86,10 @@ pub fn request_llm_stream(
                     continue;
                 };
                 if data == "[DONE]" {
-                    let _ = tx.send(LlmEvent::Done { usage });
+                    let _ = tx.send(UiEvent {
+                        tab,
+                        event: LlmEvent::Done { usage },
+                    });
                     return;
                 }
                 let parsed: Result<StreamResponse, _> = serde_json::from_str(data);
@@ -85,25 +100,40 @@ pub fn request_llm_stream(
                         }
                         for choice in chunk.choices {
                             if let Some(content) = choice.delta.content {
-                                let _ = tx.send(LlmEvent::Chunk(content));
+                                let _ = tx.send(UiEvent {
+                                    tab,
+                                    event: LlmEvent::Chunk(content),
+                                });
                             }
                             if show_reasoning {
                                 if let Some(r) = choice.delta.reasoning_content {
-                                    let _ = tx.send(LlmEvent::Reasoning(r));
+                                    let _ = tx.send(UiEvent {
+                                        tab,
+                                        event: LlmEvent::Reasoning(r),
+                                    });
                                 }
                             }
                         }
                     }
                     Err(e) => {
-                        let _ = tx.send(LlmEvent::Error(format!("解析失败：{e}")));
+                        let _ = tx.send(UiEvent {
+                            tab,
+                            event: LlmEvent::Error(format!("解析失败：{e}")),
+                        });
                         return;
                     }
                 }
             }
-            let _ = tx.send(LlmEvent::Done { usage });
+            let _ = tx.send(UiEvent {
+                tab,
+                event: LlmEvent::Done { usage },
+            });
         }
         Err(e) => {
-            let _ = tx.send(LlmEvent::Error(format!("请求失败：{e}")));
+            let _ = tx.send(UiEvent {
+                tab,
+                event: LlmEvent::Error(format!("请求失败：{e}")),
+            });
         }
     }
 }

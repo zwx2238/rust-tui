@@ -22,6 +22,8 @@ pub struct App {
     pub stream_buffer: String,
     pub assistant_stats: Option<(usize, String)>,
     pub scrollbar_dragging: bool,
+    pub dirty_indices: Vec<usize>,
+    pub cache_shift: Option<usize>,
 }
 
 impl App {
@@ -48,6 +50,8 @@ impl App {
             stream_buffer: String::new(),
             assistant_stats: None,
             scrollbar_dragging: false,
+            dirty_indices: Vec::new(),
+            cache_shift: None,
         }
     }
 }
