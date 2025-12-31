@@ -1,25 +1,25 @@
 use crate::render::RenderTheme;
 use crate::ui::logic::tab_label;
 use unicode_width::UnicodeWidthStr;
-use crate::ui::input::cursor_position;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Text;
 use ratatui::widgets::block::{Padding, Title};
 use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
+use tui_textarea::TextArea;
 
-pub fn layout_chunks(size: Rect) -> (Rect, Rect, Rect) {
+pub fn layout_chunks(size: Rect, input_height: u16) -> (Rect, Rect, Rect) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
             [
                 Constraint::Length(1),
                 Constraint::Min(3),
-                Constraint::Length(5),
+                Constraint::Length(input_height.max(1)),
             ]
             .as_ref(),
         )
@@ -29,16 +29,18 @@ pub fn layout_chunks(size: Rect) -> (Rect, Rect, Rect) {
 
 pub fn redraw(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    app: &App,
+    app: &mut App,
     theme: &RenderTheme,
     text: &Text<'_>,
     total_lines: usize,
     tabs_len: usize,
     active_tab: usize,
     startup_text: Option<&str>,
+    input_height: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
-    let (tabs_area, msg_area, input_area) = layout_chunks(size);
+    let size = Rect::new(0, 0, size.width, size.height);
+    let (tabs_area, msg_area, input_area) = layout_chunks(size, input_height);
     terminal.draw(|f| {
         draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
         draw_messages(
@@ -53,8 +55,7 @@ pub fn redraw(
         draw_input(
             f,
             input_area,
-            &app.input,
-            app.cursor,
+            &mut app.input,
             theme,
             app.focus == Focus::Input,
             app.busy,
@@ -178,8 +179,7 @@ fn draw_messages(
 fn draw_input(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
-    input: &str,
-    cursor: usize,
+    input: &mut TextArea<'_>,
     theme: &RenderTheme,
     focused: bool,
     busy: bool,
@@ -192,28 +192,36 @@ fn draw_input(
     } else {
         Style::default().fg(theme.fg.unwrap_or(Color::White))
     };
+    let (line_idx, col) = input.cursor();
+    let total_lines = input.lines().len().max(1);
+    let status = format!(
+        "{} · 行 {}/{} 列 {}",
+        if busy { "输入(禁用)" } else { "输入" },
+        line_idx + 1,
+        total_lines,
+        col + 1
+    );
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(if busy { "输入(禁用)" } else { "输入" })
+        .title(status)
+        .title(Title::from("Enter 发送 · Ctrl+J 换行").alignment(Alignment::Right))
         .padding(Padding::new(PADDING_X, PADDING_X, PADDING_Y, PADDING_Y))
         .style(style)
         .border_style(border_style);
-    let paragraph = Paragraph::new(input)
-        .block(block)
-        .style(style)
-        .wrap(Wrap { trim: false });
-    f.render_widget(paragraph, area);
-
-    let (line_idx, col) = cursor_position(input, cursor);
-    let x = col as u16;
-    let inner = inner_area(area, PADDING_X, PADDING_Y);
-    let max_x = inner.x.saturating_add(inner.width.saturating_sub(1));
-    let cursor_x = inner.x.saturating_add(x).min(max_x);
-    let max_y = inner.y.saturating_add(inner.height.saturating_sub(1));
-    let cursor_y = inner.y.saturating_add(line_idx as u16).min(max_y);
-    if focused && !busy {
-        f.set_cursor(cursor_x, cursor_y);
-    }
+    input.set_block(block);
+    input.set_style(style);
+    input.set_cursor_style(if focused && !busy {
+        Style::default().add_modifier(Modifier::REVERSED)
+    } else {
+        Style::default()
+    });
+    input.set_placeholder_text(if busy {
+        "正在生成回复，输入已禁用"
+    } else {
+        "输入内容后按 Enter 发送"
+    });
+    input.set_placeholder_style(Style::default().fg(Color::DarkGray));
+    f.render_widget(&*input, area);
 }
 
 pub fn inner_area(area: Rect, padding_x: u16, padding_y: u16) -> Rect {
@@ -223,6 +231,10 @@ pub fn inner_area(area: Rect, padding_x: u16, padding_y: u16) -> Rect {
         width: area.width.saturating_sub(2 + padding_x * 2),
         height: area.height.saturating_sub(2 + padding_y * 2),
     }
+}
+
+pub fn input_inner_area(area: Rect) -> Rect {
+    inner_area(area, PADDING_X, PADDING_Y)
 }
 
 pub fn inner_width(area: Rect, padding_x: u16) -> usize {

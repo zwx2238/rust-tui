@@ -1,4 +1,5 @@
 use crate::types::Message;
+use tui_textarea::TextArea;
 use std::time::Instant;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -8,8 +9,8 @@ pub enum Focus {
 }
 
 pub struct App {
-    pub input: String,
-    pub cursor: usize,
+    pub input: TextArea<'static>,
+    pub input_view_top_row: u16,
     pub messages: Vec<Message>,
     pub scroll: u16,
     pub follow: bool,
@@ -36,8 +37,8 @@ impl App {
             });
         }
         Self {
-            input: String::new(),
-            cursor: 0,
+            input: TextArea::default(),
+            input_view_top_row: 0,
             messages,
             scroll: 0,
             follow: true,
