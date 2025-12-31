@@ -162,49 +162,6 @@ pub fn messages_to_viewport_text_cached(
     }
     (Text::from(out), line_cursor)
 }
-pub fn update_cache_for_message(
-    cache: &mut Vec<RenderCacheEntry>,
-    idx: usize,
-    msg: &Message,
-    width: usize,
-    theme: &RenderTheme,
-    streaming: bool,
-) {
-    let theme_key = theme_cache_key(theme);
-    if cache.len() <= idx {
-        cache.resize_with(idx + 1, || RenderCacheEntry {
-            role: String::new(),
-            content_hash: 0,
-            content_len: 0,
-            width: 0,
-            theme_key,
-            streaming: false,
-            lines: Vec::new(),
-            line_count: 0,
-            rendered: false,
-        });
-    }
-    let entry = &mut cache[idx];
-    let content_hash = hash_message(&msg.role, &msg.content);
-    let content_len = msg.content.len();
-    if entry.role != msg.role
-        || entry.content_hash != content_hash
-        || entry.content_len != content_len
-        || entry.width != width
-        || entry.theme_key != theme_key
-        || entry.streaming != streaming
-    {
-        entry.role = msg.role.clone();
-        entry.content_hash = content_hash;
-        entry.content_len = content_len;
-        entry.width = width;
-        entry.theme_key = theme_key;
-        entry.streaming = streaming;
-        entry.lines = render_message_content_lines(msg, width, theme, streaming);
-        entry.line_count = entry.lines.len();
-        entry.rendered = true;
-    }
-}
 pub fn insert_empty_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, theme: &RenderTheme) {
     let theme_key = theme_cache_key(theme);
     let entry = RenderCacheEntry {

@@ -2,10 +2,10 @@ use crate::render::RenderTheme;
 use crate::ui::logic::tab_label;
 use unicode_width::UnicodeWidthStr;
 use crate::ui::state::{App, Focus};
-use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Text;
-use ratatui::widgets::block::{Padding, Title};
+use ratatui::widgets::block::Padding;
 use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -149,12 +149,12 @@ fn draw_messages(
     let content_height = inner.height;
     let lines_above = scroll as usize;
     let lines_below = total_lines.saturating_sub(lines_above + content_height as usize);
-    let right_title = Title::from(format!("{} {}", lines_above, lines_below))
-        .alignment(Alignment::Right);
+    let right_title = ratatui::text::Line::from(format!("{} {}", lines_above, lines_below))
+        .right_aligned();
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("对话")
-        .title(right_title)
+        .title_top("对话")
+        .title_top(right_title)
         .padding(Padding::new(PADDING_X, PADDING_X, PADDING_Y, PADDING_Y))
         .style(style)
         .border_style(border_style);
@@ -203,8 +203,8 @@ fn draw_input(
     );
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(status)
-        .title(Title::from("Enter 发送 · Ctrl+J 换行").alignment(Alignment::Right))
+        .title_top(status)
+        .title_top(ratatui::text::Line::from("Enter 发送 · Ctrl+J 换行").right_aligned())
         .padding(Padding::new(PADDING_X, PADDING_X, PADDING_Y, PADDING_Y))
         .style(style)
         .border_style(border_style);
