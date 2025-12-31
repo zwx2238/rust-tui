@@ -1,5 +1,6 @@
 use crate::ui::draw::{inner_height, inner_width, layout_chunks};
 use crate::ui::runtime_helpers::TabState;
+use crate::ui::runtime_view::ViewMode;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 pub(crate) struct LayoutInfo {
@@ -13,11 +14,11 @@ pub(crate) struct LayoutInfo {
 
 pub(crate) fn compute_layout(
     size: Rect,
-    summary_open: bool,
+    mode: ViewMode,
     tabs: &[TabState],
     active_tab: usize,
 ) -> LayoutInfo {
-    if summary_open {
+    if mode != ViewMode::Chat {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(1), Constraint::Min(3)].as_ref())

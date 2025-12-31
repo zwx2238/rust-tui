@@ -226,7 +226,7 @@ fn render_message_content_lines(
     streaming: bool,
 ) -> Vec<Line<'static>> {
     match msg.role.as_str() {
-        "user" | "assistant" => {
+        "user" | "assistant" | "system" => {
             let content = if streaming {
                 close_unbalanced_code_fence(&msg.content)
             } else {
@@ -237,9 +237,9 @@ fn render_message_content_lines(
         _ => Vec::new(),
     }
 }
-fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
+pub(crate) fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
     match msg.role.as_str() {
-        "user" | "assistant" => {
+        "user" | "assistant" | "system" => {
             let content = if streaming {
                 close_unbalanced_code_fence(&msg.content)
             } else {

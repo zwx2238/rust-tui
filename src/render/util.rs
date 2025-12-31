@@ -28,6 +28,7 @@ pub(crate) fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String>
             }
             Some(label)
         }
+        "system" => Some("⚙️".to_string()),
         _ => None,
     }
 }

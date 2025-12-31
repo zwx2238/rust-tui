@@ -1,6 +1,5 @@
 use crate::args::Args;
 use crate::render::{insert_empty_cache_entry, messages_to_viewport_text_cached, RenderTheme};
-use crate::ui::draw::redraw;
 use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{build_label_suffixes, drain_events, format_timer, handle_stream_event};
 use crate::ui::net::UiEvent;
@@ -9,8 +8,13 @@ use crate::ui::runtime_helpers::{
     enqueue_preheat_tasks, start_tab_request, PreheatResult, PreheatTask, TabState,
 };
 use crate::ui::runtime_layout::compute_layout;
-use crate::ui::summary::{redraw_summary, summary_row_at};
-use crossterm::event::{self, Event, MouseEventKind};
+use crate::ui::runtime_render::render_view;
+use crate::ui::runtime_view::{
+    apply_view_action, handle_view_key, handle_view_mouse, ViewMode, ViewState,
+};
+use crate::ui::summary::summary_row_at;
+use crate::ui::jump::jump_row_at;
+use crossterm::event::{self, Event};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{sync::mpsc, time::{Duration, Instant}};
 pub(crate) fn run_loop(
@@ -29,12 +33,11 @@ pub(crate) fn run_loop(
     start_time: Instant,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut startup_elapsed: Option<Duration> = None;
-    let mut summary_open = false;
-    let mut summary_selected: usize = 0;
+    let mut view = ViewState::new();
     loop {
         let size = terminal.size()?;
         let size = ratatui::layout::Rect::new(0, 0, size.width, size.height);
-        let layout = compute_layout(size, summary_open, tabs, *active_tab);
+        let layout = compute_layout(size, view.mode, tabs, *active_tab);
         let tabs_area = layout.tabs_area;
         let msg_area = layout.msg_area;
         let input_area = layout.input_area;
@@ -81,7 +84,7 @@ pub(crate) fn run_loop(
                 enqueue_preheat_tasks(idx, tab_state, theme, msg_width, 32, preheat_tx);
             }
         }
-        let (text, total_lines, tabs_len, startup_text, mut pending_line) = {
+        let (text, total_lines, _tabs_len, startup_text, mut pending_line) = {
             let tabs_len = tabs.len();
             let tab_state = &mut tabs[*active_tab];
             let app = &mut tab_state.app;
@@ -136,29 +139,20 @@ pub(crate) fn run_loop(
             app.cache_shift = None;
             (text, computed_total_lines, tabs_len, startup_text, pending_line)
         };
-        if summary_open {
-            summary_selected = summary_selected.min(tabs_len.saturating_sub(1));
-            redraw_summary(
-                terminal,
-                tabs,
-                *active_tab,
-                theme,
-                startup_text.as_deref(),
-                summary_selected,
-            )?;
-        } else if let Some(tab_state) = tabs.get_mut(*active_tab) {
-            redraw(
-                terminal,
-                &mut tab_state.app,
-                theme,
-                &text,
-                total_lines,
-                tabs_len,
-                *active_tab,
-                startup_text.as_deref(),
-                input_height,
-            )?;
-        }
+        let jump_rows = render_view(
+            terminal,
+            tabs,
+            *active_tab,
+            theme,
+            startup_text.as_deref(),
+            input_height,
+            msg_area,
+            tabs_area,
+            msg_width,
+            &text,
+            total_lines,
+            &mut view,
+        )?;
         if startup_elapsed.is_none() {
             startup_elapsed = Some(start_time.elapsed());
         }
@@ -181,36 +175,17 @@ pub(crate) fn run_loop(
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(key) => {
-                    if key.code == crossterm::event::KeyCode::F(1) {
-                        summary_open = !summary_open;
-                        if summary_open {
-                            summary_selected = *active_tab;
-                        }
+                    let action = handle_view_key(
+                        &mut view,
+                        key,
+                        tabs.len(),
+                        jump_rows.len(),
+                        *active_tab,
+                    );
+                    if apply_view_action(action, &jump_rows, tabs, active_tab) {
                         continue;
                     }
-                    if summary_open {
-                        match key.code {
-                            crossterm::event::KeyCode::Esc => {
-                                summary_open = false;
-                                continue;
-                            }
-                            crossterm::event::KeyCode::Up => {
-                                summary_selected = summary_selected.saturating_sub(1);
-                                continue;
-                            }
-                            crossterm::event::KeyCode::Down => {
-                                summary_selected = summary_selected.saturating_add(1);
-                                continue;
-                            }
-                            crossterm::event::KeyCode::Enter => {
-                                if summary_selected < tabs.len() {
-                                    *active_tab = summary_selected;
-                                    summary_open = false;
-                                }
-                                continue;
-                            }
-                            _ => {}
-                        }
+                    if !view.is_chat() {
                         continue;
                     }
                     if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
@@ -263,20 +238,12 @@ pub(crate) fn run_loop(
                     }
                 }
                 Event::Paste(paste) => {
-                    if !summary_open {
+                    if view.is_chat() {
                         handle_paste_event(&paste, tabs, *active_tab);
                     }
                 }
                 Event::Mouse(m) => {
-                    if summary_open {
-                        if let Some(row) = summary_row_at(msg_area, tabs.len(), m.row) {
-                            summary_selected = row.min(tabs.len().saturating_sub(1));
-                            if matches!(m.kind, MouseEventKind::Down(_)) && row < tabs.len() {
-                                *active_tab = row;
-                                summary_open = false;
-                            }
-                        }
-                    } else {
+                    if view.is_chat() {
                         handle_mouse_event(
                             m,
                             tabs,
@@ -289,6 +256,33 @@ pub(crate) fn run_loop(
                             total_lines,
                             theme,
                         );
+                    } else {
+                        if view.mode == ViewMode::Jump {
+                            match m.kind {
+                                crossterm::event::MouseEventKind::ScrollUp => {
+                                    view.jump_scroll = view.jump_scroll.saturating_sub(3);
+                                }
+                                crossterm::event::MouseEventKind::ScrollDown => {
+                                    view.jump_scroll = view.jump_scroll.saturating_add(3);
+                                }
+                                _ => {}
+                            }
+                        }
+                        let row = match view.mode {
+                            ViewMode::Summary => summary_row_at(msg_area, tabs.len(), m.row),
+                            ViewMode::Jump => {
+                                jump_row_at(msg_area, jump_rows.len(), m.row, view.jump_scroll)
+                            }
+                            ViewMode::Chat => None,
+                        };
+                        let action = handle_view_mouse(
+                            &mut view,
+                            row,
+                            tabs.len(),
+                            jump_rows.len(),
+                            m.kind,
+                        );
+                        let _ = apply_view_action(action, &jump_rows, tabs, active_tab);
                     }
                 }
                 _ => {}
