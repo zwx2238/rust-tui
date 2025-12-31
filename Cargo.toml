@@ -1,0 +1,20 @@
+[package]
+name = "rust-tui"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "deepchat"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+crossterm = "0.29"
+pulldown-cmark = "0.12"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+syntect = "5"
+textwrap = "0.16"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+unicode-width = "0.1"
