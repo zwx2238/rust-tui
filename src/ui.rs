@@ -4,7 +4,10 @@ use crate::session::save_session;
 use crate::types::{ChatRequest, ChatResponse, Message};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 use crossterm::execute;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
@@ -20,6 +23,13 @@ struct App {
     messages: Vec<Message>,
     scroll: u16,
     follow: bool,
+    focus: Focus,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum Focus {
+    Chat,
+    Input,
 }
 
 impl App {
@@ -37,6 +47,7 @@ impl App {
             messages,
             scroll: 0,
             follow: true,
+            focus: Focus::Input,
         }
     }
 }
@@ -49,7 +60,7 @@ pub fn run(
 ) -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
@@ -79,11 +90,27 @@ pub fn run(
             app.scroll = max_scroll;
         } else if app.scroll > max_scroll {
             app.scroll = max_scroll;
+        } else if app.scroll >= max_scroll {
+            app.follow = true;
         }
 
         terminal.draw(|f| {
-            draw_messages(f, msg_area, &text, app.scroll, theme);
-            draw_input(f, input_area, &app.input, app.cursor, theme);
+            draw_messages(
+                f,
+                msg_area,
+                &text,
+                app.scroll,
+                theme,
+                app.focus == Focus::Chat,
+            );
+            draw_input(
+                f,
+                input_area,
+                &app.input,
+                app.cursor,
+                theme,
+                app.focus == Focus::Input,
+            );
         })?;
 
         if event::poll(Duration::from_millis(50))? {
@@ -102,12 +129,22 @@ pub fn run(
                     }
                 }
                 Event::Mouse(m) => match m.kind {
+                    MouseEventKind::Down(_) => {
+                        if point_in_rect(m.column, m.row, input_area) {
+                            app.focus = Focus::Input;
+                            app.cursor = app.input.len();
+                        } else if point_in_rect(m.column, m.row, msg_area) {
+                            app.focus = Focus::Chat;
+                        }
+                    }
                     MouseEventKind::ScrollUp => {
                         app.scroll = app.scroll.saturating_sub(3);
                         app.follow = false;
+                        app.focus = Focus::Chat;
                     }
                     MouseEventKind::ScrollDown => {
                         app.scroll = app.scroll.saturating_add(3);
+                        app.focus = Focus::Chat;
                     }
                     _ => {}
                 },
@@ -117,7 +154,7 @@ pub fn run(
     }
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;
 
     if last_session_id.is_none() {
@@ -145,6 +182,9 @@ fn handle_key(
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => return Ok(true),
         KeyCode::Esc => return Ok(true),
         KeyCode::Enter => {
+            if app.focus != Focus::Input {
+                return Ok(false);
+            }
             let line = app.input.trim().to_string();
             app.input.clear();
             app.cursor = 0;
@@ -211,6 +251,9 @@ fn handle_key(
             app.follow = true;
         }
         KeyCode::Backspace => {
+            if app.focus != Focus::Input {
+                return Ok(false);
+            }
             if app.cursor > 0 {
                 let new_cursor = prev_char_boundary(&app.input, app.cursor);
                 app.input.replace_range(new_cursor..app.cursor, "");
@@ -218,19 +261,45 @@ fn handle_key(
             }
         }
         KeyCode::Left => {
+            if app.focus != Focus::Input {
+                return Ok(false);
+            }
             app.cursor = prev_char_boundary(&app.input, app.cursor);
         }
         KeyCode::Right => {
+            if app.focus != Focus::Input {
+                return Ok(false);
+            }
             app.cursor = next_char_boundary(&app.input, app.cursor);
         }
         KeyCode::Home => {
-            app.cursor = 0;
-            app.scroll = 0;
-            app.follow = false;
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                if app.focus == Focus::Input {
+                    app.cursor = 0;
+                }
+            } else {
+                app.scroll = 0;
+                app.follow = false;
+            }
         }
         KeyCode::End => {
-            app.cursor = app.input.len();
-            app.follow = true;
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                if app.focus == Focus::Input {
+                    app.cursor = app.input.len();
+                }
+            } else {
+                app.follow = true;
+            }
+        }
+        KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if app.focus == Focus::Input {
+                app.cursor = 0;
+            }
+        }
+        KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if app.focus == Focus::Input {
+                app.cursor = app.input.len();
+            }
         }
         KeyCode::Up => {
             app.scroll = app.scroll.saturating_sub(1);
@@ -248,6 +317,9 @@ fn handle_key(
         }
         KeyCode::Char(c) => {
             if key.modifiers.contains(KeyModifiers::CONTROL) {
+                return Ok(false);
+            }
+            if app.focus != Focus::Input {
                 return Ok(false);
             }
             app.input.insert(app.cursor, c);
@@ -302,14 +374,27 @@ fn handle_command(
     Ok(false)
 }
 
-fn draw_messages(f: &mut ratatui::Frame<'_>, area: Rect, text: &Text<'_>, scroll: u16, theme: &RenderTheme) {
+fn draw_messages(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    text: &Text<'_>,
+    scroll: u16,
+    theme: &RenderTheme,
+    focused: bool,
+) {
     let style = Style::default()
         .bg(theme.bg)
         .fg(theme.fg.unwrap_or(Color::White));
+    let border_style = if focused {
+        Style::default().fg(Color::Blue)
+    } else {
+        Style::default().fg(theme.fg.unwrap_or(Color::White))
+    };
     let block = Block::default()
         .borders(Borders::ALL)
         .title("对话")
-        .style(style);
+        .style(style)
+        .border_style(border_style);
     let paragraph = Paragraph::new(text.clone())
         .block(block)
         .style(style)
@@ -318,14 +403,27 @@ fn draw_messages(f: &mut ratatui::Frame<'_>, area: Rect, text: &Text<'_>, scroll
     f.render_widget(paragraph, area);
 }
 
-fn draw_input(f: &mut ratatui::Frame<'_>, area: Rect, input: &str, cursor: usize, theme: &RenderTheme) {
+fn draw_input(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    input: &str,
+    cursor: usize,
+    theme: &RenderTheme,
+    focused: bool,
+) {
     let style = Style::default()
         .bg(theme.bg)
         .fg(theme.fg.unwrap_or(Color::White));
+    let border_style = if focused {
+        Style::default().fg(Color::Blue)
+    } else {
+        Style::default().fg(theme.fg.unwrap_or(Color::White))
+    };
     let block = Block::default()
         .borders(Borders::ALL)
         .title("输入")
-        .style(style);
+        .style(style)
+        .border_style(border_style);
     let paragraph = Paragraph::new(input)
         .block(block)
         .style(style);
@@ -333,8 +431,9 @@ fn draw_input(f: &mut ratatui::Frame<'_>, area: Rect, input: &str, cursor: usize
 
     let x = cursor_display_width(&input[..cursor]) as u16;
     let inner = inner_area(area, 0);
-    let cursor_x = inner.x.saturating_add(1 + x);
-    let cursor_y = inner.y + 1;
+    let max_x = inner.x.saturating_add(inner.width.saturating_sub(1));
+    let cursor_x = inner.x.saturating_add(x).min(max_x);
+    let cursor_y = inner.y;
     f.set_cursor(cursor_x, cursor_y);
 }
 
@@ -375,4 +474,11 @@ fn inner_width(area: Rect, padding: u16) -> usize {
 
 fn inner_height(area: Rect, padding: u16) -> u16 {
     area.height.saturating_sub(2 + padding * 2)
+}
+
+fn point_in_rect(x: u16, y: u16, rect: Rect) -> bool {
+    x >= rect.x
+        && x < rect.x.saturating_add(rect.width)
+        && y >= rect.y
+        && y < rect.y.saturating_add(rect.height)
 }
