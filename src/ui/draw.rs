@@ -5,7 +5,7 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::Text;
 use ratatui::widgets::block::{Padding, Title};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
@@ -23,6 +23,7 @@ pub fn redraw(
     app: &App,
     theme: &RenderTheme,
     text: &Text<'_>,
+    total_lines: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
     let (msg_area, input_area) = layout_chunks(size);
@@ -34,6 +35,7 @@ pub fn redraw(
             app.scroll,
             theme,
             app.focus == Focus::Chat,
+            total_lines,
         );
         draw_input(
             f,
@@ -50,6 +52,17 @@ pub fn redraw(
 
 const PADDING_X: u16 = 1;
 const PADDING_Y: u16 = 0;
+pub const SCROLLBAR_WIDTH: u16 = 2;
+
+pub fn scrollbar_area(area: Rect) -> Rect {
+    let width = SCROLLBAR_WIDTH.min(area.width);
+    Rect {
+        x: area.x.saturating_add(area.width.saturating_sub(width)),
+        y: area.y.saturating_add(1),
+        width,
+        height: area.height.saturating_sub(2),
+    }
+}
 
 fn draw_messages(
     f: &mut ratatui::Frame<'_>,
@@ -58,6 +71,7 @@ fn draw_messages(
     scroll: u16,
     theme: &RenderTheme,
     focused: bool,
+    total_lines: usize,
 ) {
     let style = Style::default()
         .bg(theme.bg)
@@ -69,7 +83,6 @@ fn draw_messages(
     };
     let inner = inner_area(area, PADDING_X, PADDING_Y);
     let content_height = inner.height;
-    let total_lines = text.lines.len();
     let lines_above = scroll as usize;
     let lines_below = total_lines.saturating_sub(lines_above + content_height as usize);
     let right_title = Title::from(format!("{} {}", lines_above, lines_below))
@@ -81,12 +94,22 @@ fn draw_messages(
         .padding(Padding::new(PADDING_X, PADDING_X, PADDING_Y, PADDING_Y))
         .style(style)
         .border_style(border_style);
+    let _ = scroll;
     let paragraph = Paragraph::new(text.clone())
         .block(block)
         .style(style)
         .wrap(Wrap { trim: false })
-        .scroll((scroll, 0));
+        .scroll((0, 0));
     f.render_widget(paragraph, area);
+
+    if total_lines > content_height as usize {
+        let scroll_area = scrollbar_area(area);
+        let mut state = ScrollbarState::new(total_lines).position(scroll as usize);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .thumb_style(Style::default().fg(Color::Blue))
+            .track_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
+        f.render_stateful_widget(scrollbar, scroll_area, &mut state);
+    }
 }
 
 fn draw_input(

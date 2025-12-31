@@ -1,4 +1,4 @@
-use rust_tui::render::{messages_to_text_cached, theme_from_config, RenderCacheEntry};
+use rust_tui::render::{messages_to_viewport_text_cached, theme_from_config, RenderCacheEntry};
 use rust_tui::types::Message;
 use std::fs::File;
 use std::io::Write;
@@ -44,11 +44,30 @@ fn long_conversation_render_latency() {
     let mut cache: Vec<RenderCacheEntry> = Vec::new();
 
     let t0 = Instant::now();
-    let cold_text = messages_to_text_cached(&messages, width, &theme, &[], None, &mut cache);
+    let height = 30u16;
+    let (cold_text, total_lines) = messages_to_viewport_text_cached(
+        &messages,
+        width,
+        &theme,
+        &[],
+        None,
+        0,
+        height,
+        &mut cache,
+    );
     let cold = t0.elapsed();
 
     let t1 = Instant::now();
-    let _ = messages_to_text_cached(&messages, width, &theme, &[], None, &mut cache);
+    let _ = messages_to_viewport_text_cached(
+        &messages,
+        width,
+        &theme,
+        &[],
+        None,
+        total_lines.saturating_sub(height as usize).min(u16::MAX as usize) as u16,
+        height,
+        &mut cache,
+    );
     let warm = t1.elapsed();
 
     let max_cold = Duration::from_millis(

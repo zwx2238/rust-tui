@@ -21,6 +21,7 @@ pub struct App {
     pub pending_reasoning: Option<usize>,
     pub stream_buffer: String,
     pub assistant_stats: Option<(usize, String)>,
+    pub scrollbar_dragging: bool,
 }
 
 impl App {
@@ -46,6 +47,7 @@ impl App {
             pending_reasoning: None,
             stream_buffer: String::new(),
             assistant_stats: None,
+            scrollbar_dragging: false,
         }
     }
 }

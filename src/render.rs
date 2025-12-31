@@ -78,11 +78,55 @@ pub fn messages_to_text_cached(
     streaming_idx: Option<usize>,
     cache: &mut Vec<RenderCacheEntry>,
 ) -> Text<'static> {
+    let (text, _) = messages_to_viewport_text_cached(
+        messages,
+        width,
+        theme,
+        label_suffixes,
+        streaming_idx,
+        0,
+        u16::MAX,
+        cache,
+    );
+    text
+}
+
+pub fn messages_to_plain_lines(
+    messages: &[Message],
+    width: usize,
+    theme: &RenderTheme,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    let text = messages_to_text(messages, width, theme, &[], None);
+    for line in text.lines {
+        let mut s = String::new();
+        for span in line.spans {
+            s.push_str(&span.content);
+        }
+        out.push(s);
+    }
+    out
+}
+
+pub fn messages_to_viewport_text_cached(
+    messages: &[Message],
+    width: usize,
+    theme: &RenderTheme,
+    label_suffixes: &[(usize, String)],
+    streaming_idx: Option<usize>,
+    scroll: u16,
+    height: u16,
+    cache: &mut Vec<RenderCacheEntry>,
+) -> (Text<'static>, usize) {
     let theme_key = theme_cache_key(theme);
     if cache.len() > messages.len() {
         cache.truncate(messages.len());
     }
-    let mut lines: Vec<Line<'static>> = Vec::new();
+    let start = scroll as usize;
+    let end = start.saturating_add(height as usize);
+    let mut out: Vec<Line<'static>> = Vec::new();
+    let mut line_cursor = 0usize;
+
     for (idx, msg) in messages.iter().enumerate() {
         if cache.len() <= idx {
             cache.push(RenderCacheEntry {
@@ -116,29 +160,33 @@ pub fn messages_to_text_cached(
             entry.lines = render_message_content_lines(msg, width, theme, streaming);
         }
         if let Some(label) = label_for_role(&msg.role, suffix) {
-            lines.push(label_line(&label, theme));
-            lines.extend(entry.lines.clone());
-            lines.push(Line::from(""));
-        }
-    }
-    Text::from(lines)
-}
+            if line_cursor >= start && line_cursor < end {
+                out.push(label_line(&label, theme));
+            }
+            line_cursor += 1;
 
-pub fn messages_to_plain_lines(
-    messages: &[Message],
-    width: usize,
-    theme: &RenderTheme,
-) -> Vec<String> {
-    let mut out = Vec::new();
-    let text = messages_to_text(messages, width, theme, &[], None);
-    for line in text.lines {
-        let mut s = String::new();
-        for span in line.spans {
-            s.push_str(&span.content);
+            let content_len = entry.lines.len();
+            if content_len > 0 {
+                if line_cursor + content_len <= start || line_cursor >= end {
+                    line_cursor += content_len;
+                } else {
+                    for line in &entry.lines {
+                        if line_cursor >= start && line_cursor < end {
+                            out.push(line.clone());
+                        }
+                        line_cursor += 1;
+                    }
+                }
+            }
+
+            if line_cursor >= start && line_cursor < end {
+                out.push(Line::from(""));
+            }
+            line_cursor += 1;
         }
-        out.push(s);
     }
-    out
+
+    (Text::from(out), line_cursor)
 }
 
 fn render_message_content_lines(

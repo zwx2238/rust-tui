@@ -26,4 +26,8 @@ pub struct Args {
     /// 回放会话 ID（不触发真实 API）
     #[arg(long, alias = "resume")]
     pub replay: Option<String>,
+
+    /// 填充历史消息用于性能手工测试
+    #[arg(long, default_value_t = false)]
+    pub perf: bool,
 }

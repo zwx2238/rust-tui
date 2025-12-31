@@ -1,10 +1,12 @@
 mod draw;
 mod input;
+mod logic;
 mod net;
+mod perf;
 mod state;
 
 use crate::args::Args;
-use crate::render::{messages_to_text_cached, RenderCacheEntry, RenderTheme};
+use crate::render::{messages_to_viewport_text_cached, RenderCacheEntry, RenderTheme};
 use crate::session::save_session;
 use crate::types::Message;
 use crossterm::event::{self, Event, MouseEventKind};
@@ -13,14 +15,19 @@ use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
-use draw::{inner_height, inner_width, layout_chunks, redraw};
+use draw::{inner_height, inner_width, layout_chunks, redraw, scrollbar_area};
 use input::handle_key;
+use logic::{
+    build_label_suffixes, drain_events, format_timer, handle_stream_event, point_in_rect,
+    scroll_from_mouse, try_recv,
+};
 use net::{request_llm_stream, LlmEvent};
+use perf::seed_perf_messages;
 use state::{App, Focus};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io::{self};
-use std::sync::mpsc::{self, Receiver};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -41,6 +48,9 @@ pub fn run(
     let url = format!("{base_url}/chat/completions");
 
     let mut app = App::new(&args.system);
+    if args.perf {
+        seed_perf_messages(&mut app);
+    }
     let mut last_session_id: Option<String> = None;
     let mut render_cache: Vec<RenderCacheEntry> = Vec::new();
     let (tx, rx) = mpsc::channel::<LlmEvent>();
@@ -58,25 +68,42 @@ pub fn run(
         } else {
             String::new()
         };
+        let view_height = inner_height(msg_area, 0) as u16;
         let label_suffixes = build_label_suffixes(&app, &timer_text);
-        let text = messages_to_text_cached(
+        let prev_scroll = app.scroll;
+        let (mut text, total_lines) = messages_to_viewport_text_cached(
             &app.messages,
             msg_width,
             theme,
             &label_suffixes,
             app.pending_assistant,
+            app.scroll,
+            view_height,
             &mut render_cache,
         );
-        let total_lines = text.lines.len();
-        let view_height = inner_height(msg_area, 0) as usize;
-        let max_scroll = total_lines.saturating_sub(view_height).min(u16::MAX as usize) as u16;
+        let max_scroll = total_lines
+            .saturating_sub(view_height as usize)
+            .min(u16::MAX as usize) as u16;
 
         if app.follow {
             app.scroll = max_scroll;
         } else if app.scroll > max_scroll {
             app.scroll = max_scroll;
         }
-        redraw(&mut terminal, &app, theme, &text)?;
+        if app.scroll != prev_scroll {
+            let (retext, _) = messages_to_viewport_text_cached(
+                &app.messages,
+                msg_width,
+                theme,
+                &label_suffixes,
+                app.pending_assistant,
+                app.scroll,
+                view_height,
+                &mut render_cache,
+            );
+            text = retext;
+        }
+        redraw(&mut terminal, &app, theme, &text, total_lines)?;
         if app.focus == Focus::Input && !app.busy {
             terminal.show_cursor()?;
         } else {
@@ -99,15 +126,18 @@ pub fn run(
             app.pending_reasoning = None;
             app.stream_buffer.clear();
             let label_suffixes = build_label_suffixes(&app, &format_timer(0));
-            let text = messages_to_text_cached(
+            let view_height = inner_height(msg_area, 0) as u16;
+            let (text, total_lines) = messages_to_viewport_text_cached(
                 &app.messages,
                 msg_width,
                 theme,
                 &label_suffixes,
                 app.pending_assistant,
+                app.scroll,
+                view_height,
                 &mut render_cache,
             );
-            redraw(&mut terminal, &app, theme, &text)?;
+            redraw(&mut terminal, &app, theme, &text, total_lines)?;
 
             let url = url.clone();
             let api_key = api_key.clone();
@@ -148,10 +178,41 @@ pub fn run(
                 }
                 Event::Mouse(m) => match m.kind {
                     MouseEventKind::Down(_) => {
+                        let scroll_area = scrollbar_area(msg_area);
+                        if point_in_rect(m.column, m.row, scroll_area)
+                            && total_lines > view_height as usize
+                        {
+                            app.scrollbar_dragging = true;
+                            app.follow = false;
+                            app.scroll = scroll_from_mouse(
+                                total_lines,
+                                view_height,
+                                scroll_area,
+                                m.row,
+                            );
+                            app.focus = Focus::Chat;
+                            continue;
+                        }
                         if point_in_rect(m.column, m.row, input_area) {
                             app.focus = Focus::Input;
                             app.cursor = app.input.len();
                         } else if point_in_rect(m.column, m.row, msg_area) {
+                            app.focus = Focus::Chat;
+                        }
+                    }
+                    MouseEventKind::Up(_) => {
+                        app.scrollbar_dragging = false;
+                    }
+                    MouseEventKind::Drag(_) => {
+                        if app.scrollbar_dragging {
+                            let scroll_area = scrollbar_area(msg_area);
+                            app.follow = false;
+                            app.scroll = scroll_from_mouse(
+                                total_lines,
+                                view_height,
+                                scroll_area,
+                                m.row,
+                            );
                             app.focus = Focus::Chat;
                         }
                     }
@@ -185,164 +246,5 @@ pub fn run(
         println!("回放指令：deepchat --resume {id}");
     }
 
-    Ok(())
-}
-
-fn try_recv(rx: &Receiver<LlmEvent>) -> Option<LlmEvent> {
-    rx.try_recv().ok()
-}
-
-fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_secs: u64) -> bool {
-    match event {
-        LlmEvent::Chunk(s) => {
-            app.stream_buffer.push_str(&s);
-            flush_completed_lines(app);
-            false
-        }
-        LlmEvent::Reasoning(s) => {
-            append_reasoning(app, &s);
-            false
-        }
-        LlmEvent::Error(err) => {
-            set_pending_assistant_content(app, &err);
-            app.pending_assistant = None;
-            app.pending_reasoning = None;
-            app.stream_buffer.clear();
-            true
-        }
-        LlmEvent::Done { usage } => {
-            flush_remaining_buffer(app);
-            let stats = format_stats(usage.as_ref(), elapsed_secs);
-            if let Some(idx) = app.pending_assistant.take() {
-                app.assistant_stats = Some((idx, stats));
-            }
-            app.pending_reasoning = None;
-            true
-        }
-    }
-}
-
-fn format_stats(usage: Option<&crate::types::Usage>, elapsed_secs: u64) -> String {
-    let time = format_timer(elapsed_secs);
-    let tokens = if let Some(u) = usage {
-        let p = u.prompt_tokens.unwrap_or(0);
-        let c = u.completion_tokens.unwrap_or(0);
-        let t = u.total_tokens.unwrap_or(p + c);
-        format!("{p}/{c}/{t}")
-    } else {
-        "n/a".to_string()
-    };
-    format!("{time} · tokens: {tokens}")
-}
-
-fn flush_completed_lines(app: &mut App) {
-    while let Some(pos) = app.stream_buffer.find('\n') {
-        let line: String = app.stream_buffer.drain(..=pos).collect();
-        append_to_pending_assistant(app, &line);
-    }
-}
-
-fn flush_remaining_buffer(app: &mut App) {
-    if !app.stream_buffer.is_empty() {
-        let rest = app.stream_buffer.clone();
-        app.stream_buffer.clear();
-        append_to_pending_assistant(app, &rest);
-    }
-}
-
-fn append_to_pending_assistant(app: &mut App, text: &str) {
-    if let Some(idx) = app.pending_assistant {
-        if let Some(msg) = app.messages.get_mut(idx) {
-            msg.content.push_str(text);
-        } else {
-            app.messages.push(Message {
-                role: "assistant".to_string(),
-                content: text.to_string(),
-            });
-            app.pending_assistant = Some(app.messages.len().saturating_sub(1));
-        }
-    } else {
-        app.messages.push(Message {
-            role: "assistant".to_string(),
-            content: text.to_string(),
-        });
-        app.pending_assistant = Some(app.messages.len().saturating_sub(1));
-    }
-}
-
-fn append_reasoning(app: &mut App, text: &str) {
-    if text.trim().is_empty() {
-        return;
-    }
-    if let Some(idx) = app.pending_reasoning {
-        if let Some(msg) = app.messages.get_mut(idx) {
-            msg.content.push_str(text);
-            return;
-        }
-    }
-    let insert_at = app.pending_assistant.unwrap_or(app.messages.len());
-    app.messages.insert(
-        insert_at,
-        Message {
-            role: "assistant".to_string(),
-            content: format!("推理> {text}"),
-        },
-    );
-    app.pending_reasoning = Some(insert_at);
-    if let Some(idx) = app.pending_assistant {
-        app.pending_assistant = Some(idx.saturating_add(1));
-    }
-}
-
-fn set_pending_assistant_content(app: &mut App, content: &str) {
-    if let Some(idx) = app.pending_assistant {
-        if let Some(msg) = app.messages.get_mut(idx) {
-            msg.content = content.to_string();
-            return;
-        }
-    }
-    app.messages.push(Message {
-        role: "assistant".to_string(),
-        content: content.to_string(),
-    });
-    app.pending_assistant = Some(app.messages.len().saturating_sub(1));
-}
-
-fn build_label_suffixes(app: &App, timer_text: &str) -> Vec<(usize, String)> {
-    let mut out = Vec::new();
-    if let Some((idx, stats)) = &app.assistant_stats {
-        out.push((*idx, stats.clone()));
-    }
-    if app.busy {
-        if let Some(idx) = app.pending_assistant {
-            if !timer_text.is_empty() {
-                out.push((idx, timer_text.to_string()));
-            }
-        }
-    }
-    out
-}
-
-fn format_timer(secs: u64) -> String {
-    if secs < 60 {
-        format!("{}s", secs)
-    } else {
-        let m = secs / 60;
-        let s = secs % 60;
-        format!("{}m{:02}s", m, s)
-    }
-}
-
-fn point_in_rect(x: u16, y: u16, rect: ratatui::layout::Rect) -> bool {
-    x >= rect.x
-        && x < rect.x.saturating_add(rect.width)
-        && y >= rect.y
-        && y < rect.y.saturating_add(rect.height)
-}
-
-fn drain_events() -> Result<(), Box<dyn std::error::Error>> {
-    while event::poll(Duration::from_millis(0))? {
-        let _ = event::read()?;
-    }
     Ok(())
 }
