@@ -23,6 +23,9 @@ pub struct App {
     pub stream_buffer: String,
     pub assistant_stats: Option<(usize, String)>,
     pub scrollbar_dragging: bool,
+    pub chat_selecting: bool,
+    pub chat_selection: Option<crate::ui::selection::Selection>,
+    pub input_selecting: bool,
     pub dirty_indices: Vec<usize>,
     pub cache_shift: Option<usize>,
 }
@@ -51,6 +54,9 @@ impl App {
             stream_buffer: String::new(),
             assistant_stats: None,
             scrollbar_dragging: false,
+            chat_selecting: false,
+            chat_selection: None,
+            input_selecting: false,
             dirty_indices: Vec::new(),
             cache_shift: None,
         }

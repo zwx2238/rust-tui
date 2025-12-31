@@ -1,23 +1,18 @@
 use crate::args::Args;
 use crate::render::{insert_empty_cache_entry, messages_to_viewport_text_cached, RenderTheme};
-use crate::ui::draw::{inner_height, inner_width, layout_chunks, redraw, scrollbar_area};
-use crate::ui::input::handle_key;
-use crate::ui::input_click::{click_to_cursor, update_input_view_top};
-use crate::ui::logic::{
-    build_label_suffixes, drain_events, format_timer, handle_stream_event, point_in_rect,
-    scroll_from_mouse,
-};
+use crate::ui::draw::{inner_height, inner_width, layout_chunks, redraw};
+use crate::ui::input_click::update_input_view_top;
+use crate::ui::logic::{build_label_suffixes, drain_events, format_timer, handle_stream_event};
 use crate::ui::net::UiEvent;
+use crate::ui::runtime_events::{handle_key_event, handle_mouse_event, handle_paste_event};
 use crate::ui::runtime_helpers::{
-    enqueue_preheat_tasks, start_tab_request, tab_index_at, PreheatResult, PreheatTask, TabState,
+    enqueue_preheat_tasks, start_tab_request, PreheatResult, PreheatTask, TabState,
 };
-use crate::ui::state::Focus;
-use crossterm::event::{self, Event, MouseEventKind};
+use crossterm::event::{self, Event};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
-use tui_textarea::CursorMove;
 pub(crate) fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     tabs: &mut Vec<TabState>,
@@ -220,89 +215,34 @@ pub(crate) fn run_loop(
                         }
                         _ => {}
                     }
-                    if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                        if handle_key(key, &mut tab_state.app, last_session_id)? {
-                            break;
-                        }
+                    if handle_key_event(
+                        key,
+                        tabs,
+                        *active_tab,
+                        last_session_id,
+                        msg_width,
+                        theme,
+                    )? {
+                        break;
                     }
                 }
-                Event::Mouse(m) => match m.kind {
-                    MouseEventKind::Down(_) => {
-                        if point_in_rect(m.column, m.row, tabs_area) {
-                            if let Some(idx) = tab_index_at(m.column, tabs_area, tabs.len()) {
-                                *active_tab = idx;
-                                continue;
-                            }
-                        }
-                        let scroll_area = scrollbar_area(msg_area);
-                        if point_in_rect(m.column, m.row, scroll_area)
-                            && total_lines > view_height as usize
-                        {
-                            if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                                let app = &mut tab_state.app;
-                                app.scrollbar_dragging = true;
-                                app.follow = false;
-                                app.scroll = scroll_from_mouse(
-                                    total_lines,
-                                    view_height,
-                                    scroll_area,
-                                    m.row,
-                                );
-                                app.focus = Focus::Chat;
-                            }
-                            continue;
-                        }
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            let app = &mut tab_state.app;
-                            if point_in_rect(m.column, m.row, input_area) {
-                                app.focus = Focus::Input;
-                                let (row, col) =
-                                    click_to_cursor(app, input_area, m.column, m.row);
-                                app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
-                            } else if point_in_rect(m.column, m.row, msg_area) {
-                                app.focus = Focus::Chat;
-                            }
-                        }
-                    }
-                    MouseEventKind::Up(_) => {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            tab_state.app.scrollbar_dragging = false;
-                        }
-                    }
-                    MouseEventKind::Drag(_) => {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            let app = &mut tab_state.app;
-                            if app.scrollbar_dragging {
-                                let scroll_area = scrollbar_area(msg_area);
-                                app.follow = false;
-                                app.scroll = scroll_from_mouse(
-                                    total_lines,
-                                    view_height,
-                                    scroll_area,
-                                    m.row,
-                                );
-                                app.focus = Focus::Chat;
-                            }
-                        }
-                    }
-                    MouseEventKind::ScrollUp => {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            let app = &mut tab_state.app;
-                            app.scroll = app.scroll.saturating_sub(3);
-                            app.follow = false;
-                            app.focus = Focus::Chat;
-                        }
-                    }
-                    MouseEventKind::ScrollDown => {
-                        if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                            let app = &mut tab_state.app;
-                            app.scroll = app.scroll.saturating_add(3);
-                            app.follow = false;
-                            app.focus = Focus::Chat;
-                        }
-                    }
-                    _ => {}
-                },
+                Event::Paste(paste) => {
+                    handle_paste_event(&paste, tabs, *active_tab);
+                }
+                Event::Mouse(m) => {
+                    handle_mouse_event(
+                        m,
+                        tabs,
+                        active_tab,
+                        tabs_area,
+                        msg_area,
+                        input_area,
+                        msg_width,
+                        view_height,
+                        total_lines,
+                        theme,
+                    );
+                }
                 _ => {}
             }
         }

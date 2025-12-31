@@ -8,6 +8,7 @@ name = "deepchat"
 path = "src/main.rs"
 
 [dependencies]
+arboard = "3"
 clap = { version = "4", features = ["derive"] }
 crossterm = "0.28"
 pulldown-cmark = "0.12"

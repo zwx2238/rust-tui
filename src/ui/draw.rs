@@ -12,6 +12,7 @@ use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
 use tui_textarea::TextArea;
 use crate::ui::scroll_debug::{self, ScrollDebug};
+use crate::ui::selection::{apply_selection_to_text, Selection};
 
 pub fn layout_chunks(size: Rect, input_height: u16) -> (Rect, Rect, Rect) {
     let layout = Layout::default()
@@ -52,6 +53,7 @@ pub fn redraw(
             theme,
             app.focus == Focus::Chat,
             total_lines,
+            app.chat_selection,
         );
         draw_input(
             f,
@@ -137,6 +139,7 @@ fn draw_messages(
     theme: &RenderTheme,
     focused: bool,
     total_lines: usize,
+    selection: Option<Selection>,
 ) {
     let style = Style::default()
         .bg(theme.bg)
@@ -175,7 +178,12 @@ fn draw_messages(
         .style(style)
         .border_style(border_style);
     let _ = scroll;
-    let paragraph = Paragraph::new(text.clone())
+    let mut display_text = text.clone();
+    if let Some(selection) = selection {
+        let select_style = Style::default().bg(Color::DarkGray);
+        display_text = apply_selection_to_text(&display_text, scroll as usize, selection, select_style);
+    }
+    let paragraph = Paragraph::new(display_text)
         .block(block)
         .style(style)
         .wrap(Wrap { trim: false })
@@ -231,6 +239,7 @@ fn draw_input(
         .border_style(border_style);
     input.set_block(block);
     input.set_style(style);
+    input.set_selection_style(Style::default().bg(Color::DarkGray));
     input.set_cursor_style(if focused && !busy {
         Style::default().add_modifier(Modifier::REVERSED)
     } else {

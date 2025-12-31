@@ -1,5 +1,6 @@
 use crate::session::save_session;
 use crate::types::Message;
+use crate::ui::clipboard;
 use crate::ui::state::{App, Focus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::TextArea;
@@ -9,14 +10,42 @@ pub fn handle_key(
     app: &mut App,
     last_session_id: &mut Option<String>,
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
-        return Ok(true);
-    }
     if key.code == KeyCode::Esc {
         return Ok(true);
     }
 
     if app.focus == Focus::Input && !app.busy {
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('a') => {
+                    app.input.select_all();
+                    return Ok(false);
+                }
+                KeyCode::Char('c') => {
+                    if app.input.is_selecting() {
+                        app.input.copy();
+                        let text = app.input.yank_text();
+                        clipboard::set(&text);
+                    }
+                    return Ok(false);
+                }
+                KeyCode::Char('x') => {
+                    if app.input.is_selecting() && app.input.cut() {
+                        let text = app.input.yank_text();
+                        clipboard::set(&text);
+                    }
+                    return Ok(false);
+                }
+                KeyCode::Char('v') => {
+                    if let Some(text) = clipboard::get() {
+                        app.input.set_yank_text(text);
+                        app.input.paste();
+                    }
+                    return Ok(false);
+                }
+                _ => {}
+            }
+        }
         match key.code {
             KeyCode::Enter => {
             let line = app.input.lines().join("\n");
