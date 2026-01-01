@@ -1,6 +1,6 @@
 use crate::render::RenderTheme;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Row, Table, TableState};
 
@@ -30,6 +30,12 @@ pub fn draw_table_popup(f: &mut ratatui::Frame<'_>, area: Rect, popup: TablePopu
         .style(Style::default().bg(popup.theme.bg).fg(popup.theme.fg.unwrap_or(Color::White)))
         .block(block);
     f.render_stateful_widget(table, area, &mut state);
+}
+
+pub fn header_style(theme: &RenderTheme) -> Style {
+    Style::default()
+        .fg(theme.fg.unwrap_or(Color::White))
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn popup_row_at(

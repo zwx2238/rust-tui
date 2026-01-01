@@ -1,9 +1,8 @@
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
 use crate::ui::popup_layout::popup_area;
-use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
+use crate::ui::popup_table::{draw_table_popup, header_style, popup_row_at, popup_visible_rows, TablePopup};
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 
@@ -21,11 +20,7 @@ pub fn draw_model_popup(
         Cell::from("模型"),
         Cell::from("Base URL"),
     ])
-    .style(
-        Style::default()
-            .fg(theme.fg.unwrap_or(Color::White))
-            .add_modifier(Modifier::BOLD),
-    );
+    .style(header_style(theme));
     let body = models.iter().map(|m| {
         Row::new(vec![
             Cell::from(m.key.clone()),

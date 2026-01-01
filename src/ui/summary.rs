@@ -1,11 +1,10 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{draw_table_popup, TablePopup};
+use crate::ui::popup_table::{draw_table_popup, header_style, TablePopup};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 use ratatui::Terminal;
@@ -74,11 +73,7 @@ fn draw_summary_table(
         Cell::from("状态"),
         Cell::from("最新提问"),
     ])
-    .style(
-        Style::default()
-            .fg(theme.fg.unwrap_or(Color::White))
-            .add_modifier(Modifier::BOLD),
-    );
+    .style(header_style(theme));
 
     let body = rows.iter().map(|row| {
         Row::new(vec![

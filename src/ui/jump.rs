@@ -1,10 +1,9 @@
 use crate::render::{count_message_lines, label_for_role, RenderTheme};
 use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
+use crate::ui::popup_table::{draw_table_popup, header_style, popup_row_at, popup_visible_rows, TablePopup};
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use crate::types::Message;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 use ratatui::backend::CrosstermBackend;
@@ -95,11 +94,7 @@ fn draw_jump_table(
     scroll: usize,
 ) {
     let header = Row::new(vec![Cell::from("序号"), Cell::from("角色"), Cell::from("内容")])
-        .style(
-            Style::default()
-                .fg(theme.fg.unwrap_or(Color::White))
-                .add_modifier(Modifier::BOLD),
-        );
+        .style(header_style(theme));
     let body = rows.iter().map(|row| {
         Row::new(vec![
             Cell::from(row.index.to_string()),

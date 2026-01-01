@@ -2,9 +2,8 @@ use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use crate::ui::popup_layout::popup_area;
-use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
+use crate::ui::popup_table::{draw_table_popup, header_style, popup_row_at, popup_visible_rows, TablePopup};
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 use unicode_width::UnicodeWidthStr;
@@ -19,11 +18,8 @@ pub fn draw_prompt_popup(
 ) {
     let popup = prompt_popup_area(area, prompts.len());
     let role_width = role_col_width(popup, prompts);
-    let header = Row::new(vec![Cell::from("角色"), Cell::from("系统提示词")]).style(
-        Style::default()
-            .fg(theme.fg.unwrap_or(Color::White))
-            .add_modifier(Modifier::BOLD),
-    );
+    let header = Row::new(vec![Cell::from("角色"), Cell::from("系统提示词")])
+        .style(header_style(theme));
     let body = prompts.iter().map(|p| {
         Row::new(vec![
             Cell::from(p.key.clone()),
