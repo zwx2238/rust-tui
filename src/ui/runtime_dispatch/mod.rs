@@ -56,6 +56,41 @@ pub(crate) fn can_change_prompt(app: &crate::ui::state::App) -> bool {
     !app.messages.iter().any(|m| m.role == "user")
 }
 
+pub(crate) fn apply_model_selection(
+    ctx: &mut DispatchContext<'_>,
+    idx: usize,
+) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+        if let Some(model) = ctx.registry.models.get(idx) {
+            tab_state.app.model_key = model.key.clone();
+        }
+    }
+}
+
+pub(crate) fn apply_prompt_selection(
+    ctx: &mut DispatchContext<'_>,
+    idx: usize,
+) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+        if can_change_prompt(&tab_state.app) {
+            if let Some(prompt) = ctx.prompt_registry.prompts.get(idx) {
+                tab_state
+                    .app
+                    .set_system_prompt(&prompt.key, &prompt.content);
+            }
+        } else {
+            push_prompt_locked(tab_state);
+        }
+    }
+}
+
+pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
+    tab_state.app.messages.push(crate::types::Message {
+        role: "assistant".to_string(),
+        content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
+    });
+}
+
 pub(crate) fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {
     if registry.models.is_empty() {
         return;

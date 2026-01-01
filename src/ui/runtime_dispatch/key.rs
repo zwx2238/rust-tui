@@ -4,7 +4,10 @@ use crate::ui::runtime_view::{apply_view_action, handle_view_key, ViewAction, Vi
 use crate::ui::runtime_events::handle_key_event;
 use crossterm::event::KeyEvent;
 
-use super::{can_change_prompt, cycle_model, DispatchContext, LayoutContext};
+use super::{
+    apply_model_selection, apply_prompt_selection, can_change_prompt, cycle_model, DispatchContext,
+    LayoutContext, push_prompt_locked,
+};
 
 pub(crate) fn handle_key_event_loop(
     key: KeyEvent,
@@ -16,10 +19,7 @@ pub(crate) fn handle_key_event_loop(
     if key.code == crossterm::event::KeyCode::F(5) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if !can_change_prompt(&tab_state.app) {
-                tab_state.app.messages.push(crate::types::Message {
-                    role: "assistant".to_string(),
-                    content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
-                });
+                push_prompt_locked(tab_state);
                 return Ok(false);
             }
         }
@@ -68,28 +68,11 @@ pub(crate) fn handle_key_event_loop(
         return Ok(false);
     }
     if let ViewAction::SelectModel(idx) = action {
-        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-            if let Some(model) = ctx.registry.models.get(idx) {
-                tab_state.app.model_key = model.key.clone();
-            }
-        }
+        apply_model_selection(ctx, idx);
         return Ok(false);
     }
     if let ViewAction::SelectPrompt(idx) = action {
-        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-            if can_change_prompt(&tab_state.app) {
-                if let Some(prompt) = ctx.prompt_registry.prompts.get(idx) {
-                    tab_state
-                        .app
-                        .set_system_prompt(&prompt.key, &prompt.content);
-                }
-            } else {
-                tab_state.app.messages.push(crate::types::Message {
-                    role: "assistant".to_string(),
-                    content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
-                });
-            }
-        }
+        apply_prompt_selection(ctx, idx);
         return Ok(false);
     }
     if apply_view_action(action, jump_rows, ctx.tabs, ctx.active_tab) {

@@ -7,7 +7,7 @@ use crate::ui::runtime_view::{apply_view_action, handle_view_mouse, ViewAction, 
 use crate::ui::summary::summary_row_at;
 use crossterm::event::{MouseEvent, MouseEventKind};
 
-use super::{can_change_prompt, DispatchContext, LayoutContext};
+use super::{apply_model_selection, apply_prompt_selection, DispatchContext, LayoutContext};
 
 pub(crate) fn handle_mouse_event_loop(
     m: MouseEvent,
@@ -81,28 +81,11 @@ pub(crate) fn handle_mouse_event_loop(
         };
         let action = handle_view_mouse(view, row, ctx.tabs.len(), jump_rows.len(), m.kind);
         if let ViewAction::SelectModel(idx) = action {
-            if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-                if let Some(model) = ctx.registry.models.get(idx) {
-                    tab_state.app.model_key = model.key.clone();
-                }
-            }
+            apply_model_selection(ctx, idx);
             return;
         }
         if let ViewAction::SelectPrompt(idx) = action {
-            if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-                if can_change_prompt(&tab_state.app) {
-                    if let Some(prompt) = ctx.prompt_registry.prompts.get(idx) {
-                        tab_state
-                            .app
-                            .set_system_prompt(&prompt.key, &prompt.content);
-                    }
-                } else {
-                    tab_state.app.messages.push(crate::types::Message {
-                        role: "assistant".to_string(),
-                        content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
-                    });
-                }
-            }
+            apply_prompt_selection(ctx, idx);
             return;
         }
         let _ = apply_view_action(action, jump_rows, ctx.tabs, ctx.active_tab);
