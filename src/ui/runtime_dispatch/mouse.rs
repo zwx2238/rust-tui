@@ -3,6 +3,7 @@ use crate::ui::model_popup::{model_row_at, model_visible_rows};
 use crate::ui::overlay::OverlayKind;
 use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
 use crate::ui::runtime_events::handle_mouse_event;
+use crate::ui::selection_state::max_scroll;
 use crate::ui::runtime_view::{apply_view_action, handle_view_mouse, ViewAction, ViewState};
 use crate::ui::summary::summary_row_at;
 use crossterm::event::{MouseEvent, MouseEventKind};
@@ -32,11 +33,7 @@ pub(crate) fn handle_mouse_event_loop(
     } else {
         if view.overlay.is(OverlayKind::Jump) {
             let viewport_rows = jump_visible_rows(layout.msg_area);
-            let max_scroll = jump_rows
-                .len()
-                .saturating_sub(viewport_rows)
-                .max(1)
-                .saturating_sub(1);
+            let max_scroll = max_scroll(jump_rows.len(), viewport_rows);
             match m.kind {
                 MouseEventKind::ScrollUp => view.jump.scroll_by(-3, max_scroll, viewport_rows),
                 MouseEventKind::ScrollDown => view.jump.scroll_by(3, max_scroll, viewport_rows),
@@ -45,13 +42,7 @@ pub(crate) fn handle_mouse_event_loop(
         }
         if view.overlay.is(OverlayKind::Model) {
             let viewport_rows = model_visible_rows(layout.size, ctx.registry.models.len());
-            let max_scroll = ctx
-                .registry
-                .models
-                .len()
-                .saturating_sub(viewport_rows)
-                .max(1)
-                .saturating_sub(1);
+            let max_scroll = max_scroll(ctx.registry.models.len(), viewport_rows);
             match m.kind {
                 MouseEventKind::ScrollUp => view.model.scroll_by(-3, max_scroll, viewport_rows),
                 MouseEventKind::ScrollDown => view.model.scroll_by(3, max_scroll, viewport_rows),
@@ -60,13 +51,7 @@ pub(crate) fn handle_mouse_event_loop(
         }
         if view.overlay.is(OverlayKind::Prompt) {
             let viewport_rows = prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
-            let max_scroll = ctx
-                .prompt_registry
-                .prompts
-                .len()
-                .saturating_sub(viewport_rows)
-                .max(1)
-                .saturating_sub(1);
+            let max_scroll = max_scroll(ctx.prompt_registry.prompts.len(), viewport_rows);
             match m.kind {
                 MouseEventKind::ScrollUp => view.prompt.scroll_by(-3, max_scroll, viewport_rows),
                 MouseEventKind::ScrollDown => view.prompt.scroll_by(3, max_scroll, viewport_rows),

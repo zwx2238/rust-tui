@@ -4,6 +4,12 @@ pub(crate) struct SelectionState {
     pub(crate) scroll: usize,
 }
 
+pub(crate) fn max_scroll(len: usize, viewport_rows: usize) -> usize {
+    len.saturating_sub(viewport_rows)
+        .max(1)
+        .saturating_sub(1)
+}
+
 impl SelectionState {
     pub(crate) fn select(&mut self, idx: usize) {
         self.selected = idx;
@@ -36,10 +42,7 @@ impl SelectionState {
             self.scroll = 0;
             return;
         }
-        let max_scroll = len
-            .saturating_sub(viewport_rows)
-            .max(1)
-            .saturating_sub(1);
+        let max_scroll = max_scroll(len, viewport_rows);
         if self.scroll > max_scroll {
             self.scroll = max_scroll;
         }
