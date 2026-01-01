@@ -6,6 +6,8 @@ use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 
+const POPUP_MAX_HEIGHT: u16 = 16;
+
 pub fn draw_model_popup(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
@@ -45,7 +47,7 @@ pub fn draw_model_popup(
 }
 
 pub fn model_popup_area(area: Rect, rows: usize) -> Rect {
-    popup_area(area, 70, rows, 16)
+    popup_area(area, 70, rows, POPUP_MAX_HEIGHT)
 }
 
 pub fn model_row_at(

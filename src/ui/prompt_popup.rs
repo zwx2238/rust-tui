@@ -8,6 +8,8 @@ use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 use unicode_width::UnicodeWidthStr;
 
+const POPUP_MAX_HEIGHT: u16 = 18;
+
 pub fn draw_prompt_popup(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
@@ -42,7 +44,7 @@ pub fn draw_prompt_popup(
 }
 
 pub fn prompt_popup_area(area: Rect, rows: usize) -> Rect {
-    popup_area(area, 80, rows, 18)
+    popup_area(area, 80, rows, POPUP_MAX_HEIGHT)
 }
 
 pub fn prompt_row_at(
