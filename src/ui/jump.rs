@@ -111,7 +111,7 @@ fn draw_jump_table(
         ])
     });
     let popup = TablePopup {
-        title: Line::from("消息定位 · F2 退出 · 点击行跳转"),
+        title: Line::from("消息定位 · Enter/点击 跳转 · E 复制到新 tab · F2 退出"),
         header,
         rows: body.collect(),
         widths: vec![

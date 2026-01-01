@@ -4,15 +4,17 @@ use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{build_label_suffixes, drain_events, handle_stream_event, timer_text};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_dispatch::{
-    DispatchContext, LayoutContext, handle_key_event_loop, handle_mouse_event_loop,
-    start_pending_request,
+    handle_key_event_loop, handle_mouse_event_loop, start_pending_request,
 };
+use crate::ui::runtime_context::{make_dispatch_context, make_layout_context};
 use crate::ui::runtime_events::handle_paste_event;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
+use crate::ui::state::PendingCommand;
+use crate::types::{Message, ROLE_ASSISTANT};
 use crossterm::event::{self, Event};
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::{
@@ -24,7 +26,7 @@ pub(crate) fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     tabs: &mut Vec<TabState>,
     active_tab: &mut usize,
-    last_session_id: &mut Option<String>,
+    session_location: &mut Option<crate::session::SessionLocation>,
     rx: &mpsc::Receiver<UiEvent>,
     tx: &mpsc::Sender<UiEvent>,
     preheat_tx: &mpsc::Sender<PreheatTask>,
@@ -59,8 +61,16 @@ pub(crate) fn run_loop(
 
         let mut done_tabs: Vec<usize> = Vec::new();
         while let Ok(event) = rx.try_recv() {
-            let UiEvent { tab, event } = event;
+            let UiEvent {
+                tab,
+                request_id,
+                event,
+            } = event;
             if let Some(tab_state) = tabs.get_mut(tab) {
+                let active_id = tab_state.app.active_request.as_ref().map(|h| h.id);
+                if active_id != Some(request_id) {
+                    continue;
+                }
                 let elapsed = tab_state
                     .app
                     .busy_since
@@ -89,7 +99,7 @@ pub(crate) fn run_loop(
                 enqueue_preheat_tasks(idx, tab_state, theme, msg_width, 32, preheat_tx);
             }
         }
-        let (text, total_lines, _tabs_len, startup_text, mut pending_line) = {
+        let (text, total_lines, _tabs_len, startup_text, mut pending_line, pending_command) = {
             let tabs_len = tabs.len();
             let tab_state = &mut tabs[*active_tab];
             let app = &mut tab_state.app;
@@ -129,6 +139,7 @@ pub(crate) fn run_loop(
             update_input_view_top(app, input_area);
             let startup_text = startup_elapsed.map(|d| format!("启动耗时 {:.2}s", d.as_secs_f32()));
             let pending_line = app.pending_send.take();
+            let pending_command = app.pending_command.take();
             app.dirty_indices.clear();
             app.cache_shift = None;
             (
@@ -137,6 +148,7 @@ pub(crate) fn run_loop(
                 tabs_len,
                 startup_text,
                 pending_line,
+                pending_command,
             )
         };
         let jump_rows = render_view(
@@ -166,13 +178,46 @@ pub(crate) fn run_loop(
                 start_pending_request(registry, args, tx, *active_tab, tab_state);
             }
         }
+        if let Some(cmd) = pending_command {
+            match cmd {
+                PendingCommand::SaveSession => {
+                    let snapshot = crate::ui::runtime_helpers::collect_session_tabs(tabs);
+                    let save_result = crate::session::save_session(
+                        &snapshot,
+                        *active_tab,
+                        session_location.as_ref(),
+                    );
+                    if let Some(tab_state) = tabs.get_mut(*active_tab) {
+                        match save_result {
+                            Ok(loc) => {
+                                *session_location = Some(loc.clone());
+                                let hint = loc.display_hint();
+                                let idx = tab_state.app.messages.len();
+                                tab_state.app.messages.push(Message {
+                                    role: ROLE_ASSISTANT.to_string(),
+                                    content: format!("已保存会话：{hint}"),
+                                });
+                                tab_state.app.dirty_indices.push(idx);
+                            }
+                            Err(e) => {
+                                let idx = tab_state.app.messages.len();
+                                tab_state.app.messages.push(Message {
+                                    role: ROLE_ASSISTANT.to_string(),
+                                    content: format!("保存失败：{e}"),
+                                });
+                                tab_state.app.dirty_indices.push(idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(key) => {
                     let mut ctx = make_dispatch_context(
                         tabs,
                         active_tab,
-                        last_session_id,
                         msg_width,
                         theme,
                         registry,
@@ -200,7 +245,6 @@ pub(crate) fn run_loop(
                     let mut ctx = make_dispatch_context(
                         tabs,
                         active_tab,
-                        last_session_id,
                         msg_width,
                         theme,
                         registry,
@@ -225,42 +269,4 @@ pub(crate) fn run_loop(
     Ok(())
 }
 
-fn make_dispatch_context<'a>(
-    tabs: &'a mut Vec<TabState>,
-    active_tab: &'a mut usize,
-    last_session_id: &'a mut Option<String>,
-    msg_width: usize,
-    theme: &'a RenderTheme,
-    registry: &'a crate::model_registry::ModelRegistry,
-    prompt_registry: &'a crate::system_prompts::PromptRegistry,
-    args: &'a Args,
-) -> DispatchContext<'a> {
-    DispatchContext {
-        tabs,
-        active_tab,
-        last_session_id,
-        msg_width,
-        theme,
-        registry,
-        prompt_registry,
-        args,
-    }
-}
-
-fn make_layout_context(
-    size: ratatui::layout::Rect,
-    tabs_area: ratatui::layout::Rect,
-    msg_area: ratatui::layout::Rect,
-    input_area: ratatui::layout::Rect,
-    view_height: u16,
-    total_lines: usize,
-) -> LayoutContext {
-    LayoutContext {
-        size,
-        tabs_area,
-        msg_area,
-        input_area,
-        view_height,
-        total_lines,
-    }
-}
+// context helpers live in runtime_context

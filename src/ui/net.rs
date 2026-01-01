@@ -1,6 +1,10 @@
 use crate::types::{ChatRequest, Message, StreamOptions, Usage};
 use std::io::{BufRead, BufReader};
 use std::sync::mpsc::Sender;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 pub enum LlmEvent {
     Chunk(String),
@@ -11,6 +15,7 @@ pub enum LlmEvent {
 
 pub struct UiEvent {
     pub tab: usize,
+    pub request_id: u64,
     pub event: LlmEvent,
 }
 
@@ -41,8 +46,10 @@ pub fn request_llm_stream(
     model: &str,
     show_reasoning: bool,
     messages: &[Message],
+    cancel: Arc<AtomicBool>,
     tx: Sender<UiEvent>,
     tab: usize,
+    request_id: u64,
 ) {
     let client = reqwest::blocking::Client::new();
     let req = ChatRequest {
@@ -61,6 +68,7 @@ pub fn request_llm_stream(
                 let body = resp.text().unwrap_or_default();
                 let _ = tx.send(UiEvent {
                     tab,
+                    request_id,
                     event: LlmEvent::Error(format!("请求失败：{status} {body}")),
                 });
                 return;
@@ -69,12 +77,16 @@ pub fn request_llm_stream(
             let mut line = String::new();
             let mut usage: Option<Usage> = None;
             loop {
+                if cancel.load(Ordering::Relaxed) {
+                    return;
+                }
                 line.clear();
                 let read = match reader.read_line(&mut line) {
                     Ok(n) => n,
                     Err(e) => {
                         let _ = tx.send(UiEvent {
                             tab,
+                            request_id,
                             event: LlmEvent::Error(format!("读取失败：{e}")),
                         });
                         return;
@@ -93,6 +105,7 @@ pub fn request_llm_stream(
                 if data == "[DONE]" {
                     let _ = tx.send(UiEvent {
                         tab,
+                        request_id,
                         event: LlmEvent::Done { usage },
                     });
                     return;
@@ -100,6 +113,9 @@ pub fn request_llm_stream(
                 let parsed: Result<StreamResponse, _> = serde_json::from_str(data);
                 match parsed {
                     Ok(chunk) => {
+                        if cancel.load(Ordering::Relaxed) {
+                            return;
+                        }
                         if let Some(u) = chunk.usage {
                             usage = Some(u);
                         } else {
@@ -113,6 +129,7 @@ pub fn request_llm_stream(
                             if let Some(content) = choice.delta.content {
                                 let _ = tx.send(UiEvent {
                                     tab,
+                                    request_id,
                                     event: LlmEvent::Chunk(content),
                                 });
                             }
@@ -120,6 +137,7 @@ pub fn request_llm_stream(
                                 if let Some(r) = choice.delta.reasoning_content {
                                     let _ = tx.send(UiEvent {
                                         tab,
+                                        request_id,
                                         event: LlmEvent::Reasoning(r),
                                     });
                                 }
@@ -129,6 +147,7 @@ pub fn request_llm_stream(
                     Err(e) => {
                         let _ = tx.send(UiEvent {
                             tab,
+                            request_id,
                             event: LlmEvent::Error(format!("解析失败：{e}")),
                         });
                         return;
@@ -137,12 +156,14 @@ pub fn request_llm_stream(
             }
             let _ = tx.send(UiEvent {
                 tab,
+                request_id,
                 event: LlmEvent::Done { usage },
             });
         }
         Err(e) => {
             let _ = tx.send(UiEvent {
                 tab,
+                request_id,
                 event: LlmEvent::Error(format!("请求失败：{e}")),
             });
         }

@@ -19,6 +19,7 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> b
             app.pending_assistant = None;
             app.pending_reasoning = None;
             app.stream_buffer.clear();
+            app.active_request = None;
             true
         }
         LlmEvent::Done { usage } => {
@@ -28,9 +29,29 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> b
                 app.assistant_stats.insert(idx, stats);
             }
             app.pending_reasoning = None;
+            app.active_request = None;
             true
         }
     }
+}
+
+pub fn stop_stream(app: &mut App) -> bool {
+    let Some(handle) = app.active_request.take() else {
+        return false;
+    };
+    handle.cancel();
+    flush_remaining_buffer(app);
+    if let Some(idx) = app.pending_assistant.take() {
+        app.assistant_stats
+            .insert(idx, "已终止".to_string());
+        app.dirty_indices.push(idx);
+    }
+    app.pending_reasoning = None;
+    app.stream_buffer.clear();
+    app.busy = false;
+    app.busy_since = None;
+    app.follow = true;
+    true
 }
 
 pub fn timer_text(app: &App) -> String {

@@ -17,6 +17,7 @@ pub(crate) enum ViewAction {
     None,
     SwitchTab(usize),
     JumpTo(usize),
+    ForkMessage(usize),
     SelectModel(usize),
     CycleModel,
     SelectPrompt(usize),
@@ -44,6 +45,7 @@ pub(crate) fn apply_view_action(
             }
             true
         }
+        ViewAction::ForkMessage(_) => false,
         ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
         ViewAction::None => false,
     }
@@ -209,6 +211,14 @@ fn handle_jump_key(view: &mut ViewState, key: KeyEvent, jump_len: usize) -> View
         KeyCode::Esc => {
             view.overlay.close();
             ViewAction::None
+        }
+        KeyCode::Char('e') | KeyCode::Char('E') => {
+            if view.jump.selected < jump_len {
+                view.overlay.close();
+                ViewAction::ForkMessage(view.jump.selected)
+            } else {
+                ViewAction::None
+            }
         }
         KeyCode::Up => {
             view.jump.move_up();

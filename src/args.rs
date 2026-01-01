@@ -23,9 +23,9 @@ pub struct Args {
     #[arg(long)]
     pub config: Option<String>,
 
-    /// 回放会话 ID（不触发真实 API）
-    #[arg(long, alias = "resume")]
-    pub replay: Option<String>,
+    /// 恢复会话 ID/路径（恢复后可继续对话）
+    #[arg(long, alias = "replay")]
+    pub resume: Option<String>,
 
     /// 填充历史消息用于性能手工测试
     #[arg(long, default_value_t = false)]

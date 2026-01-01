@@ -1,15 +1,10 @@
-use crate::session::save_session;
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM};
 use crate::ui::clipboard;
-use crate::ui::state::{App, Focus};
+use crate::ui::state::{App, Focus, PendingCommand};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::TextArea;
 
-pub fn handle_key(
-    key: KeyEvent,
-    app: &mut App,
-    last_session_id: &mut Option<String>,
-) -> Result<bool, Box<dyn std::error::Error>> {
+pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
     if key.code == KeyCode::Esc {
         return Ok(true);
     }
@@ -55,7 +50,7 @@ pub fn handle_key(
                     return Ok(false);
                 }
                 if line.starts_with('/') {
-                    return handle_command(&line, app, last_session_id);
+                    return handle_command(&line, app);
                 }
                 app.pending_send = Some(line);
                 return Ok(false);
@@ -122,7 +117,6 @@ pub fn handle_key(
 pub fn handle_command(
     line: &str,
     app: &mut App,
-    last_session_id: &mut Option<String>,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     match line {
         "/exit" | "/quit" => return Ok(true),
@@ -136,18 +130,13 @@ pub fn handle_command(
             app.follow = true;
         }
         "/save" => {
-            if let Ok(id) = save_session(&app.messages) {
-                *last_session_id = Some(id.clone());
-                app.messages.push(Message {
-                    role: ROLE_ASSISTANT.to_string(),
-                    content: format!("已保存会话：{id}"),
-                });
-            }
+            app.pending_command = Some(PendingCommand::SaveSession);
         }
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
-                content: "命令：/help /save /reset /clear /exit /quit".to_string(),
+                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制到新 tab）"
+                    .to_string(),
             });
         }
         _ => {

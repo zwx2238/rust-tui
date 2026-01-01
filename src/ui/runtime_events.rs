@@ -17,7 +17,6 @@ pub(crate) fn handle_key_event(
     key: KeyEvent,
     tabs: &mut Vec<TabState>,
     active_tab: usize,
-    last_session_id: &mut Option<String>,
     msg_width: usize,
     theme: &RenderTheme,
 ) -> Result<bool, Box<dyn std::error::Error>> {
@@ -46,7 +45,7 @@ pub(crate) fn handle_key_event(
         return Ok(true);
     }
     if let Some(tab_state) = tabs.get_mut(active_tab) {
-        if handle_key(key, &mut tab_state.app, last_session_id)? {
+        if handle_key(key, &mut tab_state.app)? {
             return Ok(true);
         }
     }

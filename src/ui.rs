@@ -13,6 +13,7 @@ mod perf;
 mod popup_layout;
 mod popup_table;
 mod prompt_popup;
+mod runtime_context;
 mod runtime;
 mod runtime_dispatch;
 mod runtime_events;

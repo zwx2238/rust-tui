@@ -1,11 +1,12 @@
 use crate::args::Args;
 use crate::model_registry::build_model_registry;
 use crate::render::RenderTheme;
-use crate::session::save_session;
+use crate::session::{SessionLocation, load_session, save_session};
 use crate::system_prompts::load_prompts;
+use crate::types::ROLE_SYSTEM;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{
-    PERF_QUESTIONS, PreheatResult, PreheatTask, TabState, start_tab_request,
+    PERF_QUESTIONS, PreheatResult, PreheatTask, TabState, collect_session_tabs, start_tab_request,
 };
 use crate::ui::runtime_loop::run_loop;
 use crossterm::event::{
@@ -28,18 +29,6 @@ pub fn run(
     cfg: Option<crate::config::Config>,
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(
-        stdout,
-        EnterAlternateScreen,
-        EnableMouseCapture,
-        EnableBracketedPaste
-    )?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
-
     let registry = build_model_registry(cfg.as_ref(), &args, Some(&api_key));
     let prompt_registry = load_prompts(
         cfg.as_ref().and_then(|c| c.prompts_dir.as_deref()),
@@ -47,34 +36,41 @@ pub fn run(
         &args.system,
     );
 
-    let initial_tabs = if args.perf_batch {
-        10
-    } else if args.perf {
-        3
+    let mut session_location: Option<SessionLocation> = None;
+    let (mut tabs, mut active_tab) = if let Some(resume) = args.resume.as_deref() {
+        let loaded =
+            load_session(resume).map_err(|_| format!("无法读取会话：{resume}"))?;
+        session_location = Some(loaded.location.clone());
+        restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args)
     } else {
-        1
+        let initial_tabs = if args.perf_batch {
+            10
+        } else if args.perf {
+            3
+        } else {
+            1
+        };
+        let tabs = (0..initial_tabs)
+            .map(|_| {
+                TabState::new(
+                    prompt_registry
+                        .get(&prompt_registry.default_key)
+                        .map(|p| p.content.as_str())
+                        .unwrap_or(&args.system),
+                    args.perf,
+                    &registry.default_key,
+                    &prompt_registry.default_key,
+                )
+            })
+            .collect::<Vec<_>>();
+        (tabs, 0)
     };
-    let mut tabs = (0..initial_tabs)
-        .map(|_| {
-            TabState::new(
-                prompt_registry
-                    .get(&prompt_registry.default_key)
-                    .map(|p| p.content.as_str())
-                    .unwrap_or(&args.system),
-                args.perf,
-                &registry.default_key,
-                &prompt_registry.default_key,
-            )
-        })
-        .collect::<Vec<_>>();
-    let mut active_tab: usize = 0;
-    let mut last_session_id: Option<String> = None;
     let (tx, rx) = mpsc::channel::<UiEvent>();
     let (preheat_tx, preheat_rx) = mpsc::channel::<PreheatTask>();
     let (preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
     spawn_preheat_workers(preheat_rx, preheat_res_tx.clone());
 
-    if args.perf_batch {
+    if args.perf_batch && args.resume.is_none() {
         for (i, tab_state) in tabs.iter_mut().enumerate() {
             let question = PERF_QUESTIONS.get(i).unwrap_or(&"请简短说明 Rust 的优势。");
             let model = registry
@@ -93,12 +89,24 @@ pub fn run(
         }
     }
 
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        EnableBracketedPaste
+    )?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+
     let start_time = Instant::now();
     run_loop(
         &mut terminal,
         &mut tabs,
         &mut active_tab,
-        &mut last_session_id,
+        &mut session_location,
         &rx,
         &tx,
         &preheat_tx,
@@ -119,18 +127,68 @@ pub fn run(
     )?;
     terminal.show_cursor()?;
 
-    if last_session_id.is_none() {
-        if let Some(tab) = tabs.get(active_tab) {
-            if let Ok(id) = save_session(&tab.app.messages) {
-                last_session_id = Some(id);
-            }
-        }
+    let snapshot = collect_session_tabs(&tabs);
+    if let Ok(loc) = save_session(&snapshot, active_tab, session_location.as_ref()) {
+        session_location = Some(loc);
     }
-    if let Some(id) = last_session_id {
-        println!("回放指令：deepchat --resume {id}");
+    if let Some(loc) = session_location {
+        println!("恢复指令：deepchat --resume {}", loc.display_hint());
     }
 
     Ok(())
+}
+
+fn restore_tabs_from_session(
+    session: &crate::session::SessionData,
+    registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::system_prompts::PromptRegistry,
+    args: &Args,
+) -> (Vec<TabState>, usize) {
+    let mut tabs = Vec::new();
+    for tab in &session.tabs {
+        let model_key = tab
+            .model_key
+            .as_deref()
+            .filter(|k| registry.get(k).is_some())
+            .unwrap_or(&registry.default_key)
+            .to_string();
+        let prompt_key = tab
+            .prompt_key
+            .as_deref()
+            .filter(|k| prompt_registry.get(k).is_some())
+            .unwrap_or(&prompt_registry.default_key)
+            .to_string();
+        let mut state = TabState::new("", false, &model_key, &prompt_key);
+        state.app.messages = tab.messages.clone();
+        if state.app.messages.iter().all(|m| m.role != ROLE_SYSTEM) {
+            let content = prompt_registry
+                .get(&prompt_key)
+                .map(|p| p.content.as_str())
+                .unwrap_or(&args.system);
+            if !content.trim().is_empty() {
+                state.app.set_system_prompt(&prompt_key, content);
+            }
+        }
+        state.app.follow = true;
+        state.app.scroll = u16::MAX;
+        state.app.dirty_indices = (0..state.app.messages.len()).collect();
+        tabs.push(state);
+    }
+    if tabs.is_empty() {
+        tabs.push(TabState::new(
+            prompt_registry
+                .get(&prompt_registry.default_key)
+                .map(|p| p.content.as_str())
+                .unwrap_or(&args.system),
+            false,
+            &registry.default_key,
+            &prompt_registry.default_key,
+        ));
+    }
+    let active_tab = session
+        .active_tab
+        .min(tabs.len().saturating_sub(1));
+    (tabs, active_tab)
 }
 
 fn spawn_preheat_workers(

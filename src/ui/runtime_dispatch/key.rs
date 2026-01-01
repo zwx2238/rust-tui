@@ -1,4 +1,5 @@
 use crate::ui::overlay::OverlayKind;
+use crate::ui::logic::stop_stream;
 use crate::ui::runtime_events::handle_key_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_key};
 use crossterm::event::KeyEvent;
@@ -16,6 +17,19 @@ pub(crate) fn handle_key_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    if key.code == crossterm::event::KeyCode::F(6) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::SHIFT)
+            {
+                crate::ui::runtime_helpers::stop_and_edit(tab_state);
+            } else {
+                stop_stream(&mut tab_state.app);
+            }
+        }
+        return Ok(false);
+    }
     if key.code == crossterm::event::KeyCode::F(5) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if !can_change_prompt(&tab_state.app) {
@@ -29,6 +43,10 @@ pub(crate) fn handle_key_event_loop(
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             cycle_model(ctx.registry, &mut tab_state.app.model_key);
         }
+        return Ok(false);
+    }
+    if let ViewAction::ForkMessage(idx) = action {
+        crate::ui::runtime_dispatch::fork_message_into_new_tab(ctx, jump_rows, idx);
         return Ok(false);
     }
     if key.code == crossterm::event::KeyCode::F(5) && view.overlay.is(OverlayKind::Prompt) {
@@ -60,7 +78,6 @@ pub(crate) fn handle_key_event_loop(
         key,
         ctx.tabs,
         *ctx.active_tab,
-        ctx.last_session_id,
         ctx.msg_width,
         ctx.theme,
     )? {

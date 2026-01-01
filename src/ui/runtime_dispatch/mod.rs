@@ -1,8 +1,9 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::types::{ROLE_ASSISTANT, ROLE_USER};
+use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{TabState, start_tab_request};
+use crate::ui::state::Focus;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
@@ -17,7 +18,6 @@ pub(crate) use mouse::handle_mouse_event_loop;
 pub(crate) struct DispatchContext<'a> {
     pub(crate) tabs: &'a mut Vec<TabState>,
     pub(crate) active_tab: &'a mut usize,
-    pub(crate) last_session_id: &'a mut Option<String>,
     pub(crate) msg_width: usize,
     pub(crate) theme: &'a RenderTheme,
     pub(crate) registry: &'a crate::model_registry::ModelRegistry,
@@ -169,6 +169,59 @@ pub(crate) fn next_tab(ctx: &mut DispatchContext<'_>) {
     if !ctx.tabs.is_empty() {
         *ctx.active_tab = (*ctx.active_tab + 1) % ctx.tabs.len();
     }
+}
+
+pub(crate) fn fork_message_into_new_tab(
+    ctx: &mut DispatchContext<'_>,
+    jump_rows: &[crate::ui::jump::JumpRow],
+    row_idx: usize,
+) {
+    let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) else {
+        return;
+    };
+    let Some(row) = jump_rows.get(row_idx) else {
+        return;
+    };
+    let msg_idx = row.index.saturating_sub(1);
+    let Some(msg) = tab_state.app.messages.get(msg_idx) else {
+        return;
+    };
+    let content = msg.content.clone();
+    let system_prompt = tab_state
+        .app
+        .messages
+        .iter()
+        .find(|m| m.role == ROLE_SYSTEM)
+        .map(|m| m.content.clone())
+        .or_else(|| {
+            ctx.prompt_registry
+                .get(&tab_state.app.prompt_key)
+                .map(|p| p.content.clone())
+        })
+        .unwrap_or_else(|| ctx.args.system.clone());
+    let model_key = if ctx.registry.get(&tab_state.app.model_key).is_some() {
+        tab_state.app.model_key.clone()
+    } else {
+        ctx.registry.default_key.clone()
+    };
+    let prompt_key = if ctx
+        .prompt_registry
+        .get(&tab_state.app.prompt_key)
+        .is_some()
+    {
+        tab_state.app.prompt_key.clone()
+    } else {
+        ctx.prompt_registry.default_key.clone()
+    };
+    let mut new_tab = TabState::new(&system_prompt, false, &model_key, &prompt_key);
+    new_tab.app.model_key = model_key;
+    new_tab.app.prompt_key = prompt_key;
+    if !content.is_empty() {
+        new_tab.app.input.insert_str(content);
+    }
+    new_tab.app.focus = Focus::Input;
+    ctx.tabs.push(new_tab);
+    *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
 }
 
 pub(crate) fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {

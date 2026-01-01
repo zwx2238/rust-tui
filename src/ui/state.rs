@@ -1,5 +1,9 @@
 use crate::types::{Message, ROLE_SYSTEM};
 use std::collections::BTreeMap;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::Instant;
 use tui_textarea::TextArea;
 
@@ -7,6 +11,23 @@ use tui_textarea::TextArea;
 pub enum Focus {
     Chat,
     Input,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum PendingCommand {
+    SaveSession,
+}
+
+#[derive(Clone)]
+pub struct RequestHandle {
+    pub id: u64,
+    pub cancel: Arc<AtomicBool>,
+}
+
+impl RequestHandle {
+    pub fn cancel(&self) {
+        self.cancel.store(true, Ordering::Relaxed);
+    }
 }
 
 pub struct App {
@@ -18,6 +39,9 @@ pub struct App {
     pub focus: Focus,
     pub busy: bool,
     pub pending_send: Option<String>,
+    pub pending_command: Option<PendingCommand>,
+    pub active_request: Option<RequestHandle>,
+    pub next_request_id: u64,
     pub busy_since: Option<Instant>,
     pub pending_assistant: Option<usize>,
     pub pending_reasoning: Option<usize>,
@@ -51,6 +75,9 @@ impl App {
             focus: Focus::Input,
             busy: false,
             pending_send: None,
+            pending_command: None,
+            active_request: None,
+            next_request_id: 1,
             busy_since: None,
             pending_assistant: None,
             pending_reasoning: None,

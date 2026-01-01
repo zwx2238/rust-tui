@@ -1,9 +1,15 @@
 use crate::render::{RenderCacheEntry, RenderTheme, insert_empty_cache_entry};
+use crate::session::SessionTab;
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::net::{UiEvent, request_llm_stream};
 use crate::ui::perf::seed_perf_messages;
-use crate::ui::state::App;
+use crate::ui::state::{App, Focus, RequestHandle};
+use std::collections::BTreeMap;
 use std::sync::mpsc;
+use std::sync::{
+    Arc,
+    atomic::AtomicBool,
+};
 use std::thread;
 use std::time::Instant;
 
@@ -103,6 +109,10 @@ pub(crate) fn start_tab_request(
     tab_id: usize,
 ) {
     let app = &mut tab_state.app;
+    if let Some(handle) = &app.active_request {
+        handle.cancel();
+        app.active_request = None;
+    }
     if !question.is_empty() {
         app.messages.push(Message {
             role: ROLE_USER.to_string(),
@@ -129,6 +139,13 @@ pub(crate) fn start_tab_request(
         role: ROLE_ASSISTANT.to_string(),
         content: String::new(),
     });
+    let request_id = app.next_request_id;
+    app.next_request_id = app.next_request_id.saturating_add(1);
+    let cancel = Arc::new(AtomicBool::new(false));
+    app.active_request = Some(RequestHandle {
+        id: request_id,
+        cancel: Arc::clone(&cancel),
+    });
     app.busy = true;
     app.busy_since = Some(Instant::now());
     app.pending_assistant = Some(idx);
@@ -149,8 +166,10 @@ pub(crate) fn start_tab_request(
             &model,
             show_reasoning,
             &messages,
+            cancel,
             tx,
             tab_id,
+            request_id,
         );
     });
 }
@@ -169,4 +188,88 @@ pub(crate) fn tab_index_at(x: u16, area: ratatui::layout::Rect, tabs_len: usize)
         }
     }
     None
+}
+
+pub(crate) fn collect_session_tabs(tabs: &[TabState]) -> Vec<SessionTab> {
+    tabs.iter()
+        .map(|tab| SessionTab {
+            messages: tab.app.messages.clone(),
+            model_key: Some(tab.app.model_key.clone()),
+            prompt_key: Some(tab.app.prompt_key.clone()),
+        })
+        .collect()
+}
+
+pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {
+    let app = &mut tab_state.app;
+    let Some(handle) = app.active_request.take() else {
+        return false;
+    };
+    handle.cancel();
+    let assistant_idx = app.pending_assistant.take();
+    let reasoning_idx = app.pending_reasoning.take();
+    let search_end = assistant_idx.unwrap_or(app.messages.len());
+    let user_idx = app.messages[..search_end]
+        .iter()
+        .rposition(|m| m.role == ROLE_USER);
+    let mut remove = Vec::new();
+    if let Some(idx) = assistant_idx {
+        remove.push(idx);
+    }
+    if let Some(idx) = reasoning_idx {
+        remove.push(idx);
+    }
+    if let Some(idx) = user_idx {
+        remove.push(idx);
+    }
+    if remove.is_empty() {
+        app.busy = false;
+        app.busy_since = None;
+        app.stream_buffer.clear();
+        return false;
+    }
+    remove.sort_unstable();
+    remove.dedup();
+    let user_text = user_idx
+        .and_then(|idx| app.messages.get(idx).map(|m| m.content.clone()))
+        .unwrap_or_default();
+    for idx in remove.iter().rev() {
+        if *idx < app.messages.len() {
+            app.messages.remove(*idx);
+        }
+        if *idx < tab_state.render_cache.len() {
+            tab_state.render_cache.remove(*idx);
+        }
+    }
+    shift_stats_after_removals(&mut app.assistant_stats, &remove);
+    app.stream_buffer.clear();
+    app.busy = false;
+    app.busy_since = None;
+    app.follow = true;
+    app.dirty_indices = (0..app.messages.len()).collect();
+    app.input = tui_textarea::TextArea::default();
+    if !user_text.is_empty() {
+        app.input.insert_str(user_text);
+    }
+    app.focus = Focus::Input;
+    true
+}
+
+fn shift_stats_after_removals(stats: &mut BTreeMap<usize, String>, removed: &[usize]) {
+    if stats.is_empty() || removed.is_empty() {
+        return;
+    }
+    let mut removed_sorted = removed.to_vec();
+    removed_sorted.sort_unstable();
+    removed_sorted.dedup();
+    let mut updated = BTreeMap::new();
+    for (idx, val) in stats.iter() {
+        if removed_sorted.binary_search(idx).is_ok() {
+            continue;
+        }
+        let shift = removed_sorted.iter().filter(|r| **r < *idx).count();
+        let new_idx = idx.saturating_sub(shift);
+        updated.insert(new_idx, val.clone());
+    }
+    *stats = updated;
 }
