@@ -78,7 +78,7 @@ pub(crate) fn handle_key_event_loop(
     if apply_view_action(action, jump_rows, ctx.tabs, ctx.active_tab) {
         return Ok(false);
     }
-    if key.code == crossterm::event::KeyCode::F(4) {
+    if key.code == crossterm::event::KeyCode::F(4) && view.overlay.is(OverlayKind::Model) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
                 view.model.selected = idx;
