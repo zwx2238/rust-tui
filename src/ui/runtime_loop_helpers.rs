@@ -186,6 +186,15 @@ fn handle_code_exec_approve(
                 let mut text = String::new();
                 text.push_str("[code_exec]\n");
                 text.push_str(&format!("language: {}\n", pending.language));
+                text.push_str("code:\n");
+                if pending.code.trim().is_empty() {
+                    text.push_str("(空)\n");
+                } else {
+                    text.push_str(&pending.code);
+                    if !pending.code.ends_with('\n') {
+                        text.push('\n');
+                    }
+                }
                 text.push_str(&format!("exit_code: {}\n", out.exit_code));
                 text.push_str("stdout:\n");
                 if stdout_empty {
