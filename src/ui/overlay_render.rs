@@ -216,7 +216,35 @@ pub(crate) fn render_code_exec_overlay(
             if tab_state.app.code_exec_scroll > max_scroll {
                 tab_state.app.code_exec_scroll = max_scroll;
             }
+            let live_snapshot = tab_state
+                .app
+                .code_exec_live
+                .as_ref()
+                .and_then(|l| l.lock().ok().map(|l| {
+                    crate::ui::state::CodeExecLive {
+                        started_at: l.started_at,
+                        stdout: l.stdout.clone(),
+                        stderr: l.stderr.clone(),
+                        exit_code: l.exit_code,
+                        done: l.done,
+                    }
+                }));
+            let (stdout, stderr) = live_snapshot
+                .as_ref()
+                .map(|l| (l.stdout.clone(), l.stderr.clone()))
+                .unwrap_or_else(|| (String::new(), String::new()));
+            let max_output_scroll = crate::ui::code_exec_popup::output_max_scroll(
+                &stdout,
+                &stderr,
+                layout.output_text_area.width,
+                layout.output_text_area.height,
+                theme,
+            );
+            if tab_state.app.code_exec_output_scroll > max_output_scroll {
+                tab_state.app.code_exec_output_scroll = max_output_scroll;
+            }
             let scroll = tab_state.app.code_exec_scroll;
+            let output_scroll = tab_state.app.code_exec_output_scroll;
             let hover = tab_state.app.code_exec_hover;
             redraw_with_overlay(
                 terminal,
@@ -229,7 +257,16 @@ pub(crate) fn render_code_exec_overlay(
                 startup_text,
                 input_height,
                 |f| {
-                    draw_code_exec_popup(f, f.area(), &pending, scroll, hover, theme);
+                    draw_code_exec_popup(
+                        f,
+                        f.area(),
+                        &pending,
+                        scroll,
+                        output_scroll,
+                        hover,
+                        live_snapshot.as_ref(),
+                        theme,
+                    );
                 },
             )?;
         } else {

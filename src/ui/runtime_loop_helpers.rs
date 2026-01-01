@@ -1,9 +1,9 @@
 use crate::args::Args;
 use crate::session::SessionLocation;
-use crate::ui::code_exec::run_python_in_docker;
+use crate::ui::code_exec::run_python_in_docker_stream;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{TabState, start_followup_request};
-use crate::ui::state::{PendingCodeExec, PendingCommand};
+use crate::ui::state::{CodeExecLive, PendingCodeExec, PendingCommand};
 use crate::ui::tools::{CodeExecRequest, ToolResult, parse_code_exec_args, run_tool};
 use crate::types::Message;
 use std::sync::mpsc;
@@ -100,6 +100,8 @@ fn handle_code_exec_request(
         code,
     });
     tab_state.app.code_exec_scroll = 0;
+    tab_state.app.code_exec_output_scroll = 0;
+    tab_state.app.code_exec_result_pushed = false;
     tab_state.app.code_exec_hover = None;
     Ok(())
 }
@@ -161,14 +163,71 @@ pub(crate) fn handle_pending_command(
     }
 }
 
+pub(crate) fn build_code_exec_tool_output(
+    pending: &PendingCodeExec,
+    live: &CodeExecLive,
+) -> String {
+    let stdout_empty = live.stdout.trim().is_empty();
+    let stderr_empty = live.stderr.trim().is_empty();
+    let mut text = String::new();
+    text.push_str("[code_exec]\n");
+    text.push_str(&format!("language: {}\n", pending.language));
+    text.push_str("code:\n");
+    if pending.code.trim().is_empty() {
+        text.push_str("(空)\n");
+    } else {
+        text.push_str("```python\n");
+        text.push_str(&pending.code);
+        if !pending.code.ends_with('\n') {
+            text.push('\n');
+        }
+        text.push_str("```\n");
+    }
+    if let Some(code) = live.exit_code {
+        text.push_str(&format!("exit_code: {}\n", code));
+    } else {
+        text.push_str("exit_code: (执行中)\n");
+    }
+    text.push_str("stdout:\n");
+    if stdout_empty {
+        text.push_str("(空)\n");
+    } else {
+        text.push_str("```text\n");
+        text.push_str(&live.stdout);
+        if !live.stdout.ends_with('\n') {
+            text.push('\n');
+        }
+        text.push_str("```\n");
+    }
+    text.push_str("stderr:\n");
+    if stderr_empty {
+        text.push_str("(空)\n");
+    } else {
+        text.push_str("```text\n");
+        text.push_str(&live.stderr);
+        if !live.stderr.ends_with('\n') {
+            text.push('\n');
+        }
+        text.push_str("```\n");
+    }
+    if live.done
+        && live.exit_code == Some(0)
+        && stdout_empty
+        && stderr_empty
+    {
+        text.push_str("note: 程序正常执行但没有输出。\n");
+    }
+    text
+}
+
 fn handle_code_exec_approve(
     tab_state: &mut TabState,
-    tab_id: usize,
-    registry: &crate::model_registry::ModelRegistry,
-    args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    _tab_id: usize,
+    _registry: &crate::model_registry::ModelRegistry,
+    _args: &Args,
+    _tx: &mpsc::Sender<UiEvent>,
 ) {
-    let Some(pending) = tab_state.app.pending_code_exec.take() else {
+    let Some(pending) = tab_state.app.pending_code_exec.clone() else {
         let idx = tab_state.app.messages.len();
         tab_state.app.messages.push(Message {
             role: crate::types::ROLE_ASSISTANT.to_string(),
@@ -179,76 +238,36 @@ fn handle_code_exec_approve(
         tab_state.app.dirty_indices.push(idx);
         return;
     };
-    let output = match pending.language.as_str() {
-        "python" => run_python_in_docker(&pending.code)
-            .map(|out| {
-                let stdout_empty = out.stdout.trim().is_empty();
-                let stderr_empty = out.stderr.trim().is_empty();
-                let mut text = String::new();
-                text.push_str("[code_exec]\n");
-                text.push_str(&format!("language: {}\n", pending.language));
-                text.push_str("code:\n");
-                if pending.code.trim().is_empty() {
-                    text.push_str("(空)\n");
-                } else {
-                    text.push_str("```python\n");
-                    text.push_str(&pending.code);
-                    if !pending.code.ends_with('\n') {
-                        text.push('\n');
-                    }
-                    text.push_str("```\n");
+    if tab_state.app.code_exec_live.is_some() {
+        return;
+    }
+    let live = std::sync::Arc::new(std::sync::Mutex::new(CodeExecLive {
+        started_at: std::time::Instant::now(),
+        stdout: String::new(),
+        stderr: String::new(),
+        exit_code: None,
+        done: false,
+    }));
+    tab_state.app.code_exec_live = Some(live.clone());
+    tab_state.app.code_exec_result_pushed = false;
+    tab_state.app.code_exec_hover = None;
+    tab_state.app.code_exec_scroll = 0;
+    tab_state.app.code_exec_output_scroll = 0;
+    if pending.language == "python" {
+        std::thread::spawn(move || {
+            if let Err(err) = run_python_in_docker_stream(&pending.code, live.clone()) {
+                if let Ok(mut live) = live.lock() {
+                    live.stderr.push_str(&format!("{err}\n"));
+                    live.exit_code = Some(-1);
+                    live.done = true;
                 }
-                text.push_str(&format!("exit_code: {}\n", out.exit_code));
-                text.push_str("stdout:\n");
-                if stdout_empty {
-                    text.push_str("(空)\n");
-                } else {
-                    text.push_str("```text\n");
-                    text.push_str(&out.stdout);
-                    if !out.stdout.ends_with('\n') {
-                        text.push('\n');
-                    }
-                    text.push_str("```\n");
-                }
-                text.push_str("stderr:\n");
-                if stderr_empty {
-                    text.push_str("(空)\n");
-                } else {
-                    text.push_str("```text\n");
-                    text.push_str(&out.stderr);
-                    if !out.stderr.ends_with('\n') {
-                        text.push('\n');
-                    }
-                    text.push_str("```\n");
-                }
-                if out.exit_code == 0 && stdout_empty && stderr_empty {
-                    text.push_str("note: 程序正常执行但没有输出。\n");
-                }
-                text
-            })
-            .unwrap_or_else(|e| format!(r#"{{"error":"{e}"}}"#)),
-        _ => format!(r#"{{"error":"不支持的语言：{}"}}"#, pending.language),
-    };
-    let idx = tab_state.app.messages.len();
-    tab_state.app.messages.push(Message {
-        role: crate::types::ROLE_TOOL.to_string(),
-        content: output,
-        tool_call_id: Some(pending.call_id),
-        tool_calls: None,
-    });
-    tab_state.app.dirty_indices.push(idx);
-    let model = registry
-        .get(&tab_state.app.model_key)
-        .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
-    start_followup_request(
-        tab_state,
-        &model.base_url,
-        &model.api_key,
-        &model.model,
-        args.show_reasoning,
-        tx,
-        tab_id,
-    );
+            }
+        });
+    } else if let Ok(mut live) = live.lock() {
+        live.stderr = format!("不支持的语言：{}", pending.language);
+        live.exit_code = Some(-1);
+        live.done = true;
+    }
 }
 
 fn handle_code_exec_deny(
@@ -269,6 +288,11 @@ fn handle_code_exec_deny(
         tab_state.app.dirty_indices.push(idx);
         return;
     };
+    tab_state.app.code_exec_live = None;
+    tab_state.app.code_exec_result_pushed = false;
+    tab_state.app.code_exec_hover = None;
+    tab_state.app.code_exec_scroll = 0;
+    tab_state.app.code_exec_output_scroll = 0;
     let idx = tab_state.app.messages.len();
     tab_state.app.messages.push(Message {
         role: crate::types::ROLE_TOOL.to_string(),

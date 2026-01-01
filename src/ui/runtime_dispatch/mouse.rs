@@ -1,4 +1,4 @@
-use crate::ui::code_exec_popup::{code_exec_max_scroll, code_exec_popup_layout};
+use crate::ui::code_exec_popup::{code_exec_max_scroll, code_exec_popup_layout, output_max_scroll};
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
@@ -77,6 +77,8 @@ pub(crate) fn handle_mouse_event_loop(
                         Some(crate::ui::state::CodeExecHover::Approve)
                     } else if point_in_rect(m.column, m.row, popup.deny_btn) {
                         Some(crate::ui::state::CodeExecHover::Deny)
+                    } else if point_in_rect(m.column, m.row, popup.exit_btn) {
+                        Some(crate::ui::state::CodeExecHover::Exit)
                     } else {
                         None
                     };
@@ -84,23 +86,60 @@ pub(crate) fn handle_mouse_event_loop(
                 }
                 if in_popup && matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown)
                 {
-                    let max_scroll = code_exec_max_scroll(
-                        &pending.code,
-                        popup.code_text_area.width,
-                        popup.code_text_area.height,
-                        ctx.theme,
-                    );
                     let delta = match m.kind {
                         MouseEventKind::ScrollUp => -SCROLL_STEP_I32,
                         MouseEventKind::ScrollDown => SCROLL_STEP_I32,
                         _ => 0,
                     };
-                    let next = (tab_state.app.code_exec_scroll as i32 + delta)
-                        .max(0) as usize;
-                    tab_state.app.code_exec_scroll = next.min(max_scroll);
-                    return;
+                    if point_in_rect(m.column, m.row, popup.code_text_area) {
+                        let max_scroll = code_exec_max_scroll(
+                            &pending.code,
+                            popup.code_text_area.width,
+                            popup.code_text_area.height,
+                            ctx.theme,
+                        );
+                        let next = (tab_state.app.code_exec_scroll as i32 + delta)
+                            .max(0) as usize;
+                        tab_state.app.code_exec_scroll = next.min(max_scroll);
+                        return;
+                    }
+                    if point_in_rect(m.column, m.row, popup.output_text_area) {
+                        let (stdout, stderr) = tab_state
+                            .app
+                            .code_exec_live
+                            .as_ref()
+                            .and_then(|l| l.lock().ok().map(|l| (l.stdout.clone(), l.stderr.clone())))
+                            .unwrap_or_else(|| (String::new(), String::new()));
+                        let max_scroll = output_max_scroll(
+                            &stdout,
+                            &stderr,
+                            popup.output_text_area.width,
+                            popup.output_text_area.height,
+                            ctx.theme,
+                        );
+                        let next = (tab_state.app.code_exec_output_scroll as i32 + delta)
+                            .max(0) as usize;
+                        tab_state.app.code_exec_output_scroll = next.min(max_scroll);
+                        return;
+                    }
                 }
                 if in_popup && matches!(m.kind, MouseEventKind::Down(_)) {
+                    let finished = tab_state
+                        .app
+                        .code_exec_live
+                        .as_ref()
+                        .and_then(|l| l.lock().ok().map(|l| l.done))
+                        .unwrap_or(false);
+                    if finished && point_in_rect(m.column, m.row, popup.exit_btn) {
+                        tab_state.app.pending_code_exec = None;
+                        tab_state.app.code_exec_live = None;
+                        tab_state.app.code_exec_result_pushed = false;
+                        tab_state.app.code_exec_hover = None;
+                        tab_state.app.code_exec_scroll = 0;
+                        tab_state.app.code_exec_output_scroll = 0;
+                        view.overlay.close();
+                        return;
+                    }
                     if point_in_rect(m.column, m.row, popup.approve_btn) {
                         tab_state.app.pending_command =
                             Some(crate::ui::state::PendingCommand::ApproveCodeExec);

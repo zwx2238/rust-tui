@@ -1,5 +1,4 @@
-use crate::render::RenderTheme;
-use crate::render::render_markdown_lines;
+use crate::render::{RenderTheme, render_markdown_lines};
 use crate::ui::draw::style::{base_fg, base_style, selection_bg};
 use crate::ui::state::{CodeExecHover, PendingCodeExec};
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -17,8 +16,11 @@ pub(crate) struct CodeExecPopupLayout {
     pub(crate) popup: Rect,
     pub(crate) code_text_area: Rect,
     pub(crate) code_scrollbar_area: Rect,
+    pub(crate) output_text_area: Rect,
+    pub(crate) output_scrollbar_area: Rect,
     pub(crate) approve_btn: Rect,
     pub(crate) deny_btn: Rect,
+    pub(crate) exit_btn: Rect,
 }
 
 pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
@@ -48,8 +50,12 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         width: popup.width.saturating_sub(2),
         height: popup.height.saturating_sub(2),
     };
-    let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(3)])
-        .split(inner);
+    let chunks = Layout::vertical([
+        Constraint::Percentage(45),
+        Constraint::Percentage(35),
+        Constraint::Length(3),
+    ])
+    .split(inner);
     let code_text_area = Rect {
         x: chunks[0].x,
         y: chunks[0].y,
@@ -62,7 +68,19 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         width: 1,
         height: chunks[0].height,
     };
-    let actions_area = chunks[1];
+    let output_text_area = Rect {
+        x: chunks[1].x,
+        y: chunks[1].y,
+        width: chunks[1].width.saturating_sub(1),
+        height: chunks[1].height,
+    };
+    let output_scrollbar_area = Rect {
+        x: chunks[1].x.saturating_add(chunks[1].width.saturating_sub(1)),
+        y: chunks[1].y,
+        width: 1,
+        height: chunks[1].height,
+    };
+    let actions_area = chunks[2];
     let gap = 2u16;
     let btn_width = actions_area
         .width
@@ -84,12 +102,21 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
             .max(btn_width),
         height: actions_area.height,
     };
+    let exit_btn = Rect {
+        x: actions_area.x,
+        y: actions_area.y,
+        width: actions_area.width,
+        height: actions_area.height,
+    };
     CodeExecPopupLayout {
         popup,
         code_text_area,
         code_scrollbar_area,
+        output_text_area,
+        output_scrollbar_area,
         approve_btn,
         deny_btn,
+        exit_btn,
     }
 }
 
@@ -105,12 +132,27 @@ pub(crate) fn code_exec_max_scroll(
     lines.len().saturating_sub(view_height)
 }
 
+pub(crate) fn output_max_scroll(
+    stdout: &str,
+    stderr: &str,
+    width: u16,
+    height: u16,
+    theme: &crate::render::RenderTheme,
+) -> usize {
+    let md = output_to_markdown(stdout, stderr);
+    let lines = render_markdown_lines(&md, width as usize, theme, false);
+    let view_height = height.saturating_sub(1) as usize;
+    lines.len().saturating_sub(view_height)
+}
+
 pub(crate) fn draw_code_exec_popup(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
     pending: &PendingCodeExec,
     scroll: usize,
+    output_scroll: usize,
     hover: Option<CodeExecHover>,
+    live: Option<&crate::ui::state::CodeExecLive>,
     theme: &RenderTheme,
 ) {
     let layout = code_exec_popup_layout(area);
@@ -140,10 +182,11 @@ pub(crate) fn draw_code_exec_popup(
     f.render_widget(Clear, layout.popup);
     let mask = Block::default().style(base_style(theme));
     f.render_widget(mask, layout.popup);
+    let title = build_title(live);
     let block = Block::default()
         .borders(Borders::ALL)
         .title_top(Line::from(vec![
-            Span::styled("代码执行确认", Style::default().fg(base_fg(theme)).add_modifier(Modifier::BOLD)),
+            Span::styled(title, Style::default().fg(base_fg(theme)).add_modifier(Modifier::BOLD)),
         ]))
         .style(base_style(theme))
         .border_style(Style::default().fg(base_fg(theme)));
@@ -173,6 +216,30 @@ pub(crate) fn draw_code_exec_popup(
         f.render_stateful_widget(scrollbar, layout.code_scrollbar_area, &mut state);
     }
 
+    let (output_text, output_lines) = build_output_text(
+        live.map(|l| (l.stdout.as_str(), l.stderr.as_str())),
+        layout.output_text_area.width,
+        layout.output_text_area.height,
+        output_scroll,
+        theme,
+    );
+    let output_para = Paragraph::new(output_text)
+        .style(base_style(theme))
+        .block(Block::default().borders(Borders::NONE));
+    f.render_widget(output_para, layout.output_text_area);
+
+    if output_lines > layout.output_text_area.height as usize {
+        let viewport_len = layout.output_text_area.height as usize;
+        let max_scroll = output_lines.saturating_sub(viewport_len);
+        let mut state = ScrollbarState::new(max_scroll.saturating_add(1))
+            .position(output_scroll.min(max_scroll))
+            .viewport_content_length(viewport_len);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .thumb_style(Style::default().fg(base_fg(theme)))
+            .track_style(Style::default().fg(base_fg(theme)));
+        f.render_stateful_widget(scrollbar, layout.output_scrollbar_area, &mut state);
+    }
+
     let approve_style = match hover {
         Some(CodeExecHover::Approve) => {
             Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
@@ -185,6 +252,37 @@ pub(crate) fn draw_code_exec_popup(
         }
         _ => base_style(theme),
     };
+    let exit_style = match hover {
+        Some(CodeExecHover::Exit) => {
+            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
+        }
+        _ => base_style(theme),
+    };
+
+    let finished = live.map(|l| l.done).unwrap_or(false);
+    let running = live.is_some() && !finished;
+    if finished {
+        let exit_block = Block::default().borders(Borders::ALL).style(exit_style);
+        f.render_widget(exit_block, layout.exit_btn);
+        f.render_widget(
+            Paragraph::new(Line::from("退出"))
+                .style(exit_style)
+                .alignment(ratatui::layout::Alignment::Center),
+            layout.exit_btn,
+        );
+        return;
+    }
+    if running {
+        let wait_block = Block::default().borders(Borders::ALL).style(base_style(theme));
+        f.render_widget(wait_block, layout.exit_btn);
+        f.render_widget(
+            Paragraph::new(Line::from("执行中…"))
+                .style(base_style(theme))
+                .alignment(ratatui::layout::Alignment::Center),
+            layout.exit_btn,
+        );
+        return;
+    }
     let approve_block = Block::default().borders(Borders::ALL).style(approve_style);
     let deny_block = Block::default().borders(Borders::ALL).style(deny_style);
     f.render_widget(approve_block, layout.approve_btn);
@@ -219,6 +317,23 @@ fn build_code_text(
     (Text::from(slice), lines.len())
 }
 
+fn build_output_text(
+    output: Option<(&str, &str)>,
+    width: u16,
+    height: u16,
+    scroll: usize,
+    theme: &RenderTheme,
+) -> (Text<'static>, usize) {
+    let (stdout, stderr) = output.unwrap_or(("", ""));
+    let md = output_to_markdown(stdout, stderr);
+    let lines = render_markdown_lines(&md, width as usize, theme, false);
+    let view_height = height.saturating_sub(1) as usize;
+    let start = scroll.min(lines.len());
+    let end = (start + view_height).min(lines.len());
+    let slice = lines[start..end].to_vec();
+    (Text::from(slice), lines.len())
+}
+
 fn code_to_markdown(code: &str) -> String {
     if code.trim().is_empty() {
         "```python\n(空)\n```".to_string()
@@ -230,5 +345,40 @@ fn code_to_markdown(code: &str) -> String {
         }
         out.push_str("```");
         out
+    }
+}
+
+fn output_to_markdown(stdout: &str, stderr: &str) -> String {
+    let mut out = String::new();
+    out.push_str("stdout:\n```text\n");
+    if stdout.trim().is_empty() {
+        out.push_str("(空)\n");
+    } else {
+        out.push_str(stdout);
+        if !stdout.ends_with('\n') {
+            out.push('\n');
+        }
+    }
+    out.push_str("```\nstderr:\n```text\n");
+    if stderr.trim().is_empty() {
+        out.push_str("(空)\n");
+    } else {
+        out.push_str(stderr);
+        if !stderr.ends_with('\n') {
+            out.push('\n');
+        }
+    }
+    out.push_str("```\n");
+    out
+}
+
+fn build_title(live: Option<&crate::ui::state::CodeExecLive>) -> String {
+    match live {
+        Some(live) => {
+            let elapsed = live.started_at.elapsed().as_secs_f32();
+            let status = if live.done { "已完成" } else { "执行中" };
+            format!("代码执行确认 · {} {:.1}s", status, elapsed)
+        }
+        None => "代码执行确认 · 等待确认".to_string(),
     }
 }

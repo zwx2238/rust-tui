@@ -2,6 +2,7 @@ use crate::types::{Message, ROLE_SYSTEM};
 use std::collections::BTreeMap;
 use std::sync::{
     Arc,
+    Mutex,
     atomic::{AtomicBool, Ordering},
 };
 use std::time::Instant;
@@ -66,6 +67,9 @@ pub struct App {
     pub tavily_api_key: String,
     pub pending_code_exec: Option<PendingCodeExec>,
     pub code_exec_scroll: usize,
+    pub code_exec_output_scroll: usize,
+    pub code_exec_live: Option<Arc<Mutex<CodeExecLive>>>,
+    pub code_exec_result_pushed: bool,
     pub code_exec_hover: Option<CodeExecHover>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
@@ -82,10 +86,20 @@ pub struct PendingCodeExec {
     pub code: String,
 }
 
+#[derive(Clone, Debug)]
+pub struct CodeExecLive {
+    pub started_at: Instant,
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: Option<i32>,
+    pub done: bool,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CodeExecHover {
     Approve,
     Deny,
+    Exit,
 }
 
 impl App {
@@ -127,6 +141,9 @@ impl App {
             tavily_api_key: String::new(),
             pending_code_exec: None,
             code_exec_scroll: 0,
+            code_exec_output_scroll: 0,
+            code_exec_live: None,
+            code_exec_result_pushed: false,
             code_exec_hover: None,
             total_prompt_tokens: 0,
             total_completion_tokens: 0,
