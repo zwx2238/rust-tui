@@ -100,6 +100,7 @@ fn handle_code_exec_request(
         code,
     });
     tab_state.app.code_exec_scroll = 0;
+    tab_state.app.code_exec_hover = None;
     Ok(())
 }
 

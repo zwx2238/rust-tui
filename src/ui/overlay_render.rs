@@ -209,13 +209,15 @@ pub(crate) fn render_code_exec_overlay(
             let layout = crate::ui::code_exec_popup::code_exec_popup_layout(full);
             let max_scroll = code_exec_max_scroll(
                 &pending.code,
-                layout.code_area.width,
-                layout.code_area.height,
+                layout.code_text_area.width,
+                layout.code_text_area.height,
+                theme,
             );
             if tab_state.app.code_exec_scroll > max_scroll {
                 tab_state.app.code_exec_scroll = max_scroll;
             }
             let scroll = tab_state.app.code_exec_scroll;
+            let hover = tab_state.app.code_exec_hover;
             redraw_with_overlay(
                 terminal,
                 &mut tab_state.app,
@@ -227,7 +229,7 @@ pub(crate) fn render_code_exec_overlay(
                 startup_text,
                 input_height,
                 |f| {
-                    draw_code_exec_popup(f, f.area(), &pending, scroll, theme);
+                    draw_code_exec_popup(f, f.area(), &pending, scroll, hover, theme);
                 },
             )?;
         } else {

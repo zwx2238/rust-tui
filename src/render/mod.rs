@@ -9,6 +9,7 @@ pub use cache::{
     messages_to_plain_lines, messages_to_viewport_text_cached,
     messages_to_viewport_text_cached_with_layout, set_cache_entry,
 };
+pub use markdown::render_markdown_lines;
 pub use layout::{MessageLayout, label_line_layout, label_line_with_button};
 
 pub fn count_message_lines(msg: &crate::types::Message, width: usize, streaming: bool) -> usize {

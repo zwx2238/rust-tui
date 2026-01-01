@@ -9,7 +9,7 @@ use crate::render::theme::RenderTheme;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Tag, TagEnd};
 use ratatui::text::Line;
 
-pub(crate) fn render_markdown_lines(
+pub fn render_markdown_lines(
     text: &str,
     width: usize,
     theme: &RenderTheme,

@@ -72,12 +72,22 @@ pub(crate) fn handle_mouse_event_loop(
             if let Some(pending) = tab_state.app.pending_code_exec.clone() {
                 let popup = code_exec_popup_layout(layout.size);
                 let in_popup = point_in_rect(m.column, m.row, popup.popup);
+                if matches!(m.kind, MouseEventKind::Moved) {
+                    tab_state.app.code_exec_hover = if point_in_rect(m.column, m.row, popup.approve_btn) {
+                        Some(crate::ui::state::CodeExecHover::Approve)
+                    } else if point_in_rect(m.column, m.row, popup.deny_btn) {
+                        Some(crate::ui::state::CodeExecHover::Deny)
+                    } else {
+                        None
+                    };
+                }
                 if in_popup && matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown)
                 {
                     let max_scroll = code_exec_max_scroll(
                         &pending.code,
-                        popup.code_area.width,
-                        popup.code_area.height,
+                        popup.code_text_area.width,
+                        popup.code_text_area.height,
+                        ctx.theme,
                     );
                     let delta = match m.kind {
                         MouseEventKind::ScrollUp => -SCROLL_STEP_I32,
@@ -93,12 +103,14 @@ pub(crate) fn handle_mouse_event_loop(
                     if point_in_rect(m.column, m.row, popup.approve_btn) {
                         tab_state.app.pending_command =
                             Some(crate::ui::state::PendingCommand::ApproveCodeExec);
+                        tab_state.app.code_exec_hover = None;
                         view.overlay.close();
                         return;
                     }
                     if point_in_rect(m.column, m.row, popup.deny_btn) {
                         tab_state.app.pending_command =
                             Some(crate::ui::state::PendingCommand::DenyCodeExec);
+                        tab_state.app.code_exec_hover = None;
                         view.overlay.close();
                         return;
                     }
@@ -107,6 +119,11 @@ pub(crate) fn handle_mouse_event_loop(
         }
         if matches!(m.kind, MouseEventKind::Down(_)) {
             view.overlay.close();
+        }
+        if matches!(m.kind, MouseEventKind::Moved) {
+            if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+                tab_state.app.code_exec_hover = None;
+            }
         }
     }
     if view.is_chat() {

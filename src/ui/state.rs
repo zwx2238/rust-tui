@@ -66,6 +66,7 @@ pub struct App {
     pub tavily_api_key: String,
     pub pending_code_exec: Option<PendingCodeExec>,
     pub code_exec_scroll: usize,
+    pub code_exec_hover: Option<CodeExecHover>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
     pub total_tokens: u64,
@@ -79,6 +80,12 @@ pub struct PendingCodeExec {
     pub call_id: String,
     pub language: String,
     pub code: String,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CodeExecHover {
+    Approve,
+    Deny,
 }
 
 impl App {
@@ -120,6 +127,7 @@ impl App {
             tavily_api_key: String::new(),
             pending_code_exec: None,
             code_exec_scroll: 0,
+            code_exec_hover: None,
             total_prompt_tokens: 0,
             total_completion_tokens: 0,
             total_tokens: 0,
