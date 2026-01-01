@@ -7,6 +7,7 @@ mod session;
 mod system_prompts;
 mod types;
 mod ui;
+mod llm;
 
 use args::Args;
 use clap::Parser;

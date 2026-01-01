@@ -1,4 +1,4 @@
-use crate::prompt_pack::ensure_prompt_pack;
+use crate::prompt_pack::{ensure_prompt_pack, ensure_rig_templates};
 use std::fs;
 use std::path::PathBuf;
 
@@ -28,6 +28,7 @@ pub fn load_prompts(
     let mut prompts = Vec::new();
     let dir_path = PathBuf::from(dir);
     ensure_prompt_pack(&dir_path)?;
+    ensure_rig_templates(&dir_path)?;
     let entries = fs::read_dir(&dir_path)?;
     for entry in entries.flatten() {
         let path = entry.path();

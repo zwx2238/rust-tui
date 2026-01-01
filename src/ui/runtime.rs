@@ -41,6 +41,7 @@ pub fn run(
             restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args);
         for tab in &mut tabs {
             tab.app.tavily_api_key = tavily_api_key.clone();
+            tab.app.prompts_dir = cfg.prompts_dir.clone();
         }
         (tabs, active)
     } else {
@@ -63,6 +64,7 @@ pub fn run(
                     &prompt_registry.default_key,
                 );
                 tab.app.tavily_api_key = tavily_api_key.clone();
+                tab.app.prompts_dir = cfg.prompts_dir.clone();
                 tab
             })
             .collect::<Vec<_>>();

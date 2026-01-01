@@ -104,7 +104,7 @@ pub(crate) fn start_tab_request(
     base_url: &str,
     api_key: &str,
     model: &str,
-    show_reasoning: bool,
+    _show_reasoning: bool,
     tx: &mpsc::Sender<UiEvent>,
     tab_id: usize,
 ) {
@@ -163,17 +163,17 @@ pub(crate) fn start_tab_request(
     app.dirty_indices.push(idx);
     let messages = outbound_messages;
     let base_url = base_url.trim_end_matches('/').to_string();
-    let url = format!("{base_url}/chat/completions");
     let api_key = api_key.to_string();
     let model = model.to_string();
+    let prompts_dir = app.prompts_dir.clone();
     let tx = tx.clone();
     thread::spawn(move || {
         request_llm_stream(
-            &url,
+            &base_url,
             &api_key,
             &model,
-            show_reasoning,
             &messages,
+            &prompts_dir,
             cancel,
             tx,
             tab_id,
@@ -187,7 +187,7 @@ pub(crate) fn start_followup_request(
     base_url: &str,
     api_key: &str,
     model: &str,
-    show_reasoning: bool,
+    _show_reasoning: bool,
     tx: &mpsc::Sender<UiEvent>,
     tab_id: usize,
 ) {
@@ -229,17 +229,17 @@ pub(crate) fn start_followup_request(
     app.dirty_indices.push(idx);
     let messages = outbound_messages;
     let base_url = base_url.trim_end_matches('/').to_string();
-    let url = format!("{base_url}/chat/completions");
     let api_key = api_key.to_string();
     let model = model.to_string();
+    let prompts_dir = app.prompts_dir.clone();
     let tx = tx.clone();
     thread::spawn(move || {
         request_llm_stream(
-            &url,
+            &base_url,
             &api_key,
             &model,
-            show_reasoning,
             &messages,
+            &prompts_dir,
             cancel,
             tx,
             tab_id,

@@ -72,3 +72,71 @@ pub fn ensure_prompt_pack(dir: &Path) -> std::io::Result<()> {
     }
     Ok(())
 }
+
+pub fn ensure_rig_templates(dir: &Path) -> std::io::Result<()> {
+    let rig_dir = dir.join("rig");
+    if !rig_dir.exists() {
+        fs::create_dir_all(&rig_dir)?;
+    }
+
+    let tool_preamble = r#"{# rig tool preamble #}
+{{ base_system }}
+
+你可以使用以下工具：
+{% for tool in tools %}
+- {{ tool.name }}：{{ tool.description }}
+{% endfor %}
+
+当需要工具时，请调用工具；工具结果会以 <tool_result> 的格式返回。
+收到工具结果后，继续完成原问题。
+"#;
+
+    let tool_result = r#"<tool_result name="{{ name }}">
+args={{ args | tojson }}
+{{ output }}
+</tool_result>
+"#;
+
+    let tool_followup = r#"根据上面的工具结果，继续完成原问题。"#;
+
+    let tools_json = r#"[
+  {
+    "name": "web_search",
+    "description": "Search the web and return a short list of results.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string" },
+        "top_k": { "type": "integer", "minimum": 1, "maximum": 10 }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "code_exec",
+    "description": "Execute Python code in a sandboxed container. Requires explicit user approval. No network or file access.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "language": { "type": "string", "enum": ["python"] },
+        "code": { "type": "string" }
+      },
+      "required": ["language", "code"]
+    }
+  }
+]"#;
+
+    let files = [
+        ("tool_preamble.jinja", tool_preamble),
+        ("tool_result.jinja", tool_result),
+        ("tool_followup.jinja", tool_followup),
+        ("tools.json", tools_json),
+    ];
+    for (name, content) in files {
+        let path = rig_dir.join(name);
+        if !path.exists() {
+            fs::write(path, content)?;
+        }
+    }
+    Ok(())
+}

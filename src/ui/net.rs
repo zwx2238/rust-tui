@@ -1,17 +1,15 @@
-use crate::types::{
-    ChatRequest, Message, StreamOptions, ToolCall, ToolDefinition, ToolFunctionCall,
-    ToolFunctionDef, Usage,
-};
-use std::io::{BufRead, BufReader};
+use crate::llm::rig::{RigOutcome, prepare_rig_context, rig_complete};
+use crate::types::{Message, ToolCall, ToolFunctionCall, Usage};
 use std::sync::mpsc::Sender;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
+use std::time::Duration;
+use tokio::runtime::Runtime;
 
 pub enum LlmEvent {
     Chunk(String),
-    Reasoning(String),
     Error(String),
     Done { usage: Option<Usage> },
     ToolCalls { calls: Vec<ToolCall>, usage: Option<Usage> },
@@ -23,264 +21,110 @@ pub struct UiEvent {
     pub event: LlmEvent,
 }
 
-#[derive(serde::Deserialize)]
-struct StreamResponse {
-    choices: Vec<StreamChoice>,
-    #[serde(default)]
-    usage: Option<Usage>,
-}
-
-#[derive(serde::Deserialize)]
-struct StreamChoice {
-    delta: StreamDelta,
-    #[serde(default)]
-    usage: Option<Usage>,
-}
-
-#[derive(serde::Deserialize)]
-struct StreamDelta {
-    content: Option<String>,
-    #[serde(rename = "reasoning_content")]
-    reasoning_content: Option<String>,
-    #[serde(default)]
-    tool_calls: Option<Vec<ToolCallDelta>>,
-}
-
-#[derive(serde::Deserialize)]
-struct ToolCallDelta {
-    index: usize,
-    id: Option<String>,
-    #[serde(rename = "type")]
-    kind: Option<String>,
-    function: Option<ToolFunctionDelta>,
-}
-
-#[derive(serde::Deserialize)]
-struct ToolFunctionDelta {
-    name: Option<String>,
-    arguments: Option<String>,
-}
-
 pub fn request_llm_stream(
-    url: &str,
+    base_url: &str,
     api_key: &str,
     model: &str,
-    show_reasoning: bool,
     messages: &[Message],
+    prompts_dir: &str,
     cancel: Arc<AtomicBool>,
     tx: Sender<UiEvent>,
     tab: usize,
     request_id: u64,
 ) {
-    let client = reqwest::blocking::Client::new();
-    let req = ChatRequest {
-        model,
-        messages,
-        stream: true,
-        stream_options: Some(StreamOptions {
-            include_usage: true,
-        }),
-        tools: Some(vec![web_search_tool_def(), code_exec_tool_def()]),
-        tool_choice: None,
-    };
-    let resp = client.post(url).bearer_auth(api_key).json(&req).send();
-    match resp {
-        Ok(resp) => {
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().unwrap_or_default();
-                let _ = tx.send(UiEvent {
-                    tab,
-                    request_id,
-                    event: LlmEvent::Error(format!("请求失败：{status} {body}")),
-                });
+    let messages = messages.to_vec();
+    let prompts_dir = prompts_dir.to_string();
+    let base_url = base_url.to_string();
+    let api_key = api_key.to_string();
+    let model = model.to_string();
+    let rt = Runtime::new();
+    if rt.is_err() {
+        let _ = tx.send(UiEvent {
+            tab,
+            request_id,
+            event: LlmEvent::Error("初始化 Tokio 失败".to_string()),
+        });
+        return;
+    }
+    let rt = rt.unwrap();
+    let result = rt.block_on(async {
+        let (ctx, _templates) = prepare_rig_context(&messages, &prompts_dir)?;
+        rig_complete(&base_url, &api_key, &model, ctx).await
+    });
+    match result {
+        Ok(RigOutcome::Message(content)) => {
+            if cancel.load(Ordering::Relaxed) {
                 return;
             }
-            let mut reader = BufReader::new(resp);
-            let mut line = String::new();
-            let mut usage: Option<Usage> = None;
-            let mut tool_calls: Vec<ToolCall> = Vec::new();
-            loop {
-                if cancel.load(Ordering::Relaxed) {
-                    return;
-                }
-                line.clear();
-                let read = match reader.read_line(&mut line) {
-                    Ok(n) => n,
-                    Err(e) => {
-                        let _ = tx.send(UiEvent {
-                            tab,
-                            request_id,
-                            event: LlmEvent::Error(format!("读取失败：{e}")),
-                        });
-                        return;
-                    }
-                };
-                if read == 0 {
-                    break;
-                }
-                let trimmed = line.trim_end();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                let Some(data) = trimmed.strip_prefix("data: ") else {
-                    continue;
-                };
-                if data == "[DONE]" {
-                    if tool_calls.is_empty() {
-                        let _ = tx.send(UiEvent {
-                            tab,
-                            request_id,
-                            event: LlmEvent::Done { usage },
-                        });
-                    } else {
-                        let _ = tx.send(UiEvent {
-                            tab,
-                            request_id,
-                            event: LlmEvent::ToolCalls { calls: tool_calls, usage },
-                        });
-                    }
-                    return;
-                }
-                let parsed: Result<StreamResponse, _> = serde_json::from_str(data);
-                match parsed {
-                    Ok(chunk) => {
-                        if cancel.load(Ordering::Relaxed) {
-                            return;
-                        }
-                        if let Some(u) = chunk.usage {
-                            usage = Some(u);
-                        } else {
-                            for choice in &chunk.choices {
-                                if let Some(u) = &choice.usage {
-                                    usage = Some(u.clone());
-                                }
-                            }
-                        }
-                        for choice in chunk.choices {
-                            if let Some(content) = choice.delta.content {
-                                let _ = tx.send(UiEvent {
-                                    tab,
-                                    request_id,
-                                    event: LlmEvent::Chunk(content),
-                                });
-                            }
-                            if show_reasoning {
-                                if let Some(r) = choice.delta.reasoning_content {
-                                    let _ = tx.send(UiEvent {
-                                        tab,
-                                        request_id,
-                                        event: LlmEvent::Reasoning(r),
-                                    });
-                                }
-                            }
-                            if let Some(delta_calls) = choice.delta.tool_calls {
-                                merge_tool_calls(&mut tool_calls, delta_calls);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        let _ = tx.send(UiEvent {
-                            tab,
-                            request_id,
-                            event: LlmEvent::Error(format!("解析失败：{e}")),
-                        });
-                        return;
-                    }
-                }
+            stream_chunks(&content, &cancel, &tx, tab, request_id);
+            let _ = tx.send(UiEvent {
+                tab,
+                request_id,
+                event: LlmEvent::Done { usage: None },
+            });
+        }
+        Ok(RigOutcome::ToolCall { name, args }) => {
+            if cancel.load(Ordering::Relaxed) {
+                return;
             }
-            if tool_calls.is_empty() {
-                let _ = tx.send(UiEvent {
-                    tab,
-                    request_id,
-                    event: LlmEvent::Done { usage },
-                });
-            } else {
-                let _ = tx.send(UiEvent {
-                    tab,
-                    request_id,
-                    event: LlmEvent::ToolCalls { calls: tool_calls, usage },
-                });
-            }
+            let _ = tx.send(UiEvent {
+                tab,
+                request_id,
+                event: LlmEvent::Chunk(format!("调用工具：{name}\n")),
+            });
+            let call = ToolCall {
+                id: format!("rig-{}-{}", tab, request_id),
+                kind: "function".to_string(),
+                function: ToolFunctionCall {
+                    name,
+                    arguments: serde_json::to_string(&args).unwrap_or_default(),
+                },
+            };
+            let _ = tx.send(UiEvent {
+                tab,
+                request_id,
+                event: LlmEvent::ToolCalls { calls: vec![call], usage: None },
+            });
         }
         Err(e) => {
             let _ = tx.send(UiEvent {
                 tab,
                 request_id,
-                event: LlmEvent::Error(format!("请求失败：{e}")),
+                event: LlmEvent::Error(e),
             });
         }
     }
 }
 
-fn merge_tool_calls(target: &mut Vec<ToolCall>, deltas: Vec<ToolCallDelta>) {
-    for delta in deltas {
-        if target.len() <= delta.index {
-            target.resize_with(delta.index + 1, || ToolCall {
-                id: String::new(),
-                kind: "function".to_string(),
-                function: ToolFunctionCall {
-                    name: String::new(),
-                    arguments: String::new(),
-                },
+fn stream_chunks(
+    text: &str,
+    cancel: &Arc<AtomicBool>,
+    tx: &Sender<UiEvent>,
+    tab: usize,
+    request_id: u64,
+) {
+    let mut buf: Vec<char> = Vec::new();
+    for ch in text.chars() {
+        if cancel.load(Ordering::Relaxed) {
+            return;
+        }
+        buf.push(ch);
+        if buf.len() >= 32 {
+            let chunk: String = buf.drain(..).collect();
+            let _ = tx.send(UiEvent {
+                tab,
+                request_id,
+                event: LlmEvent::Chunk(chunk),
             });
-        }
-        let entry = &mut target[delta.index];
-        if let Some(id) = delta.id {
-            if entry.id.is_empty() {
-                entry.id = id;
-            }
-        }
-        if let Some(kind) = delta.kind {
-            entry.kind = kind;
-        }
-        if let Some(func) = delta.function {
-            if let Some(name) = func.name {
-                if entry.function.name.is_empty() {
-                    entry.function.name = name;
-                }
-            }
-            if let Some(args) = func.arguments {
-                entry.function.arguments.push_str(&args);
-            }
+            std::thread::sleep(Duration::from_millis(8));
         }
     }
-}
-
-fn web_search_tool_def() -> ToolDefinition {
-    let params = serde_json::json!({
-        "type": "object",
-        "properties": {
-            "query": { "type": "string" },
-            "top_k": { "type": "integer", "minimum": 1, "maximum": 10 }
-        },
-        "required": ["query"]
-    });
-    ToolDefinition {
-        kind: "function".to_string(),
-        function: ToolFunctionDef {
-            name: "web_search".to_string(),
-            description: "Search the web and return a short list of results.".to_string(),
-            parameters: params,
-        },
-    }
-}
-
-fn code_exec_tool_def() -> ToolDefinition {
-    let params = serde_json::json!({
-        "type": "object",
-        "properties": {
-            "language": { "type": "string", "enum": ["python"] },
-            "code": { "type": "string" }
-        },
-        "required": ["language", "code"]
-    });
-    ToolDefinition {
-        kind: "function".to_string(),
-        function: ToolFunctionDef {
-            name: "code_exec".to_string(),
-            description: "Execute Python code in a sandboxed container. Requires explicit user approval. No network or file access.".to_string(),
-            parameters: params,
-        },
+    if !buf.is_empty() {
+        let chunk: String = buf.drain(..).collect();
+        let _ = tx.send(UiEvent {
+            tab,
+            request_id,
+            event: LlmEvent::Chunk(chunk),
+        });
     }
 }

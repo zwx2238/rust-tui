@@ -17,10 +17,6 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> S
             flush_completed_lines(app);
             StreamAction::None
         }
-        LlmEvent::Reasoning(s) => {
-            append_reasoning(app, &s);
-            StreamAction::None
-        }
         LlmEvent::Error(err) => {
             set_pending_assistant_content(app, &err);
             app.pending_assistant = None;
@@ -229,47 +225,6 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
             app.dirty_indices.push(idx);
         }
     }
-}
-
-fn append_reasoning(app: &mut App, text: &str) {
-    if text.trim().is_empty() {
-        return;
-    }
-    if let Some(idx) = app.pending_reasoning {
-        if let Some(msg) = app.messages.get_mut(idx) {
-            msg.content.push_str(text);
-            return;
-        }
-    }
-    let insert_at = app.pending_assistant.unwrap_or(app.messages.len());
-    app.messages.insert(
-        insert_at,
-        Message {
-            role: ROLE_ASSISTANT.to_string(),
-            content: format!("推理> {text}"),
-            tool_call_id: None,
-            tool_calls: None,
-        },
-    );
-    app.pending_reasoning = Some(insert_at);
-    app.dirty_indices.push(insert_at);
-    app.cache_shift = Some(insert_at);
-    shift_stats_after_insert(app, insert_at);
-    if let Some(idx) = app.pending_assistant {
-        app.pending_assistant = Some(idx.saturating_add(1));
-    }
-}
-
-fn shift_stats_after_insert(app: &mut App, insert_at: usize) {
-    if app.assistant_stats.is_empty() {
-        return;
-    }
-    let mut shifted = std::collections::BTreeMap::new();
-    for (idx, val) in app.assistant_stats.iter() {
-        let new_idx = if *idx >= insert_at { idx + 1 } else { *idx };
-        shifted.insert(new_idx, val.clone());
-    }
-    app.assistant_stats = shifted;
 }
 
 fn set_pending_assistant_content(app: &mut App, content: &str) {
