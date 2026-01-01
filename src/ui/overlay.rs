@@ -20,6 +20,10 @@ impl OverlayState {
         self.active == Some(kind)
     }
 
+    pub(crate) fn uses_simple_layout(&self) -> bool {
+        matches!(self.active, Some(OverlayKind::Summary | OverlayKind::Jump))
+    }
+
     pub(crate) fn toggle(&mut self, kind: OverlayKind) {
         self.active = if self.active == Some(kind) {
             None

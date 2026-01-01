@@ -1,6 +1,5 @@
 use crate::ui::draw::{inner_height, inner_width, layout_chunks};
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::overlay::OverlayKind;
 use crate::ui::runtime_view::ViewState;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
@@ -19,10 +18,7 @@ pub(crate) fn compute_layout(
     tabs: &[TabState],
     active_tab: usize,
 ) -> LayoutInfo {
-    if matches!(
-        view.overlay.active,
-        Some(OverlayKind::Summary | OverlayKind::Jump)
-    ) {
+    if view.overlay.uses_simple_layout() {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(1), Constraint::Min(3)].as_ref())
