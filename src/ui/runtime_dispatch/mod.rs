@@ -8,6 +8,8 @@ use std::sync::mpsc;
 mod key;
 mod mouse;
 
+const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新开 tab。";
+
 pub(crate) use key::handle_key_event_loop;
 pub(crate) use mouse::handle_mouse_event_loop;
 
@@ -126,7 +128,7 @@ pub(crate) fn apply_prompt_selection(
 pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
     tab_state.app.messages.push(crate::types::Message {
         role: "assistant".to_string(),
-        content: "已开始对话，无法切换系统提示词，请新开 tab。".to_string(),
+        content: PROMPT_LOCKED_MSG.to_string(),
     });
 }
 

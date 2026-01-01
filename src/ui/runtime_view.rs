@@ -3,6 +3,8 @@ use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 use crate::ui::overlay::{OverlayKind, OverlayState};
 use crate::ui::selection_state::SelectionState;
 
+const JUMP_PAGE_STEP: usize = 5;
+
 pub(crate) struct ViewState {
     pub(crate) overlay: OverlayState,
     pub(crate) summary: SelectionState,
@@ -161,11 +163,11 @@ pub(crate) fn handle_view_key(
                 ViewAction::None
             }
             KeyCode::PageUp => {
-                view.jump.page_up(5);
+                view.jump.page_up(JUMP_PAGE_STEP);
                 ViewAction::None
             }
             KeyCode::PageDown => {
-                view.jump.page_down(5);
+                view.jump.page_down(JUMP_PAGE_STEP);
                 ViewAction::None
             }
             KeyCode::Enter => {
