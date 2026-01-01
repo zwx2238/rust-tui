@@ -83,4 +83,18 @@ impl SelectionState {
                 .saturating_sub(viewport_rows.saturating_sub(1));
         }
     }
+
+    pub(crate) fn scroll_by(&mut self, delta: i32, max_scroll: usize, viewport_rows: usize) {
+        if delta.is_negative() {
+            let step = delta.unsigned_abs() as usize;
+            self.scroll = self.scroll.saturating_sub(step);
+        } else {
+            let step = delta as usize;
+            self.scroll = self.scroll.saturating_add(step);
+        }
+        if self.scroll > max_scroll {
+            self.scroll = max_scroll;
+        }
+        self.ensure_visible(viewport_rows);
+    }
 }

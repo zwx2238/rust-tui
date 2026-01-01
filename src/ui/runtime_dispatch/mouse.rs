@@ -31,13 +31,15 @@ pub(crate) fn handle_mouse_event_loop(
         );
     } else {
         if view.overlay.is(OverlayKind::Jump) {
+            let viewport_rows = layout.msg_area.height.saturating_sub(3).max(1) as usize;
+            let max_scroll = jump_rows
+                .len()
+                .saturating_sub(viewport_rows)
+                .max(1)
+                .saturating_sub(1);
             match m.kind {
-                MouseEventKind::ScrollUp => {
-                    view.jump.scroll = view.jump.scroll.saturating_sub(3);
-                }
-                MouseEventKind::ScrollDown => {
-                    view.jump.scroll = view.jump.scroll.saturating_add(3);
-                }
+                MouseEventKind::ScrollUp => view.jump.scroll_by(-3, max_scroll, viewport_rows),
+                MouseEventKind::ScrollDown => view.jump.scroll_by(3, max_scroll, viewport_rows),
                 _ => {}
             }
         }
@@ -51,16 +53,10 @@ pub(crate) fn handle_mouse_event_loop(
                 .max(1)
                 .saturating_sub(1);
             match m.kind {
-                MouseEventKind::ScrollUp => {
-                    view.model.scroll = view.model.scroll.saturating_sub(3);
-                }
-                MouseEventKind::ScrollDown => {
-                    view.model.scroll = view.model.scroll.saturating_add(3);
-                }
+                MouseEventKind::ScrollUp => view.model.scroll_by(-3, max_scroll, viewport_rows),
+                MouseEventKind::ScrollDown => view.model.scroll_by(3, max_scroll, viewport_rows),
                 _ => {}
             }
-            view.model.scroll = view.model.scroll.min(max_scroll);
-            view.model.ensure_visible(viewport_rows);
         }
         if view.overlay.is(OverlayKind::Prompt) {
             let viewport_rows = prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
@@ -72,16 +68,10 @@ pub(crate) fn handle_mouse_event_loop(
                 .max(1)
                 .saturating_sub(1);
             match m.kind {
-                MouseEventKind::ScrollUp => {
-                    view.prompt.scroll = view.prompt.scroll.saturating_sub(3);
-                }
-                MouseEventKind::ScrollDown => {
-                    view.prompt.scroll = view.prompt.scroll.saturating_add(3);
-                }
+                MouseEventKind::ScrollUp => view.prompt.scroll_by(-3, max_scroll, viewport_rows),
+                MouseEventKind::ScrollDown => view.prompt.scroll_by(3, max_scroll, viewport_rows),
                 _ => {}
             }
-            view.prompt.scroll = view.prompt.scroll.min(max_scroll);
-            view.prompt.ensure_visible(viewport_rows);
         }
         let row = match view.overlay.active {
             Some(OverlayKind::Summary) => summary_row_at(layout.msg_area, ctx.tabs.len(), m.row),
