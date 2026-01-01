@@ -2,12 +2,13 @@ use crate::render::markdown::{
     close_unbalanced_code_fence, count_markdown_lines, render_markdown_lines,
 };
 use crate::render::theme::{RenderTheme, theme_cache_key};
-use crate::render::util::{
-    hash_message, label_for_role, label_line, ranges_overlap, suffix_for_index,
-};
+use crate::render::label_line_layout;
+use crate::render::label_line_with_button;
+use crate::render::util::{hash_message, label_for_role, ranges_overlap, suffix_for_index};
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
 use ratatui::text::{Line, Text};
 use std::borrow::Cow;
+use crate::render::MessageLayout;
 #[derive(Clone)]
 pub struct RenderCacheEntry {
     pub(crate) role: String,
@@ -97,6 +98,29 @@ pub fn messages_to_viewport_text_cached(
     height: u16,
     cache: &mut Vec<RenderCacheEntry>,
 ) -> (Text<'static>, usize) {
+    let (text, total, _) = messages_to_viewport_text_cached_with_layout(
+        messages,
+        width,
+        theme,
+        label_suffixes,
+        streaming_idx,
+        scroll,
+        height,
+        cache,
+    );
+    (text, total)
+}
+
+pub fn messages_to_viewport_text_cached_with_layout(
+    messages: &[Message],
+    width: usize,
+    theme: &RenderTheme,
+    label_suffixes: &[(usize, String)],
+    streaming_idx: Option<usize>,
+    scroll: u16,
+    height: u16,
+    cache: &mut Vec<RenderCacheEntry>,
+) -> (Text<'static>, usize, Vec<MessageLayout>) {
     let theme_key = theme_cache_key(theme);
     if cache.len() > messages.len() {
         cache.truncate(messages.len());
@@ -104,6 +128,7 @@ pub fn messages_to_viewport_text_cached(
     let start = scroll as usize;
     let end = start.saturating_add(height as usize);
     let mut out: Vec<Line<'static>> = Vec::new();
+    let mut layouts: Vec<MessageLayout> = Vec::new();
     let mut line_cursor = 0usize;
     for (idx, msg) in messages.iter().enumerate() {
         if cache.len() <= idx {
@@ -132,8 +157,15 @@ pub fn messages_to_viewport_text_cached(
             entry.line_count = count_message_lines(msg, width, streaming);
         }
         if let Some(label) = label_for_role(&msg.role, suffix) {
+            let (button_range, label_line) =
+                label_line_layout(&msg.role, &label, line_cursor);
+            layouts.push(MessageLayout {
+                index: idx,
+                label_line,
+                button_range,
+            });
             if line_cursor >= start && line_cursor < end {
-                out.push(label_line(&label, theme));
+                out.push(label_line_with_button(&msg.role, &label, theme));
             }
             line_cursor += 1;
             if !entry.rendered
@@ -166,7 +198,7 @@ pub fn messages_to_viewport_text_cached(
             line_cursor += 1;
         }
     }
-    (Text::from(out), line_cursor)
+    (Text::from(out), line_cursor, layouts)
 }
 pub fn insert_empty_cache_entry(
     cache: &mut Vec<RenderCacheEntry>,

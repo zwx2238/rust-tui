@@ -1,5 +1,7 @@
 use crate::args::Args;
-use crate::render::{RenderTheme, messages_to_viewport_text_cached};
+use crate::render::{
+    RenderTheme, messages_to_viewport_text_cached, messages_to_viewport_text_cached_with_layout,
+};
 use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{build_label_suffixes, drain_events, handle_stream_event, timer_text};
 use crate::ui::net::UiEvent;
@@ -109,16 +111,18 @@ pub(crate) fn run_loop(
             let label_suffixes = build_label_suffixes(&app, &timer_text);
             let prev_scroll = app.scroll;
             tab_state.last_width = msg_width;
-            let (mut text, computed_total_lines) = messages_to_viewport_text_cached(
-                &app.messages,
-                msg_width,
-                theme,
-                &label_suffixes,
-                app.pending_assistant,
-                app.scroll,
-                view_height,
-                &mut tab_state.render_cache,
-            );
+            let (mut text, computed_total_lines, layouts) =
+                messages_to_viewport_text_cached_with_layout(
+                    &app.messages,
+                    msg_width,
+                    theme,
+                    &label_suffixes,
+                    app.pending_assistant,
+                    app.scroll,
+                    view_height,
+                    &mut tab_state.render_cache,
+                );
+            app.message_layouts = layouts;
             let max_scroll = max_scroll_u16(computed_total_lines, view_height);
             if app.follow {
                 app.scroll = max_scroll;

@@ -1,7 +1,4 @@
-use crate::render::theme::RenderTheme;
 use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -32,13 +29,6 @@ pub(crate) fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String>
         ROLE_SYSTEM => Some("⚙️".to_string()),
         _ => None,
     }
-}
-
-pub(crate) fn label_line(text: &str, theme: &RenderTheme) -> Line<'static> {
-    let style = Style::default()
-        .fg(theme.heading_fg.or(theme.fg).unwrap_or(Color::White))
-        .add_modifier(Modifier::BOLD);
-    Line::from(Span::styled(text.to_string(), style))
 }
 
 pub(crate) fn hash_message(role: &str, content: &str) -> u64 {

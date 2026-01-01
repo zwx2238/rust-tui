@@ -65,7 +65,7 @@ pub(crate) fn handle_mouse_event_loop(
     jump_rows: &[crate::ui::jump::JumpRow],
 ) {
     if view.is_chat() {
-        handle_mouse_event(
+        if let Some(msg_idx) = handle_mouse_event(
             m,
             ctx.tabs,
             ctx.active_tab,
@@ -76,7 +76,9 @@ pub(crate) fn handle_mouse_event_loop(
             layout.view_height,
             layout.total_lines,
             ctx.theme,
-        );
+        ) {
+            let _ = super::fork_message_by_index(ctx, msg_idx);
+        }
     } else {
         handle_overlay_scroll(view, ctx, layout, jump_rows.len(), m.kind);
         let row = overlay_row_at(view, ctx, layout, jump_rows.len(), m.column, m.row);

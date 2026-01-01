@@ -7,7 +7,7 @@ use crossterm::event::KeyEvent;
 use super::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
     can_change_prompt, close_tab, cycle_model, new_tab, next_tab, prev_tab, push_prompt_locked,
-    sync_model_selection, sync_prompt_selection,
+    sync_model_selection, sync_prompt_selection, handle_nav_key,
 };
 
 pub(crate) fn handle_key_event_loop(
@@ -34,6 +34,13 @@ pub(crate) fn handle_key_event_loop(
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if !can_change_prompt(&tab_state.app) {
                 push_prompt_locked(tab_state);
+                return Ok(false);
+            }
+        }
+    }
+    if view.is_chat() {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if handle_nav_key(&mut tab_state.app, key) {
                 return Ok(false);
             }
         }

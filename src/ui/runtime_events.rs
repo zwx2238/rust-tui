@@ -63,13 +63,13 @@ pub(crate) fn handle_mouse_event(
     view_height: u16,
     total_lines: usize,
     theme: &RenderTheme,
-) {
+) -> Option<usize> {
     match m.kind {
         MouseEventKind::Down(_) => {
             if point_in_rect(m.column, m.row, tabs_area) {
                 if let Some(idx) = tab_index_at(m.column, tabs_area, tabs.len()) {
                     *active_tab = idx;
-                    return;
+                    return None;
                 }
             }
             let scroll_area = scrollbar_area(msg_area);
@@ -81,12 +81,13 @@ pub(crate) fn handle_mouse_event(
                     app.scroll = scroll_from_mouse(total_lines, view_height, scroll_area, m.row);
                     app.focus = Focus::Chat;
                 }
-                return;
+                return None;
             }
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
                 if point_in_rect(m.column, m.row, input_area) {
                     let app = &mut tab_state.app;
                     app.focus = Focus::Input;
+                    app.nav_mode = false;
                     app.chat_selection = None;
                     app.chat_selecting = false;
                     app.input_selecting = true;
@@ -95,6 +96,23 @@ pub(crate) fn handle_mouse_event(
                     app.input
                         .move_cursor(CursorMove::Jump(row as u16, col as u16));
                 } else if point_in_rect(m.column, m.row, msg_area) {
+                    if let Some(msg_idx) = hit_test_edit_button(
+                        tab_state,
+                        msg_area,
+                        msg_width,
+                        theme,
+                        view_height,
+                        m.column,
+                        m.row,
+                    ) {
+                        let app = &mut tab_state.app;
+                        app.focus = Focus::Chat;
+                        app.follow = false;
+                        app.chat_selection = None;
+                        app.chat_selecting = false;
+                        app.input_selecting = false;
+                        return Some(msg_idx);
+                    }
                     let text = selection_view_text(tab_state, msg_width, theme, view_height);
                     let app = &mut tab_state.app;
                     app.focus = Focus::Chat;
@@ -174,6 +192,7 @@ pub(crate) fn handle_mouse_event(
         }
         _ => {}
     }
+    None
 }
 
 pub(crate) fn handle_paste_event(paste: &str, tabs: &mut Vec<TabState>, active_tab: usize) {
@@ -205,4 +224,40 @@ fn selection_view_text(
         &mut tab_state.render_cache,
     );
     text
+}
+
+fn hit_test_edit_button(
+    tab_state: &mut TabState,
+    msg_area: Rect,
+    msg_width: usize,
+    theme: &RenderTheme,
+    view_height: u16,
+    mouse_x: u16,
+    mouse_y: u16,
+) -> Option<usize> {
+    if tab_state.app.message_layouts.is_empty() {
+        return None;
+    }
+    let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
+    if mouse_x < inner.x
+        || mouse_x >= inner.x + inner.width
+        || mouse_y < inner.y
+        || mouse_y >= inner.y + inner.height
+    {
+        return None;
+    }
+    let text = selection_view_text(tab_state, msg_width, theme, view_height);
+    let app = &tab_state.app;
+    let (row, col) = chat_position_from_mouse(&text, app.scroll, inner, mouse_x, mouse_y);
+    for layout in &app.message_layouts {
+        if layout.label_line == row {
+            if let Some((start, end)) = layout.button_range {
+                if col >= start && col < end {
+                    return Some(layout.index);
+                }
+            }
+            break;
+        }
+    }
+    None
 }

@@ -7,6 +7,7 @@ use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_vis
 use crate::ui::notice::push_notice;
 use crate::ui::runtime_helpers::{TabState, start_tab_request};
 use crate::ui::state::Focus;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
@@ -123,6 +124,72 @@ fn overlay_counts(ctx: &DispatchContext<'_>) -> OverlayRowCounts {
     }
 }
 
+pub(crate) fn handle_nav_key(app: &mut crate::ui::state::App, key: KeyEvent) -> bool {
+    if !app.nav_mode {
+        if app.focus == Focus::Chat
+            && key.modifiers == KeyModifiers::NONE
+            && key.code == KeyCode::Char('g')
+        {
+            app.nav_mode = true;
+            app.focus = Focus::Chat;
+            app.follow = false;
+            return true;
+        }
+        return false;
+    }
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('g') => {
+            app.nav_mode = false;
+            true
+        }
+        KeyCode::Char('j') | KeyCode::Char('n') => {
+            nav_next(app);
+            true
+        }
+        KeyCode::Char('k') | KeyCode::Char('p') => {
+            nav_prev(app);
+            true
+        }
+        _ => true,
+    }
+}
+
+fn nav_next(app: &mut crate::ui::state::App) {
+    if app.message_layouts.is_empty() {
+        return;
+    }
+    let current = app.scroll as usize;
+    let mut target = None;
+    for layout in &app.message_layouts {
+        if layout.label_line > current {
+            target = Some(layout.label_line);
+            break;
+        }
+    }
+    if let Some(line) = target {
+        app.scroll = line.min(u16::MAX as usize) as u16;
+        app.follow = false;
+    }
+}
+
+fn nav_prev(app: &mut crate::ui::state::App) {
+    if app.message_layouts.is_empty() {
+        return;
+    }
+    let current = app.scroll as usize;
+    let mut target = None;
+    for layout in app.message_layouts.iter().rev() {
+        if layout.label_line < current {
+            target = Some(layout.label_line);
+            break;
+        }
+    }
+    if let Some(line) = target {
+        app.scroll = line.min(u16::MAX as usize) as u16;
+        app.follow = false;
+    }
+}
+
 pub(crate) fn apply_model_selection(ctx: &mut DispatchContext<'_>, idx: usize) {
     with_active_tab(ctx, |tab_state| {
         if let Some(model) = ctx.registry.models.get(idx) {
@@ -192,13 +259,20 @@ pub(crate) fn fork_message_into_new_tab(
     jump_rows: &[crate::ui::jump::JumpRow],
     row_idx: usize,
 ) -> bool {
-    let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) else {
-        return false;
-    };
     let Some(row) = jump_rows.get(row_idx) else {
         return false;
     };
     let msg_idx = row.index.saturating_sub(1);
+    fork_message_by_index(ctx, msg_idx)
+}
+
+pub(crate) fn fork_message_by_index(
+    ctx: &mut DispatchContext<'_>,
+    msg_idx: usize,
+) -> bool {
+    let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) else {
+        return false;
+    };
     let Some(msg) = tab_state.app.messages.get(msg_idx) else {
         return false;
     };
