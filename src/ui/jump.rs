@@ -1,7 +1,6 @@
 use crate::render::{count_message_lines, label_for_role, RenderTheme};
 use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{draw_table_popup, TablePopup};
-use crate::ui::summary::summary_row_at;
+use crate::ui::popup_table::{draw_table_popup, popup_row_at, TablePopup};
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use crate::types::Message;
 use ratatui::layout::{Constraint, Rect};
@@ -75,7 +74,7 @@ pub fn jump_row_at(
     mouse_y: u16,
     scroll: usize,
 ) -> Option<usize> {
-    summary_row_at(area, row_count, mouse_x, mouse_y).map(|r| r.saturating_add(scroll))
+    popup_row_at(area, row_count, scroll, mouse_x, mouse_y)
 }
 
 pub fn jump_visible_rows(area: Rect) -> usize {

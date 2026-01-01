@@ -1,6 +1,6 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{draw_table_popup, popup_row_at, TablePopup};
+use crate::ui::popup_table::{draw_table_popup, TablePopup};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
 use ratatui::backend::CrosstermBackend;
@@ -59,15 +59,6 @@ pub fn redraw_summary(
         draw_summary_table(f, body_area, &rows, selected_row, theme);
     })?;
     Ok(())
-}
-
-pub fn summary_row_at(
-    area: Rect,
-    row_count: usize,
-    mouse_x: u16,
-    mouse_y: u16,
-) -> Option<usize> {
-    popup_row_at(area, row_count, 0, mouse_x, mouse_y)
 }
 
 fn draw_summary_table(
