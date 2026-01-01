@@ -6,6 +6,11 @@ pub(crate) struct ToolResult {
     pub has_results: bool,
 }
 
+pub(crate) struct CodeExecRequest {
+    pub language: String,
+    pub code: String,
+}
+
 pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str) -> ToolResult {
     if call.function.name == "web_search" {
         return run_web_search(&call.function.arguments, tavily_api_key);
@@ -130,4 +135,28 @@ fn tool_err(msg: String) -> ToolResult {
         content: msg,
         has_results: false,
     }
+}
+
+pub(crate) fn parse_code_exec_args(args_json: &str) -> Result<CodeExecRequest, String> {
+    #[derive(serde::Deserialize)]
+    struct Args {
+        language: String,
+        code: String,
+    }
+    let args: Args =
+        serde_json::from_str(args_json).map_err(|e| format!("code_exec 参数解析失败：{e}"))?;
+    let language = args.language.trim().to_string();
+    if language.is_empty() {
+        return Err("code_exec 参数 language 不能为空".to_string());
+    }
+    if language != "python" {
+        return Err("当前仅支持 python".to_string());
+    }
+    if args.code.trim().is_empty() {
+        return Err("code_exec 参数 code 不能为空".to_string());
+    }
+    Ok(CodeExecRequest {
+        language,
+        code: args.code,
+    })
 }

@@ -132,10 +132,16 @@ pub fn handle_command(
         "/save" => {
             app.pending_command = Some(PendingCommand::SaveSession);
         }
+        "/approve" => {
+            app.pending_command = Some(PendingCommand::ApproveCodeExec);
+        }
+        "/deny" => {
+            app.pending_command = Some(PendingCommand::DenyCodeExec);
+        }
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
-                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新 tab），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
+                content: "命令：/help /save /reset /clear /exit /quit /approve /deny；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新 tab），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
                     .to_string(),
                 tool_call_id: None,
                 tool_calls: None,

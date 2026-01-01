@@ -80,7 +80,7 @@ pub fn request_llm_stream(
         stream_options: Some(StreamOptions {
             include_usage: true,
         }),
-        tools: Some(vec![web_search_tool_def()]),
+        tools: Some(vec![web_search_tool_def(), code_exec_tool_def()]),
         tool_choice: None,
     };
     let resp = client.post(url).bearer_auth(api_key).json(&req).send();
@@ -261,6 +261,25 @@ fn web_search_tool_def() -> ToolDefinition {
         function: ToolFunctionDef {
             name: "web_search".to_string(),
             description: "Search the web and return a short list of results.".to_string(),
+            parameters: params,
+        },
+    }
+}
+
+fn code_exec_tool_def() -> ToolDefinition {
+    let params = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "language": { "type": "string", "enum": ["python"] },
+            "code": { "type": "string" }
+        },
+        "required": ["language", "code"]
+    });
+    ToolDefinition {
+        kind: "function".to_string(),
+        function: ToolFunctionDef {
+            name: "code_exec".to_string(),
+            description: "Execute Python code in a sandboxed container. Requires explicit user approval. No network or file access.".to_string(),
             parameters: params,
         },
     }

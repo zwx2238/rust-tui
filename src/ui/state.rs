@@ -16,6 +16,8 @@ pub enum Focus {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PendingCommand {
     SaveSession,
+    ApproveCodeExec,
+    DenyCodeExec,
 }
 
 #[derive(Clone)]
@@ -62,12 +64,20 @@ pub struct App {
     pub message_layouts: Vec<crate::render::MessageLayout>,
     pub nav_mode: bool,
     pub tavily_api_key: String,
+    pub pending_code_exec: Option<PendingCodeExec>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
     pub total_tokens: u64,
     pub dirty_indices: Vec<usize>,
     pub cache_shift: Option<usize>,
     pub notice: Option<Notice>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PendingCodeExec {
+    pub call_id: String,
+    pub language: String,
+    pub code: String,
 }
 
 impl App {
@@ -107,6 +117,7 @@ impl App {
             message_layouts: Vec::new(),
             nav_mode: false,
             tavily_api_key: String::new(),
+            pending_code_exec: None,
             total_prompt_tokens: 0,
             total_completion_tokens: 0,
             total_tokens: 0,

@@ -1,4 +1,5 @@
 mod clipboard;
+mod code_exec;
 mod draw;
 mod draw_input;
 mod input;

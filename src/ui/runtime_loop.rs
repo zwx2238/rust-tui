@@ -198,7 +198,7 @@ pub(crate) fn run_loop(
             }
         }
         if let Some(cmd) = pending_command {
-            handle_pending_command(tabs, *active_tab, cmd, session_location);
+            handle_pending_command(tabs, *active_tab, cmd, session_location, registry, args, tx);
         }
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {

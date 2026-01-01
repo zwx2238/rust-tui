@@ -2,14 +2,17 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "用法: $0 <query> [max_results] [search_depth]" >&2
+  echo "用法: $0 <query> [max_results] [search_depth] [include_domains] [exclude_domains]" >&2
   echo "search_depth: basic 或 advanced" >&2
+  echo "include_domains/exclude_domains: 逗号分隔域名，如 github.com,gofrp.org" >&2
   exit 1
 fi
 
 QUERY="$1"
 MAX_RESULTS="${2:-5}"
 SEARCH_DEPTH="${3:-basic}"
+INCLUDE_DOMAINS="${4:-${TAVILY_INCLUDE_DOMAINS:-}}"
+EXCLUDE_DOMAINS="${5:-${TAVILY_EXCLUDE_DOMAINS:-}}"
 
 TAVILY_API_KEY="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"
 
@@ -17,10 +20,36 @@ TMP_BODY="$(mktemp)"
 TMP_HEADERS="$(mktemp)"
 trap 'rm -f "$TMP_BODY" "$TMP_HEADERS"' EXIT
 
+PAYLOAD="$(
+  QUERY="$QUERY" MAX_RESULTS="$MAX_RESULTS" SEARCH_DEPTH="$SEARCH_DEPTH" \
+  INCLUDE_DOMAINS="$INCLUDE_DOMAINS" EXCLUDE_DOMAINS="$EXCLUDE_DOMAINS" \
+  TAVILY_API_KEY="$TAVILY_API_KEY" \
+  python3 - <<'PY'
+import json, os
+
+payload = {
+    "api_key": os.environ["TAVILY_API_KEY"],
+    "query": os.environ["QUERY"],
+    "max_results": int(os.environ["MAX_RESULTS"]),
+    "search_depth": os.environ["SEARCH_DEPTH"],
+}
+
+include_domains = os.environ.get("INCLUDE_DOMAINS", "").strip()
+exclude_domains = os.environ.get("EXCLUDE_DOMAINS", "").strip()
+
+if include_domains:
+    payload["include_domains"] = [d for d in include_domains.split(",") if d]
+if exclude_domains:
+    payload["exclude_domains"] = [d for d in exclude_domains.split(",") if d]
+
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)"
+
 curl -sS -D "$TMP_HEADERS" -o "$TMP_BODY" \
   "https://api.tavily.com/search" \
   -H "Content-Type: application/json" \
-  -d "{\"api_key\":\"$TAVILY_API_KEY\",\"query\":\"$QUERY\",\"max_results\":$MAX_RESULTS,\"search_depth\":\"$SEARCH_DEPTH\"}"
+  -d "$PAYLOAD"
 
 STATUS=$(awk 'NR==1{print $2}' "$TMP_HEADERS")
 if [[ -z "$STATUS" ]]; then

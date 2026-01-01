@@ -27,6 +27,8 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> S
             app.pending_reasoning = None;
             app.stream_buffer.clear();
             app.active_request = None;
+            app.busy = false;
+            app.busy_since = None;
             StreamAction::Done
         }
         LlmEvent::Done { usage } => {
@@ -45,6 +47,8 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> S
             }
             app.pending_reasoning = None;
             app.active_request = None;
+            app.busy = false;
+            app.busy_since = None;
             StreamAction::Done
         }
         LlmEvent::ToolCalls { calls, usage } => {
@@ -66,6 +70,8 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> S
             }
             app.pending_reasoning = None;
             app.active_request = None;
+            app.busy = false;
+            app.busy_since = None;
             StreamAction::ToolCalls(calls)
         }
     }
