@@ -4,7 +4,7 @@ use crate::ui::state::PendingCodeExec;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState};
+use ratatui::widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState};
 use textwrap::wrap;
 use unicode_width::UnicodeWidthStr;
 
@@ -19,6 +19,10 @@ pub(crate) fn draw_code_exec_popup(
     selected: usize,
     theme: &RenderTheme,
 ) {
+    f.render_widget(Clear, area);
+    let mask = Block::default().style(base_style(theme));
+    f.render_widget(mask, area);
+
     let width = (area.width * 80 / 100)
         .max(MIN_POPUP_WIDTH)
         .min(area.width.saturating_sub(2).max(MIN_POPUP_WIDTH));
