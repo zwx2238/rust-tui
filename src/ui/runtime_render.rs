@@ -1,14 +1,12 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::{redraw, redraw_with_overlay};
-use crate::ui::jump::{
-    build_jump_rows, jump_visible_rows, max_preview_width, redraw_jump, JumpRow,
-};
-use crate::ui::model_popup::{draw_model_popup, model_visible_rows};
-use crate::ui::prompt_popup::{draw_prompt_popup, prompt_visible_rows};
-use crate::ui::runtime_helpers::TabState;
 use crate::ui::overlay::OverlayKind;
+use crate::ui::jump::JumpRow;
+use crate::ui::overlay_render::{
+    build_jump_overlay_rows, render_chat_view, render_jump_overlay, render_model_overlay,
+    render_prompt_overlay, render_summary_overlay,
+};
+use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
-use crate::ui::summary::redraw_summary;
 use ratatui::layout::Rect;
 use ratatui::text::Text;
 use ratatui::{backend::CrosstermBackend, Terminal};
@@ -32,119 +30,65 @@ pub(crate) fn render_view(
     models: &[crate::model_registry::ModelProfile],
     prompts: &[crate::system_prompts::SystemPrompt],
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
-    let jump_rows = if view.overlay.is(OverlayKind::Jump) {
-        tabs.get(active_tab)
-            .map(|tab| {
-                build_jump_rows(
-                    &tab.app.messages,
-                    msg_width,
-                    max_preview_width(msg_area),
-                    tab.app.pending_assistant,
-                )
-            })
-            .unwrap_or_default()
-    } else {
-        Vec::new()
-    };
+    let jump_rows = build_jump_overlay_rows(view, tabs, active_tab, msg_width, msg_area);
     match view.overlay.active {
         Some(OverlayKind::Summary) => {
-            view.summary.clamp(tabs.len());
-            redraw_summary(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                startup_text,
-                view.summary.selected,
-            )?;
+            render_summary_overlay(terminal, tabs, active_tab, theme, startup_text, view)?;
         }
         Some(OverlayKind::Jump) => {
-            let viewport_rows = jump_visible_rows(msg_area);
-            view.jump.clamp_with_viewport(jump_rows.len(), viewport_rows);
-            redraw_jump(
+            render_jump_overlay(
                 terminal,
                 theme,
                 tabs.len(),
                 active_tab,
                 startup_text,
-                &jump_rows,
-                view.jump.selected,
+                view,
                 msg_area,
                 tabs_area,
-                view.jump.scroll,
+                &jump_rows,
             )?;
         }
         None => {
-            let tabs_len = tabs.len();
-            if let Some(tab_state) = tabs.get_mut(active_tab) {
-                redraw(
-                    terminal,
-                    &mut tab_state.app,
-                    theme,
-                    text,
-                    total_lines,
-                    tabs_len,
-                    active_tab,
-                    startup_text,
-                    input_height,
-                )?;
-            }
+            render_chat_view(
+                terminal,
+                tabs,
+                active_tab,
+                theme,
+                text,
+                total_lines,
+                startup_text,
+                input_height,
+            )?;
         }
         Some(OverlayKind::Model) => {
-            let tabs_len = tabs.len();
-            if let Some(tab_state) = tabs.get_mut(active_tab) {
-                let viewport_rows = model_visible_rows(full_area, models.len());
-                view.model.clamp_with_viewport(models.len(), viewport_rows);
-                redraw_with_overlay(
-                    terminal,
-                    &mut tab_state.app,
-                    theme,
-                    text,
-                    total_lines,
-                    tabs_len,
-                    active_tab,
-                    startup_text,
-                    input_height,
-                    |f| {
-                        draw_model_popup(
-                            f,
-                            f.area(),
-                            models,
-                            view.model.selected,
-                            view.model.scroll,
-                            theme,
-                        );
-                    },
-                )?;
-            }
+            render_model_overlay(
+                terminal,
+                tabs,
+                active_tab,
+                theme,
+                text,
+                total_lines,
+                startup_text,
+                input_height,
+                full_area,
+                view,
+                models,
+            )?;
         }
         Some(OverlayKind::Prompt) => {
-            let tabs_len = tabs.len();
-            if let Some(tab_state) = tabs.get_mut(active_tab) {
-                let viewport_rows = prompt_visible_rows(full_area, prompts.len());
-                view.prompt.clamp_with_viewport(prompts.len(), viewport_rows);
-                redraw_with_overlay(
-                    terminal,
-                    &mut tab_state.app,
-                    theme,
-                    text,
-                    total_lines,
-                    tabs_len,
-                    active_tab,
-                    startup_text,
-                    input_height,
-                    |f| {
-                        draw_prompt_popup(
-                            f,
-                            f.area(),
-                            prompts,
-                            view.prompt.selected,
-                            view.prompt.scroll,
-                            theme,
-                        );
-                    },
-                )?;
-            }
+            render_prompt_overlay(
+                terminal,
+                tabs,
+                active_tab,
+                theme,
+                text,
+                total_lines,
+                startup_text,
+                input_height,
+                full_area,
+                view,
+                prompts,
+            )?;
         }
     }
     Ok(jump_rows)

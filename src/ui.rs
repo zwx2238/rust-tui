@@ -5,6 +5,7 @@ mod input;
 mod logic;
 mod net;
 mod overlay;
+mod overlay_render;
 mod perf;
 mod clipboard;
 mod jump;
