@@ -1,5 +1,5 @@
 use crate::ui::jump::jump_row_at;
-use crate::ui::model_popup::model_row_at;
+use crate::ui::model_popup::{model_row_at, model_visible_rows};
 use crate::ui::overlay::OverlayKind;
 use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
 use crate::ui::runtime_events::handle_mouse_event;
@@ -41,6 +41,27 @@ pub(crate) fn handle_mouse_event_loop(
                 _ => {}
             }
         }
+        if view.overlay.is(OverlayKind::Model) {
+            let viewport_rows = model_visible_rows(layout.size, ctx.registry.models.len());
+            let max_scroll = ctx
+                .registry
+                .models
+                .len()
+                .saturating_sub(viewport_rows)
+                .max(1)
+                .saturating_sub(1);
+            match m.kind {
+                MouseEventKind::ScrollUp => {
+                    view.model.scroll = view.model.scroll.saturating_sub(3);
+                }
+                MouseEventKind::ScrollDown => {
+                    view.model.scroll = view.model.scroll.saturating_add(3);
+                }
+                _ => {}
+            }
+            view.model.scroll = view.model.scroll.min(max_scroll);
+            view.model.ensure_visible(viewport_rows);
+        }
         if view.overlay.is(OverlayKind::Prompt) {
             let viewport_rows = prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
             let max_scroll = ctx
@@ -68,7 +89,13 @@ pub(crate) fn handle_mouse_event_loop(
                 jump_row_at(layout.msg_area, jump_rows.len(), m.row, view.jump.scroll)
             }
             Some(OverlayKind::Model) => {
-                model_row_at(layout.size, ctx.registry.models.len(), m.column, m.row)
+                model_row_at(
+                    layout.size,
+                    ctx.registry.models.len(),
+                    view.model.scroll,
+                    m.column,
+                    m.row,
+                )
             }
             Some(OverlayKind::Prompt) => prompt_row_at(
                 layout.size,

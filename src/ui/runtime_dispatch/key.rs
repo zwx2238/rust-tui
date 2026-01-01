@@ -82,6 +82,11 @@ pub(crate) fn handle_key_event_loop(
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
                 view.model.selected = idx;
+                let viewport_rows = crate::ui::model_popup::model_visible_rows(
+                    layout.size,
+                    ctx.registry.models.len(),
+                );
+                view.model.clamp_with_viewport(ctx.registry.models.len(), viewport_rows);
             }
         }
         return Ok(false);

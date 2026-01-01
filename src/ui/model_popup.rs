@@ -1,6 +1,6 @@
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
-use crate::ui::popup_table::{draw_table_popup, popup_row_at, TablePopup};
+use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
@@ -52,9 +52,20 @@ pub fn model_popup_area(area: Rect, rows: usize) -> Rect {
     centered_rect(area, 70, popup_height(rows))
 }
 
-pub fn model_row_at(area: Rect, rows: usize, mouse_x: u16, mouse_y: u16) -> Option<usize> {
+pub fn model_row_at(
+    area: Rect,
+    rows: usize,
+    scroll: usize,
+    mouse_x: u16,
+    mouse_y: u16,
+) -> Option<usize> {
     let popup = model_popup_area(area, rows);
-    popup_row_at(popup, rows, 0, mouse_x, mouse_y)
+    popup_row_at(popup, rows, scroll, mouse_x, mouse_y)
+}
+
+pub fn model_visible_rows(area: Rect, rows: usize) -> usize {
+    let popup = model_popup_area(area, rows);
+    popup_visible_rows(popup)
 }
 
 fn popup_height(rows: usize) -> u16 {

@@ -23,6 +23,29 @@ impl SelectionState {
         }
     }
 
+    pub(crate) fn clamp_with_viewport(&mut self, len: usize, viewport_rows: usize) {
+        if len == 0 {
+            self.selected = 0;
+            self.scroll = 0;
+            return;
+        }
+        if self.selected >= len {
+            self.selected = len - 1;
+        }
+        if viewport_rows == 0 {
+            self.scroll = 0;
+            return;
+        }
+        let max_scroll = len
+            .saturating_sub(viewport_rows)
+            .max(1)
+            .saturating_sub(1);
+        if self.scroll > max_scroll {
+            self.scroll = max_scroll;
+        }
+        self.ensure_visible(viewport_rows);
+    }
+
     pub(crate) fn move_up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
         if self.selected < self.scroll {

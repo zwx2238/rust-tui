@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
 use crate::ui::jump::{build_jump_rows, max_preview_width, redraw_jump, JumpRow};
-use crate::ui::model_popup::draw_model_popup;
+use crate::ui::model_popup::{draw_model_popup, model_visible_rows};
 use crate::ui::prompt_popup::{draw_prompt_popup, prompt_visible_rows};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::overlay::OverlayKind;
@@ -57,15 +57,8 @@ pub(crate) fn render_view(
             )?;
         }
         Some(OverlayKind::Jump) => {
-            let max_scroll = jump_rows
-                .len()
-                .saturating_sub(visible_jump_rows(msg_area))
-                .max(1)
-                .saturating_sub(1);
-            view.jump.scroll = view.jump.scroll.min(max_scroll);
-            view.jump.clamp(jump_rows.len());
             let viewport_rows = visible_jump_rows(msg_area);
-            view.jump.ensure_visible(viewport_rows);
+            view.jump.clamp_with_viewport(jump_rows.len(), viewport_rows);
             redraw_jump(
                 terminal,
                 theme,
@@ -98,9 +91,8 @@ pub(crate) fn render_view(
         Some(OverlayKind::Model) => {
             let tabs_len = tabs.len();
             if let Some(tab_state) = tabs.get_mut(active_tab) {
-                if !models.is_empty() {
-                    view.model.clamp(models.len());
-                }
+                let viewport_rows = model_visible_rows(full_area, models.len());
+                view.model.clamp_with_viewport(models.len(), viewport_rows);
                 redraw_with_overlay(
                     terminal,
                     &mut tab_state.app,
@@ -117,7 +109,7 @@ pub(crate) fn render_view(
                             f.area(),
                             models,
                             view.model.selected,
-                            0,
+                            view.model.scroll,
                             theme,
                         );
                     },
@@ -127,15 +119,8 @@ pub(crate) fn render_view(
         Some(OverlayKind::Prompt) => {
             let tabs_len = tabs.len();
             if let Some(tab_state) = tabs.get_mut(active_tab) {
-                view.prompt.clamp(prompts.len());
                 let viewport_rows = prompt_visible_rows(full_area, prompts.len());
-                let max_scroll = prompts
-                    .len()
-                    .saturating_sub(viewport_rows)
-                    .max(1)
-                    .saturating_sub(1);
-                view.prompt.scroll = view.prompt.scroll.min(max_scroll);
-                view.prompt.ensure_visible(viewport_rows);
+                view.prompt.clamp_with_viewport(prompts.len(), viewport_rows);
                 redraw_with_overlay(
                     terminal,
                     &mut tab_state.app,
