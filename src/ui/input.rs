@@ -48,7 +48,7 @@ pub fn handle_key(
         }
         match key.code {
             KeyCode::Enter => {
-            let line = app.input.lines().join("\n");
+                let line = app.input.lines().join("\n");
                 let line = line.trim_end().to_string();
                 app.input = TextArea::default();
                 if line.trim().is_empty() {
