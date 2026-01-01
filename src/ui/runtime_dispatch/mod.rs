@@ -217,7 +217,7 @@ pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
 }
 
 pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
-    ctx.tabs.push(TabState::new(
+    let mut tab = TabState::new(
         ctx.prompt_registry
             .get(&ctx.prompt_registry.default_key)
             .map(|p| p.content.as_str())
@@ -225,7 +225,11 @@ pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
         ctx.args.perf,
         &ctx.registry.default_key,
         &ctx.prompt_registry.default_key,
-    ));
+    );
+    if let Some(active) = ctx.tabs.get(*ctx.active_tab) {
+        tab.app.prompts_dir = active.app.prompts_dir.clone();
+    }
+    ctx.tabs.push(tab);
     *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
 }
 
