@@ -1,10 +1,8 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
-use crate::ui::jump::{
-    JumpRow, build_jump_rows, jump_visible_rows, max_preview_width, redraw_jump,
-};
-use crate::ui::model_popup::{draw_model_popup, model_visible_rows};
-use crate::ui::prompt_popup::{draw_prompt_popup, prompt_visible_rows};
+use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
+use crate::ui::model_popup::draw_model_popup;
+use crate::ui::prompt_popup::draw_prompt_popup;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::summary::redraw_summary;
@@ -44,7 +42,6 @@ pub(crate) fn render_summary_overlay(
     startup_text: Option<&str>,
     view: &mut ViewState,
 ) -> Result<(), Box<dyn Error>> {
-    view.summary.clamp(tabs.len());
     redraw_summary(
         terminal,
         tabs,
@@ -52,6 +49,7 @@ pub(crate) fn render_summary_overlay(
         theme,
         startup_text,
         view.summary.selected,
+        view.summary.scroll,
     )?;
     Ok(())
 }
@@ -67,9 +65,6 @@ pub(crate) fn render_jump_overlay(
     tabs_area: Rect,
     jump_rows: &[JumpRow],
 ) -> Result<(), Box<dyn Error>> {
-    let viewport_rows = jump_visible_rows(msg_area);
-    view.jump
-        .clamp_with_viewport(jump_rows.len(), viewport_rows);
     redraw_jump(
         terminal,
         theme,
@@ -121,14 +116,11 @@ pub(crate) fn render_model_overlay(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
-    full_area: Rect,
     view: &mut ViewState,
     models: &[crate::model_registry::ModelProfile],
 ) -> Result<(), Box<dyn Error>> {
     let tabs_len = tabs.len();
     if let Some(tab_state) = tabs.get_mut(active_tab) {
-        let viewport_rows = model_visible_rows(full_area, models.len());
-        view.model.clamp_with_viewport(models.len(), viewport_rows);
         redraw_with_overlay(
             terminal,
             &mut tab_state.app,
@@ -163,15 +155,11 @@ pub(crate) fn render_prompt_overlay(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
-    full_area: Rect,
     view: &mut ViewState,
     prompts: &[crate::system_prompts::SystemPrompt],
 ) -> Result<(), Box<dyn Error>> {
     let tabs_len = tabs.len();
     if let Some(tab_state) = tabs.get_mut(active_tab) {
-        let viewport_rows = prompt_visible_rows(full_area, prompts.len());
-        view.prompt
-            .clamp_with_viewport(prompts.len(), viewport_rows);
         redraw_with_overlay(
             terminal,
             &mut tab_state.app,

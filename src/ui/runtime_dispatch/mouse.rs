@@ -1,123 +1,60 @@
-use crate::ui::jump::{jump_row_at, jump_visible_rows};
-use crate::ui::model_popup::{model_row_at, model_visible_rows};
-use crate::ui::overlay_table::row_at as overlay_table_row_at;
-use crate::ui::overlay::OverlayKind;
-use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
+use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
-use crate::ui::scroll::{SCROLL_STEP_I32, max_scroll};
+use crate::ui::scroll::SCROLL_STEP_I32;
 use crossterm::event::{MouseEvent, MouseEventKind};
 
 use super::{DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection};
 
-fn scroll_selection(
-    selection: &mut crate::ui::selection_state::SelectionState,
-    delta: i32,
-    len: usize,
-    viewport_rows: usize,
-) {
-    let max_scroll = max_scroll(len, viewport_rows);
-    selection.scroll_by(delta, max_scroll, viewport_rows);
+fn overlay_areas(layout: LayoutContext) -> OverlayAreas {
+    OverlayAreas {
+        full: layout.size,
+        msg: layout.msg_area,
+    }
+}
+
+fn overlay_counts(ctx: &DispatchContext<'_>, jump_rows: usize) -> OverlayRowCounts {
+    OverlayRowCounts {
+        tabs: ctx.tabs.len(),
+        jump: jump_rows,
+        models: ctx.registry.models.len(),
+        prompts: ctx.prompt_registry.prompts.len(),
+    }
 }
 
 fn overlay_row_at(
-    view: &ViewState,
+    view: &mut ViewState,
     ctx: &DispatchContext<'_>,
     layout: LayoutContext,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: usize,
     mouse_x: u16,
     mouse_y: u16,
 ) -> Option<usize> {
-    match view.overlay.active {
-        Some(OverlayKind::Summary) => {
-            overlay_table_row_at(layout.msg_area, ctx.tabs.len(), 0, mouse_x, mouse_y)
-        }
-        Some(OverlayKind::Jump) => jump_row_at(
-            layout.msg_area,
-            jump_rows.len(),
-            mouse_x,
-            mouse_y,
-            view.jump.scroll,
-        ),
-        Some(OverlayKind::Model) => model_row_at(
-            layout.size,
-            ctx.registry.models.len(),
-            view.model.scroll,
-            mouse_x,
-            mouse_y,
-        ),
-        Some(OverlayKind::Prompt) => prompt_row_at(
-            layout.size,
-            ctx.prompt_registry.prompts.len(),
-            view.prompt.scroll,
-            mouse_x,
-            mouse_y,
-        ),
-        None => None,
-    }
+    let areas = overlay_areas(layout);
+    let counts = overlay_counts(ctx, jump_rows);
+    with_active_table_handle(view, areas, counts, |handle| {
+        handle.row_at(mouse_x, mouse_y)
+    })
+    .flatten()
 }
 
 fn handle_overlay_scroll(
     view: &mut ViewState,
     ctx: &DispatchContext<'_>,
     layout: LayoutContext,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: usize,
     kind: MouseEventKind,
 ) {
-    if view.overlay.is(OverlayKind::Jump) {
-        let viewport_rows = jump_visible_rows(layout.msg_area);
-        match kind {
-            MouseEventKind::ScrollUp => scroll_selection(
-                &mut view.jump,
-                -SCROLL_STEP_I32,
-                jump_rows.len(),
-                viewport_rows,
-            ),
-            MouseEventKind::ScrollDown => scroll_selection(
-                &mut view.jump,
-                SCROLL_STEP_I32,
-                jump_rows.len(),
-                viewport_rows,
-            ),
-            _ => {}
-        }
-    }
-    if view.overlay.is(OverlayKind::Model) {
-        let viewport_rows = model_visible_rows(layout.size, ctx.registry.models.len());
-        match kind {
-            MouseEventKind::ScrollUp => scroll_selection(
-                &mut view.model,
-                -SCROLL_STEP_I32,
-                ctx.registry.models.len(),
-                viewport_rows,
-            ),
-            MouseEventKind::ScrollDown => scroll_selection(
-                &mut view.model,
-                SCROLL_STEP_I32,
-                ctx.registry.models.len(),
-                viewport_rows,
-            ),
-            _ => {}
-        }
-    }
-    if view.overlay.is(OverlayKind::Prompt) {
-        let viewport_rows = prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
-        match kind {
-            MouseEventKind::ScrollUp => scroll_selection(
-                &mut view.prompt,
-                -SCROLL_STEP_I32,
-                ctx.prompt_registry.prompts.len(),
-                viewport_rows,
-            ),
-            MouseEventKind::ScrollDown => scroll_selection(
-                &mut view.prompt,
-                SCROLL_STEP_I32,
-                ctx.prompt_registry.prompts.len(),
-                viewport_rows,
-            ),
-            _ => {}
-        }
-    }
+    let delta = match kind {
+        MouseEventKind::ScrollUp => -SCROLL_STEP_I32,
+        MouseEventKind::ScrollDown => SCROLL_STEP_I32,
+        _ => return,
+    };
+    let areas = overlay_areas(layout);
+    let counts = overlay_counts(ctx, jump_rows);
+    let _ = with_active_table_handle(view, areas, counts, |mut handle| {
+        handle.scroll_by(delta);
+    });
 }
 
 pub(crate) fn handle_mouse_event_loop(
@@ -141,8 +78,8 @@ pub(crate) fn handle_mouse_event_loop(
             ctx.theme,
         );
     } else {
-        handle_overlay_scroll(view, ctx, layout, jump_rows, m.kind);
-        let row = overlay_row_at(view, ctx, layout, jump_rows, m.column, m.row);
+        handle_overlay_scroll(view, ctx, layout, jump_rows.len(), m.kind);
+        let row = overlay_row_at(view, ctx, layout, jump_rows.len(), m.column, m.row);
         let action = handle_view_mouse(view, row, ctx.tabs.len(), jump_rows.len(), m.kind);
         if let ViewAction::SelectModel(idx) = action {
             apply_model_selection(ctx, idx);

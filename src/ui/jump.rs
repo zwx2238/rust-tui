@@ -2,7 +2,7 @@ use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::types::Message;
 use crate::ui::draw::draw_tabs;
 use crate::ui::overlay_table::{
-    OverlayTable, draw_overlay_table, header_style, row_at, visible_rows,
+    OverlayTable, draw_overlay_table, header_style,
 };
 use crate::ui::notice::draw_notice;
 use crate::ui::runtime_helpers::TabState;
@@ -73,20 +73,6 @@ pub fn redraw_jump(
         }
     })?;
     Ok(())
-}
-
-pub fn jump_row_at(
-    area: Rect,
-    row_count: usize,
-    mouse_x: u16,
-    mouse_y: u16,
-    scroll: usize,
-) -> Option<usize> {
-    row_at(area, row_count, scroll, mouse_x, mouse_y)
-}
-
-pub fn jump_visible_rows(area: Rect) -> usize {
-    visible_rows(area)
 }
 
 pub fn max_preview_width(area: Rect) -> usize {

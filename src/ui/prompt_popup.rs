@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
 use crate::ui::overlay_table::{
-    OverlayTable, centered_area, draw_overlay_table, header_style, row_at, visible_rows,
+    OverlayTable, centered_area, draw_overlay_table, header_style,
 };
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use ratatui::layout::{Constraint, Rect};
@@ -46,22 +46,6 @@ pub fn draw_prompt_popup(
 
 pub fn prompt_popup_area(area: Rect, rows: usize) -> Rect {
     centered_area(area, 80, rows, POPUP_MAX_HEIGHT)
-}
-
-pub fn prompt_row_at(
-    area: Rect,
-    rows: usize,
-    scroll: usize,
-    mouse_x: u16,
-    mouse_y: u16,
-) -> Option<usize> {
-    let popup = prompt_popup_area(area, rows);
-    row_at(popup, rows, scroll, mouse_x, mouse_y)
-}
-
-pub fn prompt_visible_rows(area: Rect, rows: usize) -> usize {
-    let popup = prompt_popup_area(area, rows);
-    visible_rows(popup)
 }
 
 fn max_preview_width(area: Rect, role_width: u16) -> usize {

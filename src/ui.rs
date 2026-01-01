@@ -11,6 +11,7 @@ mod notice;
 mod overlay;
 mod overlay_render;
 mod overlay_table;
+mod overlay_table_state;
 mod perf;
 mod prompt_popup;
 mod runtime_context;

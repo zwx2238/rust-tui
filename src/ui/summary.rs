@@ -44,6 +44,7 @@ pub fn redraw_summary(
     theme: &RenderTheme,
     startup_text: Option<&str>,
     selected_row: usize,
+    scroll: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
     let size = Rect::new(0, 0, size.width, size.height);
@@ -57,7 +58,7 @@ pub fn redraw_summary(
     let rows = build_summary_rows(tabs, max_latest_width.max(10));
     terminal.draw(|f| {
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
-        draw_summary_table(f, body_area, &rows, selected_row, theme);
+        draw_summary_table(f, body_area, &rows, selected_row, scroll, theme);
         if let Some(tab) = tabs.get_mut(active_tab) {
             draw_notice(f, size, &mut tab.app, theme);
         }
@@ -70,6 +71,7 @@ fn draw_summary_table(
     area: Rect,
     rows: &[SummaryRow],
     selected_row: usize,
+    scroll: usize,
     theme: &RenderTheme,
 ) {
     let header = Row::new(vec![
@@ -100,7 +102,7 @@ fn draw_summary_table(
             Constraint::Min(10),
         ],
         selected: selected_row,
-        scroll: 0,
+        scroll,
         theme,
     };
     draw_overlay_table(f, area, popup);

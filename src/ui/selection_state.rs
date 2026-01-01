@@ -11,20 +11,6 @@ impl SelectionState {
         self.selected = idx;
     }
 
-    pub(crate) fn clamp(&mut self, len: usize) {
-        if len == 0 {
-            self.selected = 0;
-            self.scroll = 0;
-            return;
-        }
-        if self.selected >= len {
-            self.selected = len - 1;
-        }
-        if self.scroll > self.selected {
-            self.scroll = self.selected;
-        }
-    }
-
     pub(crate) fn clamp_with_viewport(&mut self, len: usize, viewport_rows: usize) {
         if len == 0 {
             self.selected = 0;

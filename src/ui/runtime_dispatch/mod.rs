@@ -2,6 +2,8 @@ use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
 use crate::ui::net::UiEvent;
+use crate::ui::overlay::OverlayKind;
+use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
 use crate::ui::runtime_helpers::{TabState, start_tab_request};
 use crate::ui::state::Focus;
 use ratatui::layout::Rect;
@@ -75,8 +77,9 @@ pub(crate) fn sync_model_selection(
             view.model.selected = idx;
         }
     }
-    let viewport_rows =
-        crate::ui::model_popup::model_visible_rows(layout.size, ctx.registry.models.len());
+    let areas = overlay_areas(layout);
+    let counts = overlay_counts(ctx);
+    let viewport_rows = overlay_visible_rows(OverlayKind::Model, areas, counts);
     view.model
         .clamp_with_viewport(ctx.registry.models.len(), viewport_rows);
 }
@@ -96,12 +99,27 @@ pub(crate) fn sync_prompt_selection(
             view.prompt.selected = idx;
         }
     }
-    let viewport_rows = crate::ui::prompt_popup::prompt_visible_rows(
-        layout.size,
-        ctx.prompt_registry.prompts.len(),
-    );
+    let areas = overlay_areas(layout);
+    let counts = overlay_counts(ctx);
+    let viewport_rows = overlay_visible_rows(OverlayKind::Prompt, areas, counts);
     view.prompt
         .clamp_with_viewport(ctx.prompt_registry.prompts.len(), viewport_rows);
+}
+
+fn overlay_areas(layout: LayoutContext) -> OverlayAreas {
+    OverlayAreas {
+        full: layout.size,
+        msg: layout.msg_area,
+    }
+}
+
+fn overlay_counts(ctx: &DispatchContext<'_>) -> OverlayRowCounts {
+    OverlayRowCounts {
+        tabs: ctx.tabs.len(),
+        jump: 0,
+        models: ctx.registry.models.len(),
+        prompts: ctx.prompt_registry.prompts.len(),
+    }
 }
 
 pub(crate) fn apply_model_selection(ctx: &mut DispatchContext<'_>, idx: usize) {
