@@ -105,6 +105,9 @@ pub(crate) fn handle_mouse_event_loop(
                 }
             }
         }
+        if matches!(m.kind, MouseEventKind::Down(_)) {
+            view.overlay.close();
+        }
     }
     if view.is_chat() {
         if let Some(msg_idx) = handle_mouse_event(

@@ -10,6 +10,7 @@ use unicode_width::UnicodeWidthStr;
 
 const MIN_POPUP_WIDTH: u16 = 40;
 const MIN_POPUP_HEIGHT: u16 = 8;
+const OUTER_MARGIN: u16 = 2;
 #[derive(Copy, Clone)]
 pub(crate) struct CodeExecPopupLayout {
     pub(crate) popup: Rect,
@@ -19,14 +20,20 @@ pub(crate) struct CodeExecPopupLayout {
 }
 
 pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
-    let width = (area.width * 80 / 100)
+    let safe = Rect {
+        x: area.x.saturating_add(OUTER_MARGIN),
+        y: area.y.saturating_add(OUTER_MARGIN),
+        width: area.width.saturating_sub(OUTER_MARGIN.saturating_mul(2)),
+        height: area.height.saturating_sub(OUTER_MARGIN.saturating_mul(2)),
+    };
+    let width = (safe.width * 80 / 100)
         .max(MIN_POPUP_WIDTH)
-        .min(area.width.saturating_sub(2).max(MIN_POPUP_WIDTH));
-    let height = (area.height * 70 / 100)
+        .min(safe.width.saturating_sub(2).max(MIN_POPUP_WIDTH));
+    let height = (safe.height * 70 / 100)
         .max(MIN_POPUP_HEIGHT)
-        .min(area.height.saturating_sub(2).max(MIN_POPUP_HEIGHT));
-    let x = area.x + (area.width.saturating_sub(width)) / 2;
-    let y = area.y + (area.height.saturating_sub(height)) / 2;
+        .min(safe.height.saturating_sub(2).max(MIN_POPUP_HEIGHT));
+    let x = safe.x + (safe.width.saturating_sub(width)) / 2;
+    let y = safe.y + (safe.height.saturating_sub(height)) / 2;
     let popup = Rect {
         x,
         y,
