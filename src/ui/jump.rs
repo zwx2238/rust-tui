@@ -17,6 +17,8 @@ pub struct JumpRow {
     pub scroll: u16,
 }
 
+const PREVIEW_GUTTER: usize = 20;
+
 pub fn build_jump_rows(
     messages: &[Message],
     width: usize,
@@ -82,7 +84,7 @@ pub fn jump_visible_rows(area: Rect) -> usize {
 
 pub fn max_preview_width(area: Rect) -> usize {
     let inner_width = area.width.saturating_sub(2) as usize;
-    inner_width.saturating_sub(20).max(10)
+    inner_width.saturating_sub(PREVIEW_GUTTER).max(10)
 }
 
 fn draw_jump_table(
