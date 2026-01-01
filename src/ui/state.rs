@@ -19,6 +19,8 @@ pub enum PendingCommand {
     SaveSession,
     ApproveCodeExec,
     DenyCodeExec,
+    ExitCodeExec,
+    StopCodeExec,
 }
 
 #[derive(Clone)]
@@ -67,9 +69,12 @@ pub struct App {
     pub tavily_api_key: String,
     pub pending_code_exec: Option<PendingCodeExec>,
     pub code_exec_scroll: usize,
-    pub code_exec_output_scroll: usize,
+    pub code_exec_stdout_scroll: usize,
+    pub code_exec_stderr_scroll: usize,
     pub code_exec_live: Option<Arc<Mutex<CodeExecLive>>>,
-    pub code_exec_result_pushed: bool,
+    pub code_exec_result_ready: bool,
+    pub code_exec_finished_output: Option<String>,
+    pub code_exec_cancel: Option<Arc<AtomicBool>>,
     pub code_exec_hover: Option<CodeExecHover>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
@@ -99,6 +104,7 @@ pub struct CodeExecLive {
 pub enum CodeExecHover {
     Approve,
     Deny,
+    Stop,
     Exit,
 }
 
@@ -141,9 +147,12 @@ impl App {
             tavily_api_key: String::new(),
             pending_code_exec: None,
             code_exec_scroll: 0,
-            code_exec_output_scroll: 0,
+            code_exec_stdout_scroll: 0,
+            code_exec_stderr_scroll: 0,
             code_exec_live: None,
-            code_exec_result_pushed: false,
+            code_exec_result_ready: false,
+            code_exec_finished_output: None,
+            code_exec_cancel: None,
             code_exec_hover: None,
             total_prompt_tokens: 0,
             total_completion_tokens: 0,

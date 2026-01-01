@@ -15,7 +15,6 @@ use crate::ui::runtime_events::handle_paste_event;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_loop_helpers::{apply_tool_calls, handle_pending_command, build_code_exec_tool_output};
-use crate::ui::runtime_helpers::start_followup_request;
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
@@ -99,9 +98,9 @@ pub(crate) fn run_loop(
                 apply_tool_calls(tab_state, tab, &calls, registry, args, tx);
             }
         }
-        for (idx, tab_state) in tabs.iter_mut().enumerate() {
+        for tab_state in tabs.iter_mut() {
             if tab_state.app.pending_code_exec.is_some()
-                && !tab_state.app.code_exec_result_pushed
+                && !tab_state.app.code_exec_result_ready
             {
                 let done = tab_state
                     .app
@@ -116,29 +115,8 @@ pub(crate) fn run_loop(
                     ) {
                         if let Ok(live) = live.lock() {
                             let content = build_code_exec_tool_output(&pending, &live);
-                            let idx_msg = tab_state.app.messages.len();
-                            tab_state.app.messages.push(crate::types::Message {
-                                role: crate::types::ROLE_TOOL.to_string(),
-                                content,
-                                tool_call_id: Some(pending.call_id.clone()),
-                                tool_calls: None,
-                            });
-                            tab_state.app.dirty_indices.push(idx_msg);
-                            tab_state.app.code_exec_result_pushed = true;
-                            let model = registry
-                                .get(&tab_state.app.model_key)
-                                .unwrap_or_else(|| {
-                                    registry.get(&registry.default_key).expect("model")
-                                });
-                            start_followup_request(
-                                tab_state,
-                                &model.base_url,
-                                &model.api_key,
-                                &model.model,
-                                args.show_reasoning,
-                                tx,
-                                idx,
-                            );
+                            tab_state.app.code_exec_finished_output = Some(content);
+                            tab_state.app.code_exec_result_ready = true;
                         }
                     }
                 }

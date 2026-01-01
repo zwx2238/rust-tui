@@ -16,10 +16,13 @@ pub(crate) struct CodeExecPopupLayout {
     pub(crate) popup: Rect,
     pub(crate) code_text_area: Rect,
     pub(crate) code_scrollbar_area: Rect,
-    pub(crate) output_text_area: Rect,
-    pub(crate) output_scrollbar_area: Rect,
+    pub(crate) stdout_text_area: Rect,
+    pub(crate) stdout_scrollbar_area: Rect,
+    pub(crate) stderr_text_area: Rect,
+    pub(crate) stderr_scrollbar_area: Rect,
     pub(crate) approve_btn: Rect,
     pub(crate) deny_btn: Rect,
+    pub(crate) stop_btn: Rect,
     pub(crate) exit_btn: Rect,
 }
 
@@ -50,37 +53,49 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         width: popup.width.saturating_sub(2),
         height: popup.height.saturating_sub(2),
     };
-    let chunks = Layout::vertical([
-        Constraint::Percentage(45),
-        Constraint::Percentage(35),
-        Constraint::Length(3),
-    ])
-    .split(inner);
+    let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(3)]).split(inner);
+    let body = chunks[0];
+    let actions_area = chunks[1];
+    let body_cols = Layout::horizontal([Constraint::Percentage(55), Constraint::Percentage(45)])
+        .split(body);
     let code_text_area = Rect {
-        x: chunks[0].x,
-        y: chunks[0].y,
-        width: chunks[0].width.saturating_sub(1),
-        height: chunks[0].height,
+        x: body_cols[0].x,
+        y: body_cols[0].y,
+        width: body_cols[0].width.saturating_sub(1),
+        height: body_cols[0].height,
     };
     let code_scrollbar_area = Rect {
-        x: chunks[0].x.saturating_add(chunks[0].width.saturating_sub(1)),
-        y: chunks[0].y,
+        x: body_cols[0].x.saturating_add(body_cols[0].width.saturating_sub(1)),
+        y: body_cols[0].y,
         width: 1,
-        height: chunks[0].height,
+        height: body_cols[0].height,
     };
-    let output_text_area = Rect {
-        x: chunks[1].x,
-        y: chunks[1].y,
-        width: chunks[1].width.saturating_sub(1),
-        height: chunks[1].height,
+    let out_chunks = Layout::vertical([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .split(body_cols[1]);
+    let stdout_text_area = Rect {
+        x: out_chunks[0].x,
+        y: out_chunks[0].y,
+        width: out_chunks[0].width.saturating_sub(1),
+        height: out_chunks[0].height,
     };
-    let output_scrollbar_area = Rect {
-        x: chunks[1].x.saturating_add(chunks[1].width.saturating_sub(1)),
-        y: chunks[1].y,
+    let stdout_scrollbar_area = Rect {
+        x: out_chunks[0].x.saturating_add(out_chunks[0].width.saturating_sub(1)),
+        y: out_chunks[0].y,
         width: 1,
-        height: chunks[1].height,
+        height: out_chunks[0].height,
     };
-    let actions_area = chunks[2];
+    let stderr_text_area = Rect {
+        x: out_chunks[1].x,
+        y: out_chunks[1].y,
+        width: out_chunks[1].width.saturating_sub(1),
+        height: out_chunks[1].height,
+    };
+    let stderr_scrollbar_area = Rect {
+        x: out_chunks[1].x.saturating_add(out_chunks[1].width.saturating_sub(1)),
+        y: out_chunks[1].y,
+        width: 1,
+        height: out_chunks[1].height,
+    };
     let gap = 2u16;
     let btn_width = actions_area
         .width
@@ -102,6 +117,12 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
             .max(btn_width),
         height: actions_area.height,
     };
+    let stop_btn = Rect {
+        x: actions_area.x,
+        y: actions_area.y,
+        width: actions_area.width,
+        height: actions_area.height,
+    };
     let exit_btn = Rect {
         x: actions_area.x,
         y: actions_area.y,
@@ -112,10 +133,13 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         popup,
         code_text_area,
         code_scrollbar_area,
-        output_text_area,
-        output_scrollbar_area,
+        stdout_text_area,
+        stdout_scrollbar_area,
+        stderr_text_area,
+        stderr_scrollbar_area,
         approve_btn,
         deny_btn,
+        stop_btn,
         exit_btn,
     }
 }
@@ -132,14 +156,25 @@ pub(crate) fn code_exec_max_scroll(
     lines.len().saturating_sub(view_height)
 }
 
-pub(crate) fn output_max_scroll(
+pub(crate) fn stdout_max_scroll(
     stdout: &str,
+    width: u16,
+    height: u16,
+    theme: &crate::render::RenderTheme,
+) -> usize {
+    let md = stdout_to_markdown(stdout);
+    let lines = render_markdown_lines(&md, width as usize, theme, false);
+    let view_height = height.saturating_sub(1) as usize;
+    lines.len().saturating_sub(view_height)
+}
+
+pub(crate) fn stderr_max_scroll(
     stderr: &str,
     width: u16,
     height: u16,
     theme: &crate::render::RenderTheme,
 ) -> usize {
-    let md = output_to_markdown(stdout, stderr);
+    let md = stderr_to_markdown(stderr);
     let lines = render_markdown_lines(&md, width as usize, theme, false);
     let view_height = height.saturating_sub(1) as usize;
     lines.len().saturating_sub(view_height)
@@ -150,7 +185,8 @@ pub(crate) fn draw_code_exec_popup(
     area: Rect,
     pending: &PendingCodeExec,
     scroll: usize,
-    output_scroll: usize,
+    stdout_scroll: usize,
+    stderr_scroll: usize,
     hover: Option<CodeExecHover>,
     live: Option<&crate::ui::state::CodeExecLive>,
     theme: &RenderTheme,
@@ -216,28 +252,52 @@ pub(crate) fn draw_code_exec_popup(
         f.render_stateful_widget(scrollbar, layout.code_scrollbar_area, &mut state);
     }
 
-    let (output_text, output_lines) = build_output_text(
-        live.map(|l| (l.stdout.as_str(), l.stderr.as_str())),
-        layout.output_text_area.width,
-        layout.output_text_area.height,
-        output_scroll,
+    let (stdout_text, stdout_lines) = build_stdout_text(
+        live.map(|l| l.stdout.as_str()),
+        layout.stdout_text_area.width,
+        layout.stdout_text_area.height,
+        stdout_scroll,
         theme,
     );
-    let output_para = Paragraph::new(output_text)
+    let stdout_para = Paragraph::new(stdout_text)
         .style(base_style(theme))
-        .block(Block::default().borders(Borders::NONE));
-    f.render_widget(output_para, layout.output_text_area);
+        .block(Block::default().borders(Borders::NONE).title_top("STDOUT"));
+    f.render_widget(stdout_para, layout.stdout_text_area);
 
-    if output_lines > layout.output_text_area.height as usize {
-        let viewport_len = layout.output_text_area.height as usize;
-        let max_scroll = output_lines.saturating_sub(viewport_len);
+    if stdout_lines > layout.stdout_text_area.height as usize {
+        let viewport_len = layout.stdout_text_area.height as usize;
+        let max_scroll = stdout_lines.saturating_sub(viewport_len);
         let mut state = ScrollbarState::new(max_scroll.saturating_add(1))
-            .position(output_scroll.min(max_scroll))
+            .position(stdout_scroll.min(max_scroll))
             .viewport_content_length(viewport_len);
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .thumb_style(Style::default().fg(base_fg(theme)))
             .track_style(Style::default().fg(base_fg(theme)));
-        f.render_stateful_widget(scrollbar, layout.output_scrollbar_area, &mut state);
+        f.render_stateful_widget(scrollbar, layout.stdout_scrollbar_area, &mut state);
+    }
+
+    let (stderr_text, stderr_lines) = build_stderr_text(
+        live.map(|l| l.stderr.as_str()),
+        layout.stderr_text_area.width,
+        layout.stderr_text_area.height,
+        stderr_scroll,
+        theme,
+    );
+    let stderr_para = Paragraph::new(stderr_text)
+        .style(base_style(theme))
+        .block(Block::default().borders(Borders::NONE).title_top("STDERR"));
+    f.render_widget(stderr_para, layout.stderr_text_area);
+
+    if stderr_lines > layout.stderr_text_area.height as usize {
+        let viewport_len = layout.stderr_text_area.height as usize;
+        let max_scroll = stderr_lines.saturating_sub(viewport_len);
+        let mut state = ScrollbarState::new(max_scroll.saturating_add(1))
+            .position(stderr_scroll.min(max_scroll))
+            .viewport_content_length(viewport_len);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .thumb_style(Style::default().fg(base_fg(theme)))
+            .track_style(Style::default().fg(base_fg(theme)));
+        f.render_stateful_widget(scrollbar, layout.stderr_scrollbar_area, &mut state);
     }
 
     let approve_style = match hover {
@@ -258,6 +318,12 @@ pub(crate) fn draw_code_exec_popup(
         }
         _ => base_style(theme),
     };
+    let stop_style = match hover {
+        Some(CodeExecHover::Stop) => {
+            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
+        }
+        _ => base_style(theme),
+    };
 
     let finished = live.map(|l| l.done).unwrap_or(false);
     let running = live.is_some() && !finished;
@@ -273,13 +339,13 @@ pub(crate) fn draw_code_exec_popup(
         return;
     }
     if running {
-        let wait_block = Block::default().borders(Borders::ALL).style(base_style(theme));
-        f.render_widget(wait_block, layout.exit_btn);
+        let stop_block = Block::default().borders(Borders::ALL).style(stop_style);
+        f.render_widget(stop_block, layout.stop_btn);
         f.render_widget(
-            Paragraph::new(Line::from("执行中…"))
-                .style(base_style(theme))
+            Paragraph::new(Line::from("停止执行"))
+                .style(stop_style)
                 .alignment(ratatui::layout::Alignment::Center),
-            layout.exit_btn,
+            layout.stop_btn,
         );
         return;
     }
@@ -317,15 +383,32 @@ fn build_code_text(
     (Text::from(slice), lines.len())
 }
 
-fn build_output_text(
-    output: Option<(&str, &str)>,
+fn build_stdout_text(
+    output: Option<&str>,
     width: u16,
     height: u16,
     scroll: usize,
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
-    let (stdout, stderr) = output.unwrap_or(("", ""));
-    let md = output_to_markdown(stdout, stderr);
+    let stdout = output.unwrap_or("");
+    let md = stdout_to_markdown(stdout);
+    let lines = render_markdown_lines(&md, width as usize, theme, false);
+    let view_height = height.saturating_sub(1) as usize;
+    let start = scroll.min(lines.len());
+    let end = (start + view_height).min(lines.len());
+    let slice = lines[start..end].to_vec();
+    (Text::from(slice), lines.len())
+}
+
+fn build_stderr_text(
+    output: Option<&str>,
+    width: u16,
+    height: u16,
+    scroll: usize,
+    theme: &RenderTheme,
+) -> (Text<'static>, usize) {
+    let stderr = output.unwrap_or("");
+    let md = stderr_to_markdown(stderr);
     let lines = render_markdown_lines(&md, width as usize, theme, false);
     let view_height = height.saturating_sub(1) as usize;
     let start = scroll.min(lines.len());
@@ -348,9 +431,9 @@ fn code_to_markdown(code: &str) -> String {
     }
 }
 
-fn output_to_markdown(stdout: &str, stderr: &str) -> String {
+fn stdout_to_markdown(stdout: &str) -> String {
     let mut out = String::new();
-    out.push_str("stdout:\n```text\n");
+    out.push_str("```text\n");
     if stdout.trim().is_empty() {
         out.push_str("(空)\n");
     } else {
@@ -359,7 +442,13 @@ fn output_to_markdown(stdout: &str, stderr: &str) -> String {
             out.push('\n');
         }
     }
-    out.push_str("```\nstderr:\n```text\n");
+    out.push_str("```\n");
+    out
+}
+
+fn stderr_to_markdown(stderr: &str) -> String {
+    let mut out = String::new();
+    out.push_str("```text\n");
     if stderr.trim().is_empty() {
         out.push_str("(空)\n");
     } else {

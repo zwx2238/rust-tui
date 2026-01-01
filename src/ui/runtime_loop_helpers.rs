@@ -100,8 +100,11 @@ fn handle_code_exec_request(
         code,
     });
     tab_state.app.code_exec_scroll = 0;
-    tab_state.app.code_exec_output_scroll = 0;
-    tab_state.app.code_exec_result_pushed = false;
+    tab_state.app.code_exec_stdout_scroll = 0;
+    tab_state.app.code_exec_stderr_scroll = 0;
+    tab_state.app.code_exec_result_ready = false;
+    tab_state.app.code_exec_finished_output = None;
+    tab_state.app.code_exec_cancel = None;
     tab_state.app.code_exec_hover = None;
     Ok(())
 }
@@ -160,7 +163,66 @@ pub(crate) fn handle_pending_command(
                 handle_code_exec_deny(tab_state, active_tab, registry, args, tx);
             }
         }
+        PendingCommand::ExitCodeExec => {
+            if let Some(tab_state) = tabs.get_mut(active_tab) {
+                handle_code_exec_exit(tab_state, active_tab, registry, args, tx);
+            }
+        }
+        PendingCommand::StopCodeExec => {
+            if let Some(tab_state) = tabs.get_mut(active_tab) {
+                handle_code_exec_stop(tab_state);
+            }
+        }
     }
+}
+
+fn handle_code_exec_stop(tab_state: &mut TabState) {
+    if let Some(cancel) = &tab_state.app.code_exec_cancel {
+        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    tab_state.app.code_exec_hover = None;
+}
+
+fn handle_code_exec_exit(
+    tab_state: &mut TabState,
+    tab_id: usize,
+    registry: &crate::model_registry::ModelRegistry,
+    args: &Args,
+    tx: &mpsc::Sender<UiEvent>,
+) {
+    let Some(pending) = tab_state.app.pending_code_exec.take() else {
+        return;
+    };
+    let Some(content) = tab_state.app.code_exec_finished_output.take() else {
+        return;
+    };
+    let idx = tab_state.app.messages.len();
+    tab_state.app.messages.push(Message {
+        role: crate::types::ROLE_TOOL.to_string(),
+        content,
+        tool_call_id: Some(pending.call_id),
+        tool_calls: None,
+    });
+    tab_state.app.dirty_indices.push(idx);
+    tab_state.app.code_exec_live = None;
+    tab_state.app.code_exec_result_ready = false;
+    tab_state.app.code_exec_cancel = None;
+    tab_state.app.code_exec_hover = None;
+    tab_state.app.code_exec_scroll = 0;
+    tab_state.app.code_exec_stdout_scroll = 0;
+    tab_state.app.code_exec_stderr_scroll = 0;
+    let model = registry
+        .get(&tab_state.app.model_key)
+        .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
+    start_followup_request(
+        tab_state,
+        &model.base_url,
+        &model.api_key,
+        &model.model,
+        args.show_reasoning,
+        tx,
+        tab_id,
+    );
 }
 
 pub(crate) fn build_code_exec_tool_output(
@@ -249,13 +311,17 @@ fn handle_code_exec_approve(
         done: false,
     }));
     tab_state.app.code_exec_live = Some(live.clone());
-    tab_state.app.code_exec_result_pushed = false;
+    tab_state.app.code_exec_result_ready = false;
+    tab_state.app.code_exec_finished_output = None;
     tab_state.app.code_exec_hover = None;
     tab_state.app.code_exec_scroll = 0;
-    tab_state.app.code_exec_output_scroll = 0;
+    tab_state.app.code_exec_stdout_scroll = 0;
+    tab_state.app.code_exec_stderr_scroll = 0;
+    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    tab_state.app.code_exec_cancel = Some(cancel.clone());
     if pending.language == "python" {
         std::thread::spawn(move || {
-            if let Err(err) = run_python_in_docker_stream(&pending.code, live.clone()) {
+            if let Err(err) = run_python_in_docker_stream(&pending.code, live.clone(), cancel) {
                 if let Ok(mut live) = live.lock() {
                     live.stderr.push_str(&format!("{err}\n"));
                     live.exit_code = Some(-1);
@@ -289,10 +355,13 @@ fn handle_code_exec_deny(
         return;
     };
     tab_state.app.code_exec_live = None;
-    tab_state.app.code_exec_result_pushed = false;
+    tab_state.app.code_exec_result_ready = false;
+    tab_state.app.code_exec_finished_output = None;
+    tab_state.app.code_exec_cancel = None;
     tab_state.app.code_exec_hover = None;
     tab_state.app.code_exec_scroll = 0;
-    tab_state.app.code_exec_output_scroll = 0;
+    tab_state.app.code_exec_stdout_scroll = 0;
+    tab_state.app.code_exec_stderr_scroll = 0;
     let idx = tab_state.app.messages.len();
     tab_state.app.messages.push(Message {
         role: crate::types::ROLE_TOOL.to_string(),

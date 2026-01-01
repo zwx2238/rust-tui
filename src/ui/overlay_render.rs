@@ -233,18 +233,27 @@ pub(crate) fn render_code_exec_overlay(
                 .as_ref()
                 .map(|l| (l.stdout.clone(), l.stderr.clone()))
                 .unwrap_or_else(|| (String::new(), String::new()));
-            let max_output_scroll = crate::ui::code_exec_popup::output_max_scroll(
+            let max_stdout_scroll = crate::ui::code_exec_popup::stdout_max_scroll(
                 &stdout,
-                &stderr,
-                layout.output_text_area.width,
-                layout.output_text_area.height,
+                layout.stdout_text_area.width,
+                layout.stdout_text_area.height,
                 theme,
             );
-            if tab_state.app.code_exec_output_scroll > max_output_scroll {
-                tab_state.app.code_exec_output_scroll = max_output_scroll;
+            let max_stderr_scroll = crate::ui::code_exec_popup::stderr_max_scroll(
+                &stderr,
+                layout.stderr_text_area.width,
+                layout.stderr_text_area.height,
+                theme,
+            );
+            if tab_state.app.code_exec_stdout_scroll > max_stdout_scroll {
+                tab_state.app.code_exec_stdout_scroll = max_stdout_scroll;
+            }
+            if tab_state.app.code_exec_stderr_scroll > max_stderr_scroll {
+                tab_state.app.code_exec_stderr_scroll = max_stderr_scroll;
             }
             let scroll = tab_state.app.code_exec_scroll;
-            let output_scroll = tab_state.app.code_exec_output_scroll;
+            let stdout_scroll = tab_state.app.code_exec_stdout_scroll;
+            let stderr_scroll = tab_state.app.code_exec_stderr_scroll;
             let hover = tab_state.app.code_exec_hover;
             redraw_with_overlay(
                 terminal,
@@ -262,7 +271,8 @@ pub(crate) fn render_code_exec_overlay(
                         f.area(),
                         &pending,
                         scroll,
-                        output_scroll,
+                        stdout_scroll,
+                        stderr_scroll,
                         hover,
                         live_snapshot.as_ref(),
                         theme,
