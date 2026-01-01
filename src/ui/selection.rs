@@ -71,7 +71,12 @@ pub fn apply_selection_to_text(
             out.push(to_owned_line(line));
             continue;
         }
-        out.push(apply_selection_to_line(line, sel_start, sel_end, select_style));
+        out.push(apply_selection_to_line(
+            line,
+            sel_start,
+            sel_end,
+            select_style,
+        ));
     }
     Text::from(out)
 }
@@ -86,9 +91,7 @@ fn apply_selection_to_line(
     let mut col = 0usize;
     let mut current_style: Option<Style> = None;
     let mut buffer = String::new();
-    let flush = |spans: &mut Vec<Span<'static>>,
-                 style: Option<Style>,
-                 buffer: &mut String| {
+    let flush = |spans: &mut Vec<Span<'static>>, style: Option<Style>, buffer: &mut String| {
         if let Some(style) = style {
             if !buffer.is_empty() {
                 spans.push(Span::styled(std::mem::take(buffer), style));

@@ -49,7 +49,9 @@ pub fn request_llm_stream(
         model,
         messages,
         stream: true,
-        stream_options: Some(StreamOptions { include_usage: true }),
+        stream_options: Some(StreamOptions {
+            include_usage: true,
+        }),
     };
     let resp = client.post(url).bearer_auth(api_key).json(&req).send();
     match resp {

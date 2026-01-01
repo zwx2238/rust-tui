@@ -1,14 +1,16 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::layout::{inner_area, scrollbar_area, PADDING_X, PADDING_Y};
+use crate::ui::draw::layout::{PADDING_X, PADDING_Y, inner_area, scrollbar_area};
 use crate::ui::draw::style::{base_fg, base_style, focus_border_style};
 use crate::ui::scroll::{max_scroll, max_scroll_u16};
 use crate::ui::scroll_debug::{self, ScrollDebug};
-use crate::ui::selection::{apply_selection_to_text, Selection};
+use crate::ui::selection::{Selection, apply_selection_to_text};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::Text;
 use ratatui::widgets::block::Padding;
-use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
+use ratatui::widgets::{
+    Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+};
 
 pub(crate) fn draw_messages(
     f: &mut ratatui::Frame<'_>,
@@ -52,7 +54,8 @@ pub(crate) fn draw_messages(
     let mut display_text = text.clone();
     if let Some(selection) = selection {
         let select_style = Style::default().bg(Color::DarkGray);
-        display_text = apply_selection_to_text(&display_text, scroll as usize, selection, select_style);
+        display_text =
+            apply_selection_to_text(&display_text, scroll as usize, selection, select_style);
     }
     let paragraph = Paragraph::new(display_text)
         .block(block)

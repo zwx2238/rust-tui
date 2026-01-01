@@ -58,11 +58,7 @@ pub fn popup_row_at(
     }
     let row = inner_y.saturating_sub(1) as usize;
     let row = row.saturating_add(scroll);
-    if row < rows {
-        Some(row)
-    } else {
-        None
-    }
+    if row < rows { Some(row) } else { None }
 }
 
 pub fn popup_visible_rows(popup: Rect) -> usize {

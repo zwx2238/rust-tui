@@ -1,6 +1,6 @@
-use crate::render::{insert_empty_cache_entry, RenderCacheEntry, RenderTheme};
+use crate::render::{RenderCacheEntry, RenderTheme, insert_empty_cache_entry};
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
-use crate::ui::net::{request_llm_stream, UiEvent};
+use crate::ui::net::{UiEvent, request_llm_stream};
 use crate::ui::perf::seed_perf_messages;
 use crate::ui::state::App;
 use std::sync::mpsc;

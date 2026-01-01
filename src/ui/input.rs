@@ -127,11 +127,7 @@ pub fn handle_command(
     match line {
         "/exit" | "/quit" => return Ok(true),
         "/reset" | "/clear" => {
-            let system = app
-                .messages
-                .iter()
-                .find(|m| m.role == ROLE_SYSTEM)
-                .cloned();
+            let system = app.messages.iter().find(|m| m.role == ROLE_SYSTEM).cloned();
             app.messages.clear();
             app.assistant_stats.clear();
             if let Some(sys) = system {

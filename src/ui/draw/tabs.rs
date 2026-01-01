@@ -34,10 +34,7 @@ pub(crate) fn draw_tabs(
         spans.push(Span::styled(part.to_string(), style));
         cursor += part.width();
         if i + 1 < tabs_len {
-            spans.push(Span::styled(
-                "│",
-                Style::default().fg(base_fg(theme)),
-            ));
+            spans.push(Span::styled("│", Style::default().fg(base_fg(theme))));
             cursor += 1;
         }
     }

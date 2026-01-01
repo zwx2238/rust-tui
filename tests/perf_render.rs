@@ -1,4 +1,4 @@
-use rust_tui::render::{messages_to_viewport_text_cached, theme_from_config, RenderCacheEntry};
+use rust_tui::render::{RenderCacheEntry, messages_to_viewport_text_cached, theme_from_config};
 use rust_tui::types::Message;
 use std::fs::File;
 use std::io::Write;
@@ -64,7 +64,9 @@ fn long_conversation_render_latency() {
         &theme,
         &[],
         None,
-        total_lines.saturating_sub(height as usize).min(u16::MAX as usize) as u16,
+        total_lines
+            .saturating_sub(height as usize)
+            .min(u16::MAX as usize) as u16,
         height,
         &mut cache,
     );

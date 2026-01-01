@@ -1,7 +1,7 @@
 use crate::types::{Message, ROLE_SYSTEM};
-use tui_textarea::TextArea;
 use std::collections::BTreeMap;
 use std::time::Instant;
+use tui_textarea::TextArea;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Focus {

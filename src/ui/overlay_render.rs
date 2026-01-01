@@ -1,6 +1,8 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
-use crate::ui::jump::{build_jump_rows, jump_visible_rows, max_preview_width, redraw_jump, JumpRow};
+use crate::ui::jump::{
+    JumpRow, build_jump_rows, jump_visible_rows, max_preview_width, redraw_jump,
+};
 use crate::ui::model_popup::{draw_model_popup, model_visible_rows};
 use crate::ui::prompt_popup::{draw_prompt_popup, prompt_visible_rows};
 use crate::ui::runtime_helpers::TabState;
@@ -8,7 +10,7 @@ use crate::ui::runtime_view::ViewState;
 use crate::ui::summary::redraw_summary;
 use ratatui::layout::Rect;
 use ratatui::text::Text;
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::error::Error;
 use std::io::Stdout;
 
@@ -66,7 +68,8 @@ pub(crate) fn render_jump_overlay(
     jump_rows: &[JumpRow],
 ) -> Result<(), Box<dyn Error>> {
     let viewport_rows = jump_visible_rows(msg_area);
-    view.jump.clamp_with_viewport(jump_rows.len(), viewport_rows);
+    view.jump
+        .clamp_with_viewport(jump_rows.len(), viewport_rows);
     redraw_jump(
         terminal,
         theme,

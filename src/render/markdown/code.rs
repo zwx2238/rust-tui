@@ -5,7 +5,11 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
-pub(crate) fn render_code_block_lines(text: &str, lang: &str, theme: &RenderTheme) -> Vec<Line<'static>> {
+pub(crate) fn render_code_block_lines(
+    text: &str,
+    lang: &str,
+    theme: &RenderTheme,
+) -> Vec<Line<'static>> {
     let ss = SyntaxSet::load_defaults_newlines();
     let ts = ThemeSet::load_defaults();
     let theme_name = theme.code_theme;

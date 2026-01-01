@@ -1,12 +1,12 @@
 use crate::ui::overlay::OverlayKind;
-use crate::ui::runtime_view::{apply_view_action, handle_view_key, ViewAction, ViewState};
 use crate::ui::runtime_events::handle_key_event;
+use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_key};
 use crossterm::event::KeyEvent;
 
 use super::{
-    apply_model_selection, apply_prompt_selection, can_change_prompt, cycle_model, DispatchContext,
-    LayoutContext, push_prompt_locked, sync_model_selection, sync_prompt_selection, new_tab,
-    close_tab, prev_tab, next_tab,
+    DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
+    can_change_prompt, close_tab, cycle_model, new_tab, next_tab, prev_tab, push_prompt_locked,
+    sync_model_selection, sync_prompt_selection,
 };
 
 pub(crate) fn handle_key_event_loop(
@@ -24,13 +24,7 @@ pub(crate) fn handle_key_event_loop(
             }
         }
     }
-    let action = handle_view_key(
-        view,
-        key,
-        ctx.tabs.len(),
-        jump_rows.len(),
-        *ctx.active_tab,
-    );
+    let action = handle_view_key(view, key, ctx.tabs.len(), jump_rows.len(), *ctx.active_tab);
     if matches!(action, ViewAction::CycleModel) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             cycle_model(ctx.registry, &mut tab_state.app.model_key);

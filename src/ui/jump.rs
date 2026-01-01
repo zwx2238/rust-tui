@@ -1,13 +1,15 @@
-use crate::render::{count_message_lines, label_for_role, RenderTheme};
-use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{draw_table_popup, header_style, popup_row_at, popup_visible_rows, TablePopup};
-use crate::ui::text_utils::{collapse_text, truncate_to_width};
+use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::types::Message;
+use crate::ui::draw::draw_tabs;
+use crate::ui::popup_table::{
+    TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
+};
+use crate::ui::text_utils::{collapse_text, truncate_to_width};
+use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
 use std::io::Stdout;
 
 pub struct JumpRow {
@@ -95,8 +97,12 @@ fn draw_jump_table(
     theme: &RenderTheme,
     scroll: usize,
 ) {
-    let header = Row::new(vec![Cell::from("序号"), Cell::from("角色"), Cell::from("内容")])
-        .style(header_style(theme));
+    let header = Row::new(vec![
+        Cell::from("序号"),
+        Cell::from("角色"),
+        Cell::from("内容"),
+    ])
+    .style(header_style(theme));
     let body = rows.iter().map(|row| {
         Row::new(vec![
             Cell::from(row.index.to_string()),
@@ -108,7 +114,11 @@ fn draw_jump_table(
         title: Line::from("消息定位 · F2 退出 · 点击行跳转"),
         header,
         rows: body.collect(),
-        widths: vec![Constraint::Length(6), Constraint::Length(10), Constraint::Min(10)],
+        widths: vec![
+            Constraint::Length(6),
+            Constraint::Length(10),
+            Constraint::Min(10),
+        ],
         selected,
         scroll,
         theme,

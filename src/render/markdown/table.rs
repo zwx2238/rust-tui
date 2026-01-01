@@ -63,8 +63,7 @@ impl TableBuild {
 
     pub(crate) fn end_cell(&mut self) {
         if self.in_table && self.in_cell {
-            self.current_row
-                .push(self.current_cell.trim().to_string());
+            self.current_row.push(self.current_cell.trim().to_string());
             self.current_cell.clear();
             self.in_cell = false;
         }
@@ -119,10 +118,7 @@ impl TableBuild {
                 render_table_row(header, &widths),
                 style.add_modifier(Modifier::BOLD),
             )));
-            out.push(Line::from(Span::styled(
-                render_table_rule(&widths),
-                style,
-            )));
+            out.push(Line::from(Span::styled(render_table_rule(&widths), style)));
         }
         for row in &self.rows {
             out.push(Line::from(Span::styled(

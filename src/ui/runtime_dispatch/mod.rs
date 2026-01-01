@@ -1,8 +1,8 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::ui::runtime_helpers::{start_tab_request, TabState};
 use crate::types::{ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::net::UiEvent;
+use crate::ui::runtime_helpers::{TabState, start_tab_request};
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
@@ -104,10 +104,7 @@ pub(crate) fn sync_prompt_selection(
         .clamp_with_viewport(ctx.prompt_registry.prompts.len(), viewport_rows);
 }
 
-pub(crate) fn apply_model_selection(
-    ctx: &mut DispatchContext<'_>,
-    idx: usize,
-) {
+pub(crate) fn apply_model_selection(ctx: &mut DispatchContext<'_>, idx: usize) {
     with_active_tab(ctx, |tab_state| {
         if let Some(model) = ctx.registry.models.get(idx) {
             tab_state.app.model_key = model.key.clone();
@@ -115,10 +112,7 @@ pub(crate) fn apply_model_selection(
     });
 }
 
-pub(crate) fn apply_prompt_selection(
-    ctx: &mut DispatchContext<'_>,
-    idx: usize,
-) {
+pub(crate) fn apply_prompt_selection(ctx: &mut DispatchContext<'_>, idx: usize) {
     with_active_tab(ctx, |tab_state| {
         if can_change_prompt(&tab_state.app) {
             if let Some(prompt) = ctx.prompt_registry.prompts.get(idx) {

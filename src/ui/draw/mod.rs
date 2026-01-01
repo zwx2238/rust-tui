@@ -2,7 +2,7 @@ use crate::render::RenderTheme;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::Rect;
 use ratatui::text::Text;
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io::Stdout;
 
 pub mod layout;

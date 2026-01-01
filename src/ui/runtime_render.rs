@@ -1,6 +1,6 @@
 use crate::render::RenderTheme;
-use crate::ui::overlay::OverlayKind;
 use crate::ui::jump::JumpRow;
+use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_render::{
     build_jump_overlay_rows, render_chat_view, render_jump_overlay, render_model_overlay,
     render_prompt_overlay, render_summary_overlay,
@@ -9,7 +9,7 @@ use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
 use ratatui::layout::Rect;
 use ratatui::text::Text;
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::error::Error;
 use std::io::Stdout;
 

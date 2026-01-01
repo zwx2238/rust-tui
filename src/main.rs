@@ -2,11 +2,11 @@ mod args;
 mod config;
 mod model_registry;
 mod prompt_pack;
-mod system_prompts;
 mod render;
 mod session;
-mod ui;
+mod system_prompts;
 mod types;
+mod ui;
 
 use args::Args;
 use clap::Parser;
@@ -26,8 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theme = theme_from_config(cfg_for_theme.as_ref());
 
     if let Some(id) = args.replay.as_deref() {
-        let session_messages = load_session(id)
-            .map_err(|_| format!("无法读取回放会话：{id}"))?;
+        let session_messages = load_session(id).map_err(|_| format!("无法读取回放会话：{id}"))?;
         println!("回放模式已开启：{id}");
         let width = crossterm::terminal::size()
             .map(|(w, _)| w as usize)
@@ -38,8 +37,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
-    let cfg = load_config(&cfg_path)
-        .map_err(|_| format!("无法读取配置文件：{}", cfg_path.display()))?;
+    let cfg =
+        load_config(&cfg_path).map_err(|_| format!("无法读取配置文件：{}", cfg_path.display()))?;
     let api_key = cfg.api_key.clone().unwrap_or_default();
 
     ui::run(args, api_key, cfg_for_theme, &theme)?;

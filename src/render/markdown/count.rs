@@ -1,6 +1,6 @@
 use crate::render::markdown::list::count_list_item_lines;
 use crate::render::markdown::shared::{
-    append_text, list_indent, list_prefix, markdown_parser, ItemContext, ListState,
+    ItemContext, ListState, append_text, list_indent, list_prefix, markdown_parser,
 };
 use crate::render::markdown::table::TableBuild;
 use pulldown_cmark::{Event, Tag, TagEnd};
@@ -25,8 +25,7 @@ pub(crate) fn count_markdown_lines(text: &str, width: usize) -> usize {
                     if !item.buf.trim().is_empty() {
                         let prefix = list_prefix(item.ordered, item.index);
                         let indent = list_indent(item.depth);
-                        count +=
-                            count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
+                        count += count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
                         item.buf.clear();
                     }
                 }
@@ -119,12 +118,7 @@ pub(crate) fn count_markdown_lines(text: &str, width: usize) -> usize {
                 append_text(&mut buf, &mut item_stack, &mut table, &t);
             }
             Event::FootnoteReference(name) => {
-                append_text(
-                    &mut buf,
-                    &mut item_stack,
-                    &mut table,
-                    &format!("[^{name}]"),
-                );
+                append_text(&mut buf, &mut item_stack, &mut table, &format!("[^{name}]"));
             }
             Event::TaskListMarker(checked) => {
                 let marker = if checked { "[x] " } else { "[ ] " };

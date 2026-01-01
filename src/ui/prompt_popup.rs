@@ -1,8 +1,10 @@
 use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
-use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use crate::ui::popup_layout::popup_area;
-use crate::ui::popup_table::{draw_table_popup, header_style, popup_row_at, popup_visible_rows, TablePopup};
+use crate::ui::popup_table::{
+    TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
+};
+use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
@@ -20,8 +22,8 @@ pub fn draw_prompt_popup(
 ) {
     let popup = prompt_popup_area(area, prompts.len());
     let role_width = role_col_width(popup, prompts);
-    let header = Row::new(vec![Cell::from("角色"), Cell::from("系统提示词")])
-        .style(header_style(theme));
+    let header =
+        Row::new(vec![Cell::from("角色"), Cell::from("系统提示词")]).style(header_style(theme));
     let body = prompts.iter().map(|p| {
         Row::new(vec![
             Cell::from(p.key.clone()),
@@ -64,9 +66,7 @@ pub fn prompt_visible_rows(area: Rect, rows: usize) -> usize {
 }
 
 fn max_preview_width(area: Rect, role_width: u16) -> usize {
-    area.width
-        .saturating_sub(role_width)
-        .saturating_sub(4) as usize
+    area.width.saturating_sub(role_width).saturating_sub(4) as usize
 }
 
 fn role_col_width(area: Rect, prompts: &[SystemPrompt]) -> u16 {

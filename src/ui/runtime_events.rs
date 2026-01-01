@@ -1,13 +1,13 @@
-use crate::render::{messages_to_plain_lines, messages_to_viewport_text_cached, RenderTheme};
+use crate::render::{RenderTheme, messages_to_plain_lines, messages_to_viewport_text_cached};
 use crate::ui::clipboard;
-use crate::ui::draw::{inner_area, scrollbar_area};
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
+use crate::ui::draw::{inner_area, scrollbar_area};
 use crate::ui::input::handle_key;
 use crate::ui::input_click::click_to_cursor;
 use crate::ui::logic::{build_label_suffixes, point_in_rect, scroll_from_mouse, timer_text};
+use crate::ui::runtime_helpers::{TabState, tab_index_at};
 use crate::ui::scroll::SCROLL_STEP_U16;
-use crate::ui::runtime_helpers::{tab_index_at, TabState};
-use crate::ui::selection::{chat_position_from_mouse, extract_selection, Selection};
+use crate::ui::selection::{Selection, chat_position_from_mouse, extract_selection};
 use crate::ui::state::Focus;
 use crossterm::event::{KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
@@ -93,10 +93,10 @@ pub(crate) fn handle_mouse_event(
                     app.input_selecting = true;
                     let (row, col) = click_to_cursor(app, input_area, m.column, m.row);
                     app.input.cancel_selection();
-                    app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
+                    app.input
+                        .move_cursor(CursorMove::Jump(row as u16, col as u16));
                 } else if point_in_rect(m.column, m.row, msg_area) {
-                    let text =
-                        selection_view_text(tab_state, msg_width, theme, view_height);
+                    let text = selection_view_text(tab_state, msg_width, theme, view_height);
                     let app = &mut tab_state.app;
                     app.focus = Focus::Chat;
                     app.follow = false;
@@ -141,14 +141,13 @@ pub(crate) fn handle_mouse_event(
                     if !app.input.is_selecting() {
                         app.input.start_selection();
                     }
-                    app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
+                    app.input
+                        .move_cursor(CursorMove::Jump(row as u16, col as u16));
                 } else if chat_selecting {
-                    let text =
-                        selection_view_text(tab_state, msg_width, theme, view_height);
+                    let text = selection_view_text(tab_state, msg_width, theme, view_height);
                     let app = &mut tab_state.app;
                     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
-                    let pos =
-                        chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
+                    let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
                     if let Some(sel) = app.chat_selection {
                         app.chat_selection = Some(Selection {
                             start: sel.start,
@@ -178,11 +177,7 @@ pub(crate) fn handle_mouse_event(
     }
 }
 
-pub(crate) fn handle_paste_event(
-    paste: &str,
-    tabs: &mut Vec<TabState>,
-    active_tab: usize,
-) {
+pub(crate) fn handle_paste_event(paste: &str, tabs: &mut Vec<TabState>, active_tab: usize) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let app = &mut tab_state.app;
         if app.focus == Focus::Input && !app.busy {

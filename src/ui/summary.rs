@@ -1,14 +1,14 @@
 use crate::render::RenderTheme;
+use crate::types::ROLE_USER;
 use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{draw_table_popup, header_style, TablePopup};
+use crate::ui::popup_table::{TablePopup, draw_table_popup, header_style};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
-use crate::types::ROLE_USER;
+use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
-use ratatui::Terminal;
 use std::io::Stdout;
 
 pub struct SummaryRow {

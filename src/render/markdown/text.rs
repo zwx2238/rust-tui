@@ -4,7 +4,11 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use textwrap::wrap;
 
-pub(crate) fn render_paragraph_lines(text: &str, width: usize, theme: &RenderTheme) -> Vec<Line<'static>> {
+pub(crate) fn render_paragraph_lines(
+    text: &str,
+    width: usize,
+    theme: &RenderTheme,
+) -> Vec<Line<'static>> {
     let style = Style::default().fg(theme.fg.unwrap_or(Color::White));
     wrap(text, width.max(10))
         .into_iter()

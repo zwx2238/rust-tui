@@ -21,15 +21,9 @@ impl PromptRegistry {
     }
 }
 
-pub fn load_prompts(
-    dir: Option<&str>,
-    default_key: &str,
-    default_content: &str,
-) -> PromptRegistry {
+pub fn load_prompts(dir: Option<&str>, default_key: &str, default_content: &str) -> PromptRegistry {
     let mut prompts = Vec::new();
-    let dir_path = dir
-        .map(PathBuf::from)
-        .or_else(default_prompts_dir);
+    let dir_path = dir.map(PathBuf::from).or_else(default_prompts_dir);
     if let Some(path) = dir_path.as_ref() {
         let _ = ensure_prompt_pack(path);
         if let Ok(entries) = fs::read_dir(path) {

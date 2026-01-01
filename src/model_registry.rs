@@ -59,12 +59,12 @@ pub fn build_model_registry(
     let default_key = if models.iter().any(|m| m.key == default_key) {
         default_key
     } else {
-        models
-            .first()
-            .map(|m| m.key.clone())
-            .unwrap_or(default_key)
+        models.first().map(|m| m.key.clone()).unwrap_or(default_key)
     };
-    ModelRegistry { default_key, models }
+    ModelRegistry {
+        default_key,
+        models,
+    }
 }
 
 fn fill_model_item(
@@ -80,7 +80,10 @@ fn fill_model_item(
             .base_url
             .or_else(|| cfg_base_url.clone())
             .unwrap_or_else(|| args.base_url.trim_end_matches('/').to_string()),
-        api_key: item.api_key.or_else(|| cfg_api_key.clone()).unwrap_or_default(),
+        api_key: item
+            .api_key
+            .or_else(|| cfg_api_key.clone())
+            .unwrap_or_default(),
         model: item
             .model
             .or_else(|| cfg_model.clone())

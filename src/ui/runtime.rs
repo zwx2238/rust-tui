@@ -1,22 +1,22 @@
 use crate::args::Args;
+use crate::model_registry::build_model_registry;
 use crate::render::RenderTheme;
 use crate::session::save_session;
+use crate::system_prompts::load_prompts;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{
-    start_tab_request, PreheatResult, PreheatTask, TabState, PERF_QUESTIONS,
+    PERF_QUESTIONS, PreheatResult, PreheatTask, TabState, start_tab_request,
 };
-use crate::model_registry::build_model_registry;
-use crate::system_prompts::load_prompts;
 use crate::ui::runtime_loop::run_loop;
 use crossterm::event::{
     DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
 };
 use crossterm::execute;
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
-use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 use std::io::{self};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -76,9 +76,7 @@ pub fn run(
 
     if args.perf_batch {
         for (i, tab_state) in tabs.iter_mut().enumerate() {
-            let question = PERF_QUESTIONS
-                .get(i)
-                .unwrap_or(&"请简短说明 Rust 的优势。");
+            let question = PERF_QUESTIONS.get(i).unwrap_or(&"请简短说明 Rust 的优势。");
             let model = registry
                 .get(&tab_state.app.model_key)
                 .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
@@ -152,29 +150,31 @@ fn spawn_preheat_workers(
     for _ in 0..workers {
         let rx = Arc::clone(&preheat_rx);
         let tx = preheat_res_tx.clone();
-        std::thread::spawn(move || loop {
-            let task = {
-                let guard = match rx.lock() {
-                    Ok(g) => g,
-                    Err(_) => break,
+        std::thread::spawn(move || {
+            loop {
+                let task = {
+                    let guard = match rx.lock() {
+                        Ok(g) => g,
+                        Err(_) => break,
+                    };
+                    guard.recv().ok()
                 };
-                guard.recv().ok()
-            };
-            let task = match task {
-                Some(t) => t,
-                None => break,
-            };
-            let entry = crate::render::build_cache_entry(
-                &task.msg,
-                task.width,
-                &task.theme,
-                task.streaming,
-            );
-            let _ = tx.send(PreheatResult {
-                tab: task.tab,
-                idx: task.idx,
-                entry,
-            });
+                let task = match task {
+                    Some(t) => t,
+                    None => break,
+                };
+                let entry = crate::render::build_cache_entry(
+                    &task.msg,
+                    task.width,
+                    &task.theme,
+                    task.streaming,
+                );
+                let _ = tx.send(PreheatResult {
+                    tab: task.tab,
+                    idx: task.idx,
+                    entry,
+                });
+            }
         });
     }
 }

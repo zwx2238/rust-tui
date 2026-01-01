@@ -1,7 +1,7 @@
 use crate::render::markdown::{
     close_unbalanced_code_fence, count_markdown_lines, render_markdown_lines,
 };
-use crate::render::theme::{theme_cache_key, RenderTheme};
+use crate::render::theme::{RenderTheme, theme_cache_key};
 use crate::render::util::{
     hash_message, label_for_role, label_line, ranges_overlap, suffix_for_index,
 };
@@ -136,7 +136,8 @@ pub fn messages_to_viewport_text_cached(
                 out.push(label_line(&label, theme));
             }
             line_cursor += 1;
-            if !entry.rendered && ranges_overlap(start, end, line_cursor, line_cursor + entry.line_count)
+            if !entry.rendered
+                && ranges_overlap(start, end, line_cursor, line_cursor + entry.line_count)
             {
                 entry.lines = render_message_content_lines(msg, width, theme, streaming);
                 entry.rendered = true;
@@ -167,7 +168,11 @@ pub fn messages_to_viewport_text_cached(
     }
     (Text::from(out), line_cursor)
 }
-pub fn insert_empty_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, theme: &RenderTheme) {
+pub fn insert_empty_cache_entry(
+    cache: &mut Vec<RenderCacheEntry>,
+    idx: usize,
+    theme: &RenderTheme,
+) {
     let theme_key = theme_cache_key(theme);
     let entry = empty_entry(theme_key);
     if idx > cache.len() {

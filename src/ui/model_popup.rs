@@ -1,7 +1,9 @@
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
 use crate::ui::popup_layout::popup_area;
-use crate::ui::popup_table::{draw_table_popup, header_style, popup_row_at, popup_visible_rows, TablePopup};
+use crate::ui::popup_table::{
+    TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
+};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};

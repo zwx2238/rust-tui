@@ -1,20 +1,20 @@
 use crate::args::Args;
-use crate::render::{messages_to_viewport_text_cached, RenderTheme};
+use crate::render::{RenderTheme, messages_to_viewport_text_cached};
 use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{build_label_suffixes, drain_events, handle_stream_event, timer_text};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_dispatch::{
-    handle_key_event_loop, handle_mouse_event_loop, start_pending_request, DispatchContext,
-    LayoutContext,
+    DispatchContext, LayoutContext, handle_key_event_loop, handle_mouse_event_loop,
+    start_pending_request,
 };
 use crate::ui::runtime_events::handle_paste_event;
-use crate::ui::runtime_helpers::{enqueue_preheat_tasks, PreheatResult, PreheatTask, TabState};
+use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
 use crossterm::event::{self, Event};
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::{
     sync::mpsc,
     time::{Duration, Instant},
@@ -49,7 +49,11 @@ pub(crate) fn run_loop(
         let input_height = layout.input_height;
         while let Ok(result) = preheat_res_rx.try_recv() {
             if let Some(tab_state) = tabs.get_mut(result.tab) {
-                crate::render::set_cache_entry(&mut tab_state.render_cache, result.idx, result.entry);
+                crate::render::set_cache_entry(
+                    &mut tab_state.render_cache,
+                    result.idx,
+                    result.entry,
+                );
             }
         }
 
@@ -123,12 +127,17 @@ pub(crate) fn run_loop(
                 text = retext;
             }
             update_input_view_top(app, input_area);
-            let startup_text = startup_elapsed
-                .map(|d| format!("启动耗时 {:.2}s", d.as_secs_f32()));
+            let startup_text = startup_elapsed.map(|d| format!("启动耗时 {:.2}s", d.as_secs_f32()));
             let pending_line = app.pending_send.take();
             app.dirty_indices.clear();
             app.cache_shift = None;
-            (text, computed_total_lines, tabs_len, startup_text, pending_line)
+            (
+                text,
+                computed_total_lines,
+                tabs_len,
+                startup_text,
+                pending_line,
+            )
         };
         let jump_rows = render_view(
             terminal,
