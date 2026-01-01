@@ -24,7 +24,14 @@ fn run_web_search(args_json: &str) -> Result<String, String> {
     let top_k = args.top_k.unwrap_or(5).clamp(1, 10);
     let url = Url::parse_with_params("https://duckduckgo.com/html/", [("q", query)])
         .map_err(|e| format!("web_search 构造 URL 失败：{e}"))?;
-    let body = reqwest::blocking::get(url)
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .user_agent("deepchat/0.1")
+        .build()
+        .map_err(|e| format!("web_search 初始化失败：{e}"))?;
+    let body = client
+        .get(url)
+        .send()
         .map_err(|e| format!("web_search 请求失败：{e}"))?
         .text()
         .map_err(|e| format!("web_search 读取失败：{e}"))?;

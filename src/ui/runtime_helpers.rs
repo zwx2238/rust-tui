@@ -182,6 +182,72 @@ pub(crate) fn start_tab_request(
     });
 }
 
+pub(crate) fn start_followup_request(
+    tab_state: &mut TabState,
+    base_url: &str,
+    api_key: &str,
+    model: &str,
+    show_reasoning: bool,
+    tx: &mpsc::Sender<UiEvent>,
+    tab_id: usize,
+) {
+    let app = &mut tab_state.app;
+    if let Some(handle) = &app.active_request {
+        handle.cancel();
+        app.active_request = None;
+    }
+    if api_key.trim().is_empty() {
+        app.messages.push(Message {
+            role: ROLE_ASSISTANT.to_string(),
+            content: "缺少 API Key，无法请求模型。".to_string(),
+            tool_call_id: None,
+            tool_calls: None,
+        });
+        return;
+    }
+    let outbound_messages = app.messages.clone();
+    let idx = app.messages.len();
+    app.messages.push(Message {
+        role: ROLE_ASSISTANT.to_string(),
+        content: String::new(),
+        tool_call_id: None,
+        tool_calls: None,
+    });
+    let request_id = app.next_request_id;
+    app.next_request_id = app.next_request_id.saturating_add(1);
+    let cancel = Arc::new(AtomicBool::new(false));
+    app.active_request = Some(RequestHandle {
+        id: request_id,
+        cancel: Arc::clone(&cancel),
+    });
+    app.busy = true;
+    app.busy_since = Some(Instant::now());
+    app.pending_assistant = Some(idx);
+    app.pending_reasoning = None;
+    app.stream_buffer.clear();
+    app.follow = true;
+    app.dirty_indices.push(idx);
+    let messages = outbound_messages;
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let url = format!("{base_url}/chat/completions");
+    let api_key = api_key.to_string();
+    let model = model.to_string();
+    let tx = tx.clone();
+    thread::spawn(move || {
+        request_llm_stream(
+            &url,
+            &api_key,
+            &model,
+            show_reasoning,
+            &messages,
+            cancel,
+            tx,
+            tab_id,
+            request_id,
+        );
+    });
+}
+
 pub(crate) fn tab_index_at(x: u16, area: ratatui::layout::Rect, tabs_len: usize) -> Option<usize> {
     let mut cursor = area.x;
     for i in 0..tabs_len {

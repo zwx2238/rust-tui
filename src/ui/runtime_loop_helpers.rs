@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::session::SessionLocation;
 use crate::ui::net::UiEvent;
-use crate::ui::runtime_helpers::{TabState, start_tab_request};
+use crate::ui::runtime_helpers::{TabState, start_followup_request};
 use crate::ui::state::PendingCommand;
 use crate::ui::tools::run_tool;
 use crate::types::Message;
@@ -32,9 +32,8 @@ pub(crate) fn apply_tool_calls(
     let model = registry
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
-    start_tab_request(
+    start_followup_request(
         tab_state,
-        "",
         &model.base_url,
         &model.api_key,
         &model.model,
