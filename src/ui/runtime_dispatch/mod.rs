@@ -186,6 +186,17 @@ pub(crate) fn fork_message_into_new_tab(
     let Some(msg) = tab_state.app.messages.get(msg_idx) else {
         return;
     };
+    if msg.role != ROLE_USER {
+        if let Some(active) = ctx.tabs.get_mut(*ctx.active_tab) {
+            let idx = active.app.messages.len();
+            active.app.messages.push(crate::types::Message {
+                role: ROLE_ASSISTANT.to_string(),
+                content: "仅支持从用户消息分叉。".to_string(),
+            });
+            active.app.dirty_indices.push(idx);
+        }
+        return;
+    }
     let content = msg.content.clone();
     let mut history: Vec<crate::types::Message> =
         tab_state.app.messages[..msg_idx].to_vec();

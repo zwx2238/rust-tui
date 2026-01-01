@@ -135,7 +135,7 @@ pub fn handle_command(
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
-                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制到新 tab）"
+                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新 tab）"
                     .to_string(),
             });
         }
