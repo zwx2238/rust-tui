@@ -61,6 +61,21 @@ impl ViewState {
     pub(crate) fn is_chat(&self) -> bool {
         self.overlay.is_chat()
     }
+
+    fn open_summary(&mut self, active_tab: usize, tabs_len: usize) {
+        self.summary.selected = active_tab.min(tabs_len.saturating_sub(1));
+        self.overlay.open(OverlayKind::Summary);
+    }
+
+    fn open_jump(&mut self) {
+        self.jump = SelectionState::default();
+        self.overlay.open(OverlayKind::Jump);
+    }
+
+    fn open_prompt(&mut self) {
+        self.prompt.scroll = 0;
+        self.overlay.open(OverlayKind::Prompt);
+    }
 }
 
 pub(crate) fn handle_view_key(
@@ -83,8 +98,7 @@ pub(crate) fn handle_view_key(
             if view.overlay.is(OverlayKind::Summary) {
                 view.overlay.close();
             } else {
-                view.summary.selected = active_tab.min(tabs_len.saturating_sub(1));
-                view.overlay.open(OverlayKind::Summary);
+                view.open_summary(active_tab, tabs_len);
             }
             return ViewAction::None;
         }
@@ -92,8 +106,7 @@ pub(crate) fn handle_view_key(
             if view.overlay.is(OverlayKind::Jump) {
                 view.overlay.close();
             } else {
-                view.jump = SelectionState::default();
-                view.overlay.open(OverlayKind::Jump);
+                view.open_jump();
             }
             return ViewAction::None;
         }
@@ -101,8 +114,7 @@ pub(crate) fn handle_view_key(
             if view.overlay.is(OverlayKind::Prompt) {
                 view.overlay.close();
             } else {
-                view.prompt.scroll = 0;
-                view.overlay.open(OverlayKind::Prompt);
+                view.open_prompt();
             }
             return ViewAction::None;
         }
