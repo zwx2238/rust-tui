@@ -1,5 +1,7 @@
 use crate::render::markdown::list::count_list_item_lines;
-use crate::render::markdown::shared::{append_text, ItemContext, ListState};
+use crate::render::markdown::shared::{
+    append_text, list_indent, list_prefix, ItemContext, ListState,
+};
 use crate::render::markdown::table::TableBuild;
 use pulldown_cmark::{Event, Options, Parser as MdParser, Tag, TagEnd};
 
@@ -23,12 +25,8 @@ pub(crate) fn count_markdown_lines(text: &str, width: usize) -> usize {
             Event::Start(Tag::List(start)) => {
                 if let Some(item) = item_stack.last_mut() {
                     if !item.buf.trim().is_empty() {
-                    let prefix = if item.ordered {
-                        format!("{}. ", item.index)
-                    } else {
-                        "• ".to_string()
-                    };
-                        let indent = "  ".repeat(item.depth.saturating_sub(1));
+                    let prefix = list_prefix(item.ordered, item.index);
+                    let indent = list_indent(item.depth);
                         count +=
                             count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
                         item.buf.clear();
@@ -60,12 +58,8 @@ pub(crate) fn count_markdown_lines(text: &str, width: usize) -> usize {
             Event::End(TagEnd::Item) => {
                 if let Some(item) = item_stack.pop() {
                     if !item.buf.trim().is_empty() {
-                        let prefix = if item.ordered {
-                            format!("{}. ", item.index)
-                        } else {
-                        "• ".to_string()
-                        };
-                        let indent = "  ".repeat(item.depth.saturating_sub(1));
+                        let prefix = list_prefix(item.ordered, item.index);
+                        let indent = list_indent(item.depth);
                         count += count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
                     }
                 }

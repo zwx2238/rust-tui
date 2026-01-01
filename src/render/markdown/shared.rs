@@ -27,3 +27,15 @@ pub(crate) fn append_text(
         buf.push_str(text);
     }
 }
+
+pub(crate) fn list_prefix(ordered: bool, index: u64) -> String {
+    if ordered {
+        format!("{index}. ")
+    } else {
+        "• ".to_string()
+    }
+}
+
+pub(crate) fn list_indent(depth: usize) -> String {
+    "  ".repeat(depth.saturating_sub(1))
+}

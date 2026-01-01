@@ -1,6 +1,6 @@
 use crate::render::markdown::code::render_code_block_lines;
 use crate::render::markdown::list::render_list_item_lines;
-use crate::render::markdown::shared::{append_text, ItemContext, ListState};
+use crate::render::markdown::shared::{append_text, list_indent, list_prefix, ItemContext, ListState};
 use crate::render::markdown::table::TableBuild;
 use crate::render::markdown::text::{render_heading_lines, render_paragraph_lines};
 use crate::render::theme::RenderTheme;
@@ -36,12 +36,8 @@ pub(crate) fn render_markdown_lines(
             Event::Start(Tag::List(start)) => {
                 if let Some(item) = item_stack.last_mut() {
                     if !item.buf.trim().is_empty() {
-                        let prefix = if item.ordered {
-                            format!("{}. ", item.index)
-                        } else {
-                            "• ".to_string()
-                        };
-                        let indent = "  ".repeat(item.depth.saturating_sub(1));
+                        let prefix = list_prefix(item.ordered, item.index);
+                        let indent = list_indent(item.depth);
                         lines.extend(render_list_item_lines(
                             item.buf.trim(),
                             &prefix,
@@ -78,12 +74,8 @@ pub(crate) fn render_markdown_lines(
             Event::End(TagEnd::Item) => {
                 if let Some(item) = item_stack.pop() {
                     if !item.buf.trim().is_empty() {
-                        let prefix = if item.ordered {
-                            format!("{}. ", item.index)
-                        } else {
-                            "• ".to_string()
-                        };
-                        let indent = "  ".repeat(item.depth.saturating_sub(1));
+                        let prefix = list_prefix(item.ordered, item.index);
+                        let indent = list_indent(item.depth);
                         lines.extend(render_list_item_lines(
                             item.buf.trim(),
                             &prefix,
