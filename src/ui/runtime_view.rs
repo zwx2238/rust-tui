@@ -125,100 +125,10 @@ pub(crate) fn handle_view_key(
 
     match view.overlay.active {
         None => ViewAction::None,
-        Some(OverlayKind::Summary) => match key.code {
-            KeyCode::Esc => {
-                view.overlay.close();
-                ViewAction::None
-            }
-            KeyCode::Up => {
-                view.summary.move_up();
-                ViewAction::None
-            }
-            KeyCode::Down => {
-                view.summary.move_down();
-                ViewAction::None
-            }
-            KeyCode::Enter => {
-                if view.summary.selected < tabs_len {
-                    let idx = view.summary.selected;
-                    view.overlay.close();
-                    ViewAction::SwitchTab(idx)
-                } else {
-                    ViewAction::None
-                }
-            }
-            _ => ViewAction::None,
-        },
-        Some(OverlayKind::Jump) => match key.code {
-            KeyCode::Esc => {
-                view.overlay.close();
-                ViewAction::None
-            }
-            KeyCode::Up => {
-                view.jump.move_up();
-                ViewAction::None
-            }
-            KeyCode::Down => {
-                view.jump.move_down();
-                ViewAction::None
-            }
-            KeyCode::PageUp => {
-                view.jump.page_up(JUMP_PAGE_STEP);
-                ViewAction::None
-            }
-            KeyCode::PageDown => {
-                view.jump.page_down(JUMP_PAGE_STEP);
-                ViewAction::None
-            }
-            KeyCode::Enter => {
-                if view.jump.selected < jump_len {
-                    let idx = view.jump.selected;
-                    view.overlay.close();
-                    ViewAction::JumpTo(idx)
-                } else {
-                    ViewAction::None
-                }
-            }
-            _ => ViewAction::None,
-        },
-        Some(OverlayKind::Model) => match key.code {
-            KeyCode::Esc => {
-                view.overlay.close();
-                ViewAction::None
-            }
-            KeyCode::Up => {
-                view.model.move_up();
-                ViewAction::None
-            }
-            KeyCode::Down => {
-                view.model.move_down();
-                ViewAction::None
-            }
-            KeyCode::Enter => {
-                view.overlay.close();
-                ViewAction::SelectModel(view.model.selected)
-            }
-            _ => ViewAction::None,
-        },
-        Some(OverlayKind::Prompt) => match key.code {
-            KeyCode::Esc => {
-                view.overlay.close();
-                ViewAction::None
-            }
-            KeyCode::Up => {
-                view.prompt.move_up();
-                ViewAction::None
-            }
-            KeyCode::Down => {
-                view.prompt.move_down();
-                ViewAction::None
-            }
-            KeyCode::Enter => {
-                view.overlay.close();
-                ViewAction::SelectPrompt(view.prompt.selected)
-            }
-            _ => ViewAction::None,
-        },
+        Some(OverlayKind::Summary) => handle_summary_key(view, key, tabs_len),
+        Some(OverlayKind::Jump) => handle_jump_key(view, key, jump_len),
+        Some(OverlayKind::Model) => handle_model_key(view, key),
+        Some(OverlayKind::Prompt) => handle_prompt_key(view, key),
     }
 }
 
@@ -265,4 +175,110 @@ pub(crate) fn handle_view_mouse(
         None => {}
     }
     ViewAction::None
+}
+
+fn handle_summary_key(view: &mut ViewState, key: KeyEvent, tabs_len: usize) -> ViewAction {
+    match key.code {
+        KeyCode::Esc => {
+            view.overlay.close();
+            ViewAction::None
+        }
+        KeyCode::Up => {
+            view.summary.move_up();
+            ViewAction::None
+        }
+        KeyCode::Down => {
+            view.summary.move_down();
+            ViewAction::None
+        }
+        KeyCode::Enter => {
+            if view.summary.selected < tabs_len {
+                let idx = view.summary.selected;
+                view.overlay.close();
+                ViewAction::SwitchTab(idx)
+            } else {
+                ViewAction::None
+            }
+        }
+        _ => ViewAction::None,
+    }
+}
+
+fn handle_jump_key(view: &mut ViewState, key: KeyEvent, jump_len: usize) -> ViewAction {
+    match key.code {
+        KeyCode::Esc => {
+            view.overlay.close();
+            ViewAction::None
+        }
+        KeyCode::Up => {
+            view.jump.move_up();
+            ViewAction::None
+        }
+        KeyCode::Down => {
+            view.jump.move_down();
+            ViewAction::None
+        }
+        KeyCode::PageUp => {
+            view.jump.page_up(JUMP_PAGE_STEP);
+            ViewAction::None
+        }
+        KeyCode::PageDown => {
+            view.jump.page_down(JUMP_PAGE_STEP);
+            ViewAction::None
+        }
+        KeyCode::Enter => {
+            if view.jump.selected < jump_len {
+                let idx = view.jump.selected;
+                view.overlay.close();
+                ViewAction::JumpTo(idx)
+            } else {
+                ViewAction::None
+            }
+        }
+        _ => ViewAction::None,
+    }
+}
+
+fn handle_model_key(view: &mut ViewState, key: KeyEvent) -> ViewAction {
+    match key.code {
+        KeyCode::Esc => {
+            view.overlay.close();
+            ViewAction::None
+        }
+        KeyCode::Up => {
+            view.model.move_up();
+            ViewAction::None
+        }
+        KeyCode::Down => {
+            view.model.move_down();
+            ViewAction::None
+        }
+        KeyCode::Enter => {
+            view.overlay.close();
+            ViewAction::SelectModel(view.model.selected)
+        }
+        _ => ViewAction::None,
+    }
+}
+
+fn handle_prompt_key(view: &mut ViewState, key: KeyEvent) -> ViewAction {
+    match key.code {
+        KeyCode::Esc => {
+            view.overlay.close();
+            ViewAction::None
+        }
+        KeyCode::Up => {
+            view.prompt.move_up();
+            ViewAction::None
+        }
+        KeyCode::Down => {
+            view.prompt.move_down();
+            ViewAction::None
+        }
+        KeyCode::Enter => {
+            view.overlay.close();
+            ViewAction::SelectPrompt(view.prompt.selected)
+        }
+        _ => ViewAction::None,
+    }
 }
