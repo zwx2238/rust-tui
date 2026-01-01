@@ -117,9 +117,9 @@ pub(crate) fn run_loop(
         }
         if let Some(tab_state) = tabs.get_mut(*active_tab) {
             let has_pending = tab_state.app.pending_code_exec.is_some();
-            if has_pending {
+            if has_pending && view.overlay.is_chat() {
                 view.overlay.open(OverlayKind::CodeExec);
-            } else if view.overlay.is(OverlayKind::CodeExec) {
+            } else if !has_pending && view.overlay.is(OverlayKind::CodeExec) {
                 view.overlay.close();
             }
         }

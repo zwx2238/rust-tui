@@ -17,6 +17,9 @@ pub(crate) fn handle_key_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    if handle_global_shortcuts(ctx, key) {
+        return Ok(false);
+    }
     if key.code == crossterm::event::KeyCode::F(6) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if key
@@ -47,7 +50,6 @@ pub(crate) fn handle_key_event_loop(
     }
     if view.overlay.is(OverlayKind::CodeExec) {
         handle_code_exec_overlay_key(ctx, view);
-        return Ok(false);
     }
     let action = handle_view_key(view, key, ctx.tabs.len(), jump_rows.len(), *ctx.active_tab);
     if matches!(action, ViewAction::CycleModel) {
@@ -84,9 +86,6 @@ pub(crate) fn handle_key_event_loop(
     if !view.is_chat() {
         return Ok(false);
     }
-    if handle_chat_shortcuts(ctx, key) {
-        return Ok(false);
-    }
     if handle_key_event(
         key,
         ctx.tabs,
@@ -107,7 +106,7 @@ fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewSt
     }
 }
 
-fn handle_chat_shortcuts(ctx: &mut DispatchContext<'_>, key: KeyEvent) -> bool {
+fn handle_global_shortcuts(ctx: &mut DispatchContext<'_>, key: KeyEvent) -> bool {
     if key
         .modifiers
         .contains(crossterm::event::KeyModifiers::CONTROL)

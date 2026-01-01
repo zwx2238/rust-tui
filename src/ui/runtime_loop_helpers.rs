@@ -202,19 +202,23 @@ fn handle_code_exec_approve(
                 if stdout_empty {
                     text.push_str("(空)\n");
                 } else {
+                    text.push_str("```text\n");
                     text.push_str(&out.stdout);
                     if !out.stdout.ends_with('\n') {
                         text.push('\n');
                     }
+                    text.push_str("```\n");
                 }
                 text.push_str("stderr:\n");
                 if stderr_empty {
                     text.push_str("(空)\n");
                 } else {
+                    text.push_str("```text\n");
                     text.push_str(&out.stderr);
                     if !out.stderr.ends_with('\n') {
                         text.push('\n');
                     }
+                    text.push_str("```\n");
                 }
                 if out.exit_code == 0 && stdout_empty && stderr_empty {
                     text.push_str("note: 程序正常执行但没有输出。\n");

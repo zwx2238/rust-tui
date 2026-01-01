@@ -71,7 +71,9 @@ pub(crate) fn handle_mouse_event_loop(
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if let Some(pending) = tab_state.app.pending_code_exec.clone() {
                 let popup = code_exec_popup_layout(layout.size);
-                if matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) {
+                let in_popup = point_in_rect(m.column, m.row, popup.popup);
+                if in_popup && matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown)
+                {
                     let max_scroll = code_exec_max_scroll(
                         &pending.code,
                         popup.code_area.width,
@@ -87,7 +89,7 @@ pub(crate) fn handle_mouse_event_loop(
                     tab_state.app.code_exec_scroll = next.min(max_scroll);
                     return;
                 }
-                if matches!(m.kind, MouseEventKind::Down(_)) {
+                if in_popup && matches!(m.kind, MouseEventKind::Down(_)) {
                     if point_in_rect(m.column, m.row, popup.approve_btn) {
                         tab_state.app.pending_command =
                             Some(crate::ui::state::PendingCommand::ApproveCodeExec);
@@ -103,7 +105,6 @@ pub(crate) fn handle_mouse_event_loop(
                 }
             }
         }
-        return;
     }
     if view.is_chat() {
         if let Some(msg_idx) = handle_mouse_event(
