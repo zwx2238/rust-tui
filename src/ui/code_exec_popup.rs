@@ -26,10 +26,10 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         width: area.width.saturating_sub(OUTER_MARGIN.saturating_mul(2)),
         height: area.height.saturating_sub(OUTER_MARGIN.saturating_mul(2)),
     };
-    let width = (safe.width * 80 / 100)
+    let width = (safe.width * 75 / 100)
         .max(MIN_POPUP_WIDTH)
         .min(safe.width.saturating_sub(2).max(MIN_POPUP_WIDTH));
-    let height = (safe.height * 70 / 100)
+    let height = (safe.height * 65 / 100)
         .max(MIN_POPUP_HEIGHT)
         .min(safe.height.saturating_sub(2).max(MIN_POPUP_HEIGHT));
     let x = safe.x + (safe.width.saturating_sub(width)) / 2;
@@ -106,6 +106,29 @@ pub(crate) fn draw_code_exec_popup(
     theme: &RenderTheme,
 ) {
     let layout = code_exec_popup_layout(area);
+    let max_x = area.x.saturating_add(area.width);
+    let max_y = area.y.saturating_add(area.height);
+    let mask_x = layout.popup.x.saturating_sub(OUTER_MARGIN).max(area.x);
+    let mask_y = layout.popup.y.saturating_sub(OUTER_MARGIN).max(area.y);
+    let mask_w = layout
+        .popup
+        .width
+        .saturating_add(OUTER_MARGIN.saturating_mul(2))
+        .min(max_x.saturating_sub(mask_x));
+    let mask_h = layout
+        .popup
+        .height
+        .saturating_add(OUTER_MARGIN.saturating_mul(2))
+        .min(max_y.saturating_sub(mask_y));
+    let mask = Rect {
+        x: mask_x,
+        y: mask_y,
+        width: mask_w,
+        height: mask_h,
+    };
+    f.render_widget(Clear, mask);
+    let mask_block = Block::default().style(base_style(theme));
+    f.render_widget(mask_block, mask);
     f.render_widget(Clear, layout.popup);
     let mask = Block::default().style(base_style(theme));
     f.render_widget(mask, layout.popup);
