@@ -1,4 +1,5 @@
 use crate::render::RenderTheme;
+use crate::ui::notice::draw_notice;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::Rect;
 use ratatui::text::Text;
@@ -42,6 +43,7 @@ pub fn redraw(
             active_tab,
             startup_text,
         );
+        draw_notice(f, size, app, theme);
     })?;
     Ok(())
 }
@@ -79,6 +81,7 @@ where
             startup_text,
         );
         overlay(f);
+        draw_notice(f, size, app, theme);
     })?;
     Ok(())
 }

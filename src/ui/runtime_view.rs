@@ -214,7 +214,6 @@ fn handle_jump_key(view: &mut ViewState, key: KeyEvent, jump_len: usize) -> View
         }
         KeyCode::Char('e') | KeyCode::Char('E') => {
             if view.jump.selected < jump_len {
-                view.overlay.close();
                 ViewAction::ForkMessage(view.jump.selected)
             } else {
                 ViewAction::None

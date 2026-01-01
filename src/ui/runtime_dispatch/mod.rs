@@ -175,27 +175,22 @@ pub(crate) fn fork_message_into_new_tab(
     ctx: &mut DispatchContext<'_>,
     jump_rows: &[crate::ui::jump::JumpRow],
     row_idx: usize,
-) {
+) -> bool {
     let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) else {
-        return;
+        return false;
     };
     let Some(row) = jump_rows.get(row_idx) else {
-        return;
+        return false;
     };
     let msg_idx = row.index.saturating_sub(1);
     let Some(msg) = tab_state.app.messages.get(msg_idx) else {
-        return;
+        return false;
     };
     if msg.role != ROLE_USER {
         if let Some(active) = ctx.tabs.get_mut(*ctx.active_tab) {
-            let idx = active.app.messages.len();
-            active.app.messages.push(crate::types::Message {
-                role: ROLE_ASSISTANT.to_string(),
-                content: "仅支持从用户消息分叉。".to_string(),
-            });
-            active.app.dirty_indices.push(idx);
+            crate::ui::notice::push_notice(&mut active.app, "仅支持从用户消息分叉。");
         }
-        return;
+        return false;
     }
     let content = msg.content.clone();
     let mut history: Vec<crate::types::Message> =
@@ -246,6 +241,7 @@ pub(crate) fn fork_message_into_new_tab(
     new_tab.app.focus = Focus::Input;
     ctx.tabs.push(new_tab);
     *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+    true
 }
 
 pub(crate) fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {

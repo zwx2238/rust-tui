@@ -39,7 +39,7 @@ pub(crate) fn render_view(
             render_jump_overlay(
                 terminal,
                 theme,
-                tabs.len(),
+                tabs,
                 active_tab,
                 startup_text,
                 view,

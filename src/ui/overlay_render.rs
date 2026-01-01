@@ -38,7 +38,7 @@ pub(crate) fn build_jump_overlay_rows(
 
 pub(crate) fn render_summary_overlay(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    tabs: &[TabState],
+    tabs: &mut Vec<TabState>,
     active_tab: usize,
     theme: &RenderTheme,
     startup_text: Option<&str>,
@@ -59,7 +59,7 @@ pub(crate) fn render_summary_overlay(
 pub(crate) fn render_jump_overlay(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     theme: &RenderTheme,
-    tabs_len: usize,
+    tabs: &mut Vec<TabState>,
     active_tab: usize,
     startup_text: Option<&str>,
     view: &mut ViewState,
@@ -73,7 +73,7 @@ pub(crate) fn render_jump_overlay(
     redraw_jump(
         terminal,
         theme,
-        tabs_len,
+        tabs,
         active_tab,
         startup_text,
         jump_rows,

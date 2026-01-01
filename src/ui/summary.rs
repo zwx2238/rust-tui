@@ -1,6 +1,7 @@
 use crate::render::RenderTheme;
 use crate::types::ROLE_USER;
 use crate::ui::draw::draw_tabs;
+use crate::ui::notice::draw_notice;
 use crate::ui::popup_table::{TablePopup, draw_table_popup, header_style};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
@@ -38,7 +39,7 @@ pub fn build_summary_rows(tabs: &[TabState], max_latest_width: usize) -> Vec<Sum
 
 pub fn redraw_summary(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    tabs: &[TabState],
+    tabs: &mut [TabState],
     active_tab: usize,
     theme: &RenderTheme,
     startup_text: Option<&str>,
@@ -57,6 +58,9 @@ pub fn redraw_summary(
     terminal.draw(|f| {
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_summary_table(f, body_area, &rows, selected_row, theme);
+        if let Some(tab) = tabs.get_mut(active_tab) {
+            draw_notice(f, size, &mut tab.app, theme);
+        }
     })?;
     Ok(())
 }

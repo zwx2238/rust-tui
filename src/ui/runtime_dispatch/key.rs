@@ -46,7 +46,9 @@ pub(crate) fn handle_key_event_loop(
         return Ok(false);
     }
     if let ViewAction::ForkMessage(idx) = action {
-        crate::ui::runtime_dispatch::fork_message_into_new_tab(ctx, jump_rows, idx);
+        if crate::ui::runtime_dispatch::fork_message_into_new_tab(ctx, jump_rows, idx) {
+            view.overlay.close();
+        }
         return Ok(false);
     }
     if key.code == crossterm::event::KeyCode::F(5) && view.overlay.is(OverlayKind::Prompt) {

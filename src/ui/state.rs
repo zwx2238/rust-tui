@@ -30,6 +30,12 @@ impl RequestHandle {
     }
 }
 
+#[derive(Clone)]
+pub struct Notice {
+    pub text: String,
+    pub expires_at: Instant,
+}
+
 pub struct App {
     pub input: TextArea<'static>,
     pub input_view_top_row: u16,
@@ -55,6 +61,7 @@ pub struct App {
     pub prompt_key: String,
     pub dirty_indices: Vec<usize>,
     pub cache_shift: Option<usize>,
+    pub notice: Option<Notice>,
 }
 
 impl App {
@@ -91,6 +98,7 @@ impl App {
             prompt_key: default_prompt.to_string(),
             dirty_indices: Vec::new(),
             cache_shift: None,
+            notice: None,
         }
     }
 

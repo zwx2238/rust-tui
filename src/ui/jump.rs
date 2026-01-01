@@ -4,6 +4,8 @@ use crate::ui::draw::draw_tabs;
 use crate::ui::popup_table::{
     TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
 };
+use crate::ui::notice::draw_notice;
+use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -54,7 +56,7 @@ pub fn build_jump_rows(
 pub fn redraw_jump(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     theme: &RenderTheme,
-    tabs_len: usize,
+    tabs: &mut [TabState],
     active_tab: usize,
     startup_text: Option<&str>,
     rows: &[JumpRow],
@@ -64,8 +66,11 @@ pub fn redraw_jump(
     scroll: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal.draw(|f| {
-        draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
+        draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_jump_table(f, area, rows, selected, theme, scroll);
+        if let Some(tab) = tabs.get_mut(active_tab) {
+            draw_notice(f, f.area(), &mut tab.app, theme);
+        }
     })?;
     Ok(())
 }

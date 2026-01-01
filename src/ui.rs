@@ -7,6 +7,7 @@ mod jump;
 mod logic;
 mod model_popup;
 mod net;
+mod notice;
 mod overlay;
 mod overlay_render;
 mod perf;
