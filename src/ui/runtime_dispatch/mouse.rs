@@ -10,6 +10,8 @@ use crossterm::event::{MouseEvent, MouseEventKind};
 
 use super::{apply_model_selection, apply_prompt_selection, DispatchContext, LayoutContext};
 
+const SCROLL_STEP: i32 = 3;
+
 fn scroll_selection(
     selection: &mut crate::ui::selection_state::SelectionState,
     delta: i32,
@@ -68,10 +70,10 @@ fn handle_overlay_scroll(
         let viewport_rows = jump_visible_rows(layout.msg_area);
         match kind {
             MouseEventKind::ScrollUp => {
-                scroll_selection(&mut view.jump, -3, jump_rows.len(), viewport_rows)
+                scroll_selection(&mut view.jump, -SCROLL_STEP, jump_rows.len(), viewport_rows)
             }
             MouseEventKind::ScrollDown => {
-                scroll_selection(&mut view.jump, 3, jump_rows.len(), viewport_rows)
+                scroll_selection(&mut view.jump, SCROLL_STEP, jump_rows.len(), viewport_rows)
             }
             _ => {}
         }
@@ -79,12 +81,18 @@ fn handle_overlay_scroll(
     if view.overlay.is(OverlayKind::Model) {
         let viewport_rows = model_visible_rows(layout.size, ctx.registry.models.len());
         match kind {
-            MouseEventKind::ScrollUp => {
-                scroll_selection(&mut view.model, -3, ctx.registry.models.len(), viewport_rows)
-            }
-            MouseEventKind::ScrollDown => {
-                scroll_selection(&mut view.model, 3, ctx.registry.models.len(), viewport_rows)
-            }
+            MouseEventKind::ScrollUp => scroll_selection(
+                &mut view.model,
+                -SCROLL_STEP,
+                ctx.registry.models.len(),
+                viewport_rows,
+            ),
+            MouseEventKind::ScrollDown => scroll_selection(
+                &mut view.model,
+                SCROLL_STEP,
+                ctx.registry.models.len(),
+                viewport_rows,
+            ),
             _ => {}
         }
     }
@@ -93,13 +101,13 @@ fn handle_overlay_scroll(
         match kind {
             MouseEventKind::ScrollUp => scroll_selection(
                 &mut view.prompt,
-                -3,
+                -SCROLL_STEP,
                 ctx.prompt_registry.prompts.len(),
                 viewport_rows,
             ),
             MouseEventKind::ScrollDown => scroll_selection(
                 &mut view.prompt,
-                3,
+                SCROLL_STEP,
                 ctx.prompt_registry.prompts.len(),
                 viewport_rows,
             ),
