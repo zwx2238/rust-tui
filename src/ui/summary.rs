@@ -1,12 +1,13 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::draw_tabs;
+use crate::ui::popup_table::{draw_table_popup, TablePopup};
 use crate::ui::runtime_helpers::TabState;
+use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Cell, Row, Table, TableState};
+use ratatui::widgets::{Cell, Row};
 use ratatui::Terminal;
-use ratatui::backend::CrosstermBackend;
 use std::io::Stdout;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -105,29 +106,21 @@ fn draw_summary_table(
         ])
     });
 
-    let mut state = TableState::default();
-    if !rows.is_empty() {
-        state.select(Some(selected_row.min(rows.len() - 1)));
-    }
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title_top(Line::from("汇总页 · F1 退出 · 点击行进入"))
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-        .border_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
-
-    let table = Table::new(body, [
-        Constraint::Length(6),
-        Constraint::Length(8),
-        Constraint::Length(12),
-        Constraint::Min(10),
-    ])
-    .header(header)
-    .row_highlight_style(Style::default().bg(selection_bg(theme.bg)))
-    .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-    .block(block);
-
-    f.render_stateful_widget(table, area, &mut state);
+    let popup = TablePopup {
+        title: Line::from("汇总页 · F1 退出 · 点击行进入"),
+        header,
+        rows: body.collect(),
+        widths: vec![
+            Constraint::Length(6),
+            Constraint::Length(8),
+            Constraint::Length(12),
+            Constraint::Min(10),
+        ],
+        selected: selected_row,
+        scroll: 0,
+        theme,
+    };
+    draw_table_popup(f, area, popup);
 }
 
 fn inner_area(area: Rect) -> Rect {
@@ -136,13 +129,6 @@ fn inner_area(area: Rect) -> Rect {
         y: area.y + 1,
         width: area.width.saturating_sub(2),
         height: area.height.saturating_sub(2),
-    }
-}
-
-fn selection_bg(bg: Color) -> Color {
-    match bg {
-        Color::White => Color::Gray,
-        _ => Color::DarkGray,
     }
 }
 
