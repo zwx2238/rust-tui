@@ -10,6 +10,16 @@ use crossterm::event::{MouseEvent, MouseEventKind};
 
 use super::{apply_model_selection, apply_prompt_selection, DispatchContext, LayoutContext};
 
+fn scroll_selection(
+    selection: &mut crate::ui::selection_state::SelectionState,
+    delta: i32,
+    len: usize,
+    viewport_rows: usize,
+) {
+    let max_scroll = max_scroll(len, viewport_rows);
+    selection.scroll_by(delta, max_scroll, viewport_rows);
+}
+
 pub(crate) fn handle_mouse_event_loop(
     m: MouseEvent,
     ctx: &mut DispatchContext<'_>,
@@ -33,28 +43,43 @@ pub(crate) fn handle_mouse_event_loop(
     } else {
         if view.overlay.is(OverlayKind::Jump) {
             let viewport_rows = jump_visible_rows(layout.msg_area);
-            let max_scroll = max_scroll(jump_rows.len(), viewport_rows);
             match m.kind {
-                MouseEventKind::ScrollUp => view.jump.scroll_by(-3, max_scroll, viewport_rows),
-                MouseEventKind::ScrollDown => view.jump.scroll_by(3, max_scroll, viewport_rows),
+                MouseEventKind::ScrollUp => {
+                    scroll_selection(&mut view.jump, -3, jump_rows.len(), viewport_rows)
+                }
+                MouseEventKind::ScrollDown => {
+                    scroll_selection(&mut view.jump, 3, jump_rows.len(), viewport_rows)
+                }
                 _ => {}
             }
         }
         if view.overlay.is(OverlayKind::Model) {
             let viewport_rows = model_visible_rows(layout.size, ctx.registry.models.len());
-            let max_scroll = max_scroll(ctx.registry.models.len(), viewport_rows);
             match m.kind {
-                MouseEventKind::ScrollUp => view.model.scroll_by(-3, max_scroll, viewport_rows),
-                MouseEventKind::ScrollDown => view.model.scroll_by(3, max_scroll, viewport_rows),
+                MouseEventKind::ScrollUp => {
+                    scroll_selection(&mut view.model, -3, ctx.registry.models.len(), viewport_rows)
+                }
+                MouseEventKind::ScrollDown => {
+                    scroll_selection(&mut view.model, 3, ctx.registry.models.len(), viewport_rows)
+                }
                 _ => {}
             }
         }
         if view.overlay.is(OverlayKind::Prompt) {
             let viewport_rows = prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
-            let max_scroll = max_scroll(ctx.prompt_registry.prompts.len(), viewport_rows);
             match m.kind {
-                MouseEventKind::ScrollUp => view.prompt.scroll_by(-3, max_scroll, viewport_rows),
-                MouseEventKind::ScrollDown => view.prompt.scroll_by(3, max_scroll, viewport_rows),
+                MouseEventKind::ScrollUp => scroll_selection(
+                    &mut view.prompt,
+                    -3,
+                    ctx.prompt_registry.prompts.len(),
+                    viewport_rows,
+                ),
+                MouseEventKind::ScrollDown => scroll_selection(
+                    &mut view.prompt,
+                    3,
+                    ctx.prompt_registry.prompts.len(),
+                    viewport_rows,
+                ),
                 _ => {}
             }
         }

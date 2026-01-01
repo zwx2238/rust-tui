@@ -56,6 +56,45 @@ pub(crate) fn can_change_prompt(app: &crate::ui::state::App) -> bool {
     !app.messages.iter().any(|m| m.role == "user")
 }
 
+pub(crate) fn sync_model_selection(
+    view: &mut crate::ui::runtime_view::ViewState,
+    ctx: &DispatchContext<'_>,
+    layout: LayoutContext,
+) {
+    if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) {
+        if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
+            view.model.selected = idx;
+        }
+    }
+    let viewport_rows =
+        crate::ui::model_popup::model_visible_rows(layout.size, ctx.registry.models.len());
+    view.model
+        .clamp_with_viewport(ctx.registry.models.len(), viewport_rows);
+}
+
+pub(crate) fn sync_prompt_selection(
+    view: &mut crate::ui::runtime_view::ViewState,
+    ctx: &DispatchContext<'_>,
+    layout: LayoutContext,
+) {
+    if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) {
+        if let Some(idx) = ctx
+            .prompt_registry
+            .prompts
+            .iter()
+            .position(|p| p.key == tab_state.app.prompt_key)
+        {
+            view.prompt.selected = idx;
+        }
+    }
+    let viewport_rows = crate::ui::prompt_popup::prompt_visible_rows(
+        layout.size,
+        ctx.prompt_registry.prompts.len(),
+    );
+    view.prompt
+        .clamp_with_viewport(ctx.prompt_registry.prompts.len(), viewport_rows);
+}
+
 pub(crate) fn apply_model_selection(
     ctx: &mut DispatchContext<'_>,
     idx: usize,

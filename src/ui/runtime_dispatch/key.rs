@@ -1,12 +1,11 @@
 use crate::ui::overlay::OverlayKind;
-use crate::ui::prompt_popup::prompt_visible_rows;
 use crate::ui::runtime_view::{apply_view_action, handle_view_key, ViewAction, ViewState};
 use crate::ui::runtime_events::handle_key_event;
 use crossterm::event::KeyEvent;
 
 use super::{
     apply_model_selection, apply_prompt_selection, can_change_prompt, cycle_model, DispatchContext,
-    LayoutContext, push_prompt_locked,
+    LayoutContext, push_prompt_locked, sync_model_selection, sync_prompt_selection,
 };
 
 pub(crate) fn handle_key_event_loop(
@@ -38,33 +37,7 @@ pub(crate) fn handle_key_event_loop(
         return Ok(false);
     }
     if key.code == crossterm::event::KeyCode::F(5) && view.overlay.is(OverlayKind::Prompt) {
-        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-            if let Some(idx) = ctx
-                .prompt_registry
-                .prompts
-                .iter()
-                .position(|p| p.key == tab_state.app.prompt_key)
-            {
-                view.prompt.selected = idx;
-                let viewport_rows =
-                    prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
-                let max_scroll = ctx
-                    .prompt_registry
-                    .prompts
-                    .len()
-                    .saturating_sub(viewport_rows)
-                    .max(1)
-                    .saturating_sub(1);
-                if viewport_rows > 0 {
-                    view.prompt.scroll = view
-                        .prompt.selected
-                        .saturating_sub(viewport_rows.saturating_sub(1))
-                        .min(max_scroll);
-                } else {
-                    view.prompt.scroll = 0;
-                }
-            }
-        }
+        sync_prompt_selection(view, ctx, layout);
         return Ok(false);
     }
     if let ViewAction::SelectModel(idx) = action {
@@ -79,16 +52,7 @@ pub(crate) fn handle_key_event_loop(
         return Ok(false);
     }
     if key.code == crossterm::event::KeyCode::F(4) && view.overlay.is(OverlayKind::Model) {
-        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-            if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
-                view.model.selected = idx;
-                let viewport_rows = crate::ui::model_popup::model_visible_rows(
-                    layout.size,
-                    ctx.registry.models.len(),
-                );
-                view.model.clamp_with_viewport(ctx.registry.models.len(), viewport_rows);
-            }
-        }
+        sync_model_selection(view, ctx, layout);
         return Ok(false);
     }
     if !view.is_chat() {
