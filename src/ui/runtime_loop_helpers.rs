@@ -181,13 +181,34 @@ fn handle_code_exec_approve(
     let output = match pending.language.as_str() {
         "python" => run_python_in_docker(&pending.code)
             .map(|out| {
-                serde_json::json!({
-                    "language": pending.language,
-                    "exit_code": out.exit_code,
-                    "stdout": out.stdout,
-                    "stderr": out.stderr
-                })
-                .to_string()
+                let stdout_empty = out.stdout.trim().is_empty();
+                let stderr_empty = out.stderr.trim().is_empty();
+                let mut text = String::new();
+                text.push_str("[code_exec]\n");
+                text.push_str(&format!("language: {}\n", pending.language));
+                text.push_str(&format!("exit_code: {}\n", out.exit_code));
+                text.push_str("stdout:\n");
+                if stdout_empty {
+                    text.push_str("(空)\n");
+                } else {
+                    text.push_str(&out.stdout);
+                    if !out.stdout.ends_with('\n') {
+                        text.push('\n');
+                    }
+                }
+                text.push_str("stderr:\n");
+                if stderr_empty {
+                    text.push_str("(空)\n");
+                } else {
+                    text.push_str(&out.stderr);
+                    if !out.stderr.ends_with('\n') {
+                        text.push('\n');
+                    }
+                }
+                if out.exit_code == 0 && stdout_empty && stderr_empty {
+                    text.push_str("note: 程序正常执行但没有输出。\n");
+                }
+                text
             })
             .unwrap_or_else(|e| format!(r#"{{"error":"{e}"}}"#)),
         _ => format!(r#"{{"error":"不支持的语言：{}"}}"#, pending.language),
