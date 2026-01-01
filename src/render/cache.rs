@@ -19,6 +19,20 @@ pub struct RenderCacheEntry {
     pub(crate) line_count: usize,
     pub(crate) rendered: bool,
 }
+
+fn empty_entry(theme_key: u64) -> RenderCacheEntry {
+    RenderCacheEntry {
+        role: String::new(),
+        content_hash: 0,
+        content_len: 0,
+        width: 0,
+        theme_key,
+        streaming: false,
+        lines: Vec::new(),
+        line_count: 0,
+        rendered: false,
+    }
+}
 pub fn messages_to_text(
     messages: &[Message],
     width: usize,
@@ -92,17 +106,7 @@ pub fn messages_to_viewport_text_cached(
     let mut line_cursor = 0usize;
     for (idx, msg) in messages.iter().enumerate() {
         if cache.len() <= idx {
-            cache.push(RenderCacheEntry {
-                role: String::new(),
-                content_hash: 0,
-                content_len: 0,
-                width: 0,
-                theme_key,
-                streaming: false,
-                lines: Vec::new(),
-                line_count: 0,
-                rendered: false,
-            });
+            cache.push(empty_entry(theme_key));
         }
         let suffix = suffix_for_index(label_suffixes, idx);
         let streaming = streaming_idx == Some(idx);
@@ -164,17 +168,7 @@ pub fn messages_to_viewport_text_cached(
 }
 pub fn insert_empty_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, theme: &RenderTheme) {
     let theme_key = theme_cache_key(theme);
-    let entry = RenderCacheEntry {
-        role: String::new(),
-        content_hash: 0,
-        content_len: 0,
-        width: 0,
-        theme_key,
-        streaming: false,
-        lines: Vec::new(),
-        line_count: 0,
-        rendered: false,
-    };
+    let entry = empty_entry(theme_key);
     if idx > cache.len() {
         cache.resize_with(idx, || entry.clone());
     }
@@ -205,17 +199,7 @@ pub fn build_cache_entry(
 }
 pub fn set_cache_entry(cache: &mut Vec<RenderCacheEntry>, idx: usize, entry: RenderCacheEntry) {
     if cache.len() <= idx {
-        cache.resize_with(idx + 1, || RenderCacheEntry {
-            role: String::new(),
-            content_hash: 0,
-            content_len: 0,
-            width: 0,
-            theme_key: entry.theme_key,
-            streaming: false,
-            lines: Vec::new(),
-            line_count: 0,
-            rendered: false,
-        });
+        cache.resize_with(idx + 1, || empty_entry(entry.theme_key));
     }
     cache[idx] = entry;
 }
