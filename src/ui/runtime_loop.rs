@@ -3,7 +3,9 @@ use crate::render::{
     RenderTheme, messages_to_viewport_text_cached, messages_to_viewport_text_cached_with_layout,
 };
 use crate::ui::input_click::update_input_view_top;
-use crate::ui::logic::{build_label_suffixes, drain_events, handle_stream_event, timer_text};
+use crate::ui::logic::{
+    StreamAction, build_label_suffixes, drain_events, handle_stream_event, timer_text,
+};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_dispatch::{
     handle_key_event_loop, handle_mouse_event_loop, start_pending_request,
@@ -12,17 +14,14 @@ use crate::ui::runtime_context::{make_dispatch_context, make_layout_context};
 use crate::ui::runtime_events::handle_paste_event;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_layout::compute_layout;
+use crate::ui::runtime_loop_helpers::{apply_tool_calls, handle_pending_command};
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
-use crate::ui::state::PendingCommand;
-use crate::types::{Message, ROLE_ASSISTANT};
+use std::sync::mpsc;
 use crossterm::event::{self, Event};
 use ratatui::{Terminal, backend::CrosstermBackend};
-use std::{
-    sync::mpsc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 pub(crate) fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
@@ -64,6 +63,7 @@ pub(crate) fn run_loop(
         }
 
         let mut done_tabs: Vec<usize> = Vec::new();
+        let mut tool_queue: Vec<(usize, Vec<crate::types::ToolCall>)> = Vec::new();
         while let Ok(event) = rx.try_recv() {
             let UiEvent {
                 tab,
@@ -80,10 +80,21 @@ pub(crate) fn run_loop(
                     .busy_since
                     .map(|t| t.elapsed().as_millis() as u64)
                     .unwrap_or(0);
-                if handle_stream_event(&mut tab_state.app, event, elapsed) {
-                    done_tabs.push(tab);
+                match handle_stream_event(&mut tab_state.app, event, elapsed) {
+                    StreamAction::Done => {
+                        done_tabs.push(tab);
+                    }
+                    StreamAction::ToolCalls(calls) => {
+                        tool_queue.push((tab, calls));
+                    }
+                    StreamAction::None => {}
                 }
                 tab_state.apply_cache_shift(theme);
+            }
+        }
+        for (tab, calls) in tool_queue {
+            if let Some(tab_state) = tabs.get_mut(tab) {
+                apply_tool_calls(tab_state, tab, &calls, registry, args, tx);
             }
         }
         for &tab in &done_tabs {
@@ -187,38 +198,7 @@ pub(crate) fn run_loop(
             }
         }
         if let Some(cmd) = pending_command {
-            match cmd {
-                PendingCommand::SaveSession => {
-                    let snapshot = crate::ui::runtime_helpers::collect_session_tabs(tabs);
-                    let save_result = crate::session::save_session(
-                        &snapshot,
-                        *active_tab,
-                        session_location.as_ref(),
-                    );
-                    if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                        match save_result {
-                            Ok(loc) => {
-                                *session_location = Some(loc.clone());
-                                let hint = loc.display_hint();
-                                let idx = tab_state.app.messages.len();
-                                tab_state.app.messages.push(Message {
-                                    role: ROLE_ASSISTANT.to_string(),
-                                    content: format!("已保存会话：{hint}"),
-                                });
-                                tab_state.app.dirty_indices.push(idx);
-                            }
-                            Err(e) => {
-                                let idx = tab_state.app.messages.len();
-                                tab_state.app.messages.push(Message {
-                                    role: ROLE_ASSISTANT.to_string(),
-                                    content: format!("保存失败：{e}"),
-                                });
-                                tab_state.app.dirty_indices.push(idx);
-                            }
-                        }
-                    }
-                }
-            }
+            handle_pending_command(tabs, *active_tab, cmd, session_location);
         }
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {

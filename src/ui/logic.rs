@@ -1,18 +1,25 @@
 use crate::types::{Message, ROLE_ASSISTANT};
+use crate::types::ToolCall;
 use crate::ui::net::LlmEvent;
 use crate::ui::scroll::max_scroll_u16;
 use crate::ui::state::App;
 
-pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> bool {
+pub enum StreamAction {
+    None,
+    Done,
+    ToolCalls(Vec<ToolCall>),
+}
+
+pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> StreamAction {
     match event {
         LlmEvent::Chunk(s) => {
             app.stream_buffer.push_str(&s);
             flush_completed_lines(app);
-            false
+            StreamAction::None
         }
         LlmEvent::Reasoning(s) => {
             append_reasoning(app, &s);
-            false
+            StreamAction::None
         }
         LlmEvent::Error(err) => {
             set_pending_assistant_content(app, &err);
@@ -20,7 +27,7 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> b
             app.pending_reasoning = None;
             app.stream_buffer.clear();
             app.active_request = None;
-            true
+            StreamAction::Done
         }
         LlmEvent::Done { usage } => {
             flush_remaining_buffer(app);
@@ -38,7 +45,28 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> b
             }
             app.pending_reasoning = None;
             app.active_request = None;
-            true
+            StreamAction::Done
+        }
+        LlmEvent::ToolCalls { calls, usage } => {
+            flush_remaining_buffer(app);
+            let stats = format_stats(usage.as_ref(), elapsed_ms);
+            if let Some(idx) = app.pending_assistant.take() {
+                if let Some(msg) = app.messages.get_mut(idx) {
+                    msg.tool_calls = Some(calls.clone());
+                }
+                app.assistant_stats.insert(idx, stats);
+            }
+            if let Some(u) = usage.as_ref() {
+                let p = u.prompt_tokens.unwrap_or(0);
+                let c = u.completion_tokens.unwrap_or(0);
+                let t = u.total_tokens.unwrap_or(p + c);
+                app.total_prompt_tokens = app.total_prompt_tokens.saturating_add(p);
+                app.total_completion_tokens = app.total_completion_tokens.saturating_add(c);
+                app.total_tokens = app.total_tokens.saturating_add(t);
+            }
+            app.pending_reasoning = None;
+            app.active_request = None;
+            StreamAction::ToolCalls(calls)
         }
     }
 }
@@ -175,6 +203,8 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
                 content: text.to_string(),
+                tool_call_id: None,
+                tool_calls: None,
             });
             app.pending_assistant = Some(app.messages.len().saturating_sub(1));
             if let Some(idx) = app.pending_assistant {
@@ -185,6 +215,8 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
         app.messages.push(Message {
             role: ROLE_ASSISTANT.to_string(),
             content: text.to_string(),
+            tool_call_id: None,
+            tool_calls: None,
         });
         app.pending_assistant = Some(app.messages.len().saturating_sub(1));
         if let Some(idx) = app.pending_assistant {
@@ -209,6 +241,8 @@ fn append_reasoning(app: &mut App, text: &str) {
         Message {
             role: ROLE_ASSISTANT.to_string(),
             content: format!("推理> {text}"),
+            tool_call_id: None,
+            tool_calls: None,
         },
     );
     app.pending_reasoning = Some(insert_at);
@@ -243,6 +277,8 @@ fn set_pending_assistant_content(app: &mut App, content: &str) {
     app.messages.push(Message {
         role: ROLE_ASSISTANT.to_string(),
         content: content.to_string(),
+        tool_call_id: None,
+        tool_calls: None,
     });
     app.pending_assistant = Some(app.messages.len().saturating_sub(1));
     if let Some(idx) = app.pending_assistant {

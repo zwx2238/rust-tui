@@ -318,6 +318,8 @@ pub(crate) fn fork_message_by_index(
             crate::types::Message {
                 role: ROLE_SYSTEM.to_string(),
                 content: system_prompt.clone(),
+                tool_call_id: None,
+                tool_calls: None,
             },
         );
     }

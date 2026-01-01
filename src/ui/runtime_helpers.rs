@@ -117,11 +117,15 @@ pub(crate) fn start_tab_request(
         app.messages.push(Message {
             role: ROLE_USER.to_string(),
             content: question.to_string(),
+            tool_call_id: None,
+            tool_calls: None,
         });
     } else if let Some(line) = app.pending_send.take() {
         app.messages.push(Message {
             role: ROLE_USER.to_string(),
             content: line,
+            tool_call_id: None,
+            tool_calls: None,
         });
     } else {
         return;
@@ -130,6 +134,8 @@ pub(crate) fn start_tab_request(
         app.messages.push(Message {
             role: ROLE_ASSISTANT.to_string(),
             content: "缺少 API Key，无法请求模型。".to_string(),
+            tool_call_id: None,
+            tool_calls: None,
         });
         return;
     }
@@ -138,6 +144,8 @@ pub(crate) fn start_tab_request(
     app.messages.push(Message {
         role: ROLE_ASSISTANT.to_string(),
         content: String::new(),
+        tool_call_id: None,
+        tool_calls: None,
     });
     let request_id = app.next_request_id;
     app.next_request_id = app.next_request_id.saturating_add(1);

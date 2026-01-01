@@ -76,6 +76,8 @@ impl App {
             messages.push(Message {
                 role: ROLE_SYSTEM.to_string(),
                 content: system_prompt.to_string(),
+                tool_call_id: None,
+                tool_calls: None,
             });
         }
         Self {
@@ -124,6 +126,8 @@ impl App {
                 Message {
                     role: ROLE_SYSTEM.to_string(),
                     content: content.to_string(),
+                    tool_call_id: None,
+                    tool_calls: None,
                 },
             );
             self.cache_shift = Some(0);

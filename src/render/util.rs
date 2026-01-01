@@ -1,4 +1,4 @@
-use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
+use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -27,6 +27,7 @@ pub(crate) fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String>
             Some(label)
         }
         ROLE_SYSTEM => Some("⚙️".to_string()),
+        ROLE_TOOL => Some("🔧".to_string()),
         _ => None,
     }
 }

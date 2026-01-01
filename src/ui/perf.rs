@@ -29,6 +29,8 @@ pub fn seed_perf_messages(app: &mut App) {
         app.messages.push(crate::types::Message {
             role: role.to_string(),
             content,
+            tool_call_id: None,
+            tool_calls: None,
         });
     }
     app.follow = true;

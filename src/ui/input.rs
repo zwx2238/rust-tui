@@ -137,12 +137,16 @@ pub fn handle_command(
                 role: ROLE_ASSISTANT.to_string(),
                 content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新 tab），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
                     .to_string(),
+                tool_call_id: None,
+                tool_calls: None,
             });
         }
         _ => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
                 content: format!("未知命令：{line}"),
+                tool_call_id: None,
+                tool_calls: None,
             });
         }
     }
