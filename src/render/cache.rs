@@ -5,7 +5,7 @@ use crate::render::theme::{RenderTheme, theme_cache_key};
 use crate::render::label_line_layout;
 use crate::render::label_line_with_button;
 use crate::render::util::{hash_message, label_for_role, ranges_overlap, suffix_for_index};
-use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
+use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use ratatui::text::{Line, Text};
 use std::borrow::Cow;
 use crate::render::MessageLayout;
@@ -248,7 +248,7 @@ fn render_message_content_lines(
     streaming: bool,
 ) -> Vec<Line<'static>> {
     match msg.role.as_str() {
-        ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM => {
+        ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM | ROLE_TOOL => {
             let content = message_content(msg, streaming);
             render_markdown_lines(content.as_ref(), width, theme, streaming)
         }
@@ -257,7 +257,7 @@ fn render_message_content_lines(
 }
 pub(crate) fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
     match msg.role.as_str() {
-        ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM => {
+        ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM | ROLE_TOOL => {
             let content = message_content(msg, streaming);
             count_markdown_lines(content.as_ref(), width)
         }
