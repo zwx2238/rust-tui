@@ -46,14 +46,14 @@ pub(crate) fn render_view(
     };
     match view.overlay.active {
         Some(OverlayKind::Summary) => {
-            view.summary_selected = view.summary_selected.min(tabs.len().saturating_sub(1));
+            view.summary.clamp(tabs.len());
             redraw_summary(
                 terminal,
                 tabs,
                 active_tab,
                 theme,
                 startup_text,
-                view.summary_selected,
+                view.summary.selected,
             )?;
         }
         Some(OverlayKind::Jump) => {

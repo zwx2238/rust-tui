@@ -5,7 +5,7 @@ use crate::ui::selection_state::SelectionState;
 
 pub(crate) struct ViewState {
     pub(crate) overlay: OverlayState,
-    pub(crate) summary_selected: usize,
+    pub(crate) summary: SelectionState,
     pub(crate) jump: SelectionState,
     pub(crate) model: SelectionState,
     pub(crate) prompt: SelectionState,
@@ -51,7 +51,7 @@ impl ViewState {
     pub(crate) fn new() -> Self {
         Self {
             overlay: OverlayState::default(),
-            summary_selected: 0,
+            summary: SelectionState::default(),
             jump: SelectionState::default(),
             model: SelectionState::default(),
             prompt: SelectionState::default(),
@@ -83,7 +83,7 @@ pub(crate) fn handle_view_key(
             if view.overlay.is(OverlayKind::Summary) {
                 view.overlay.close();
             } else {
-                view.summary_selected = active_tab.min(tabs_len.saturating_sub(1));
+                view.summary.selected = active_tab.min(tabs_len.saturating_sub(1));
                 view.overlay.open(OverlayKind::Summary);
             }
             return ViewAction::None;
@@ -117,16 +117,16 @@ pub(crate) fn handle_view_key(
                 ViewAction::None
             }
             KeyCode::Up => {
-                view.summary_selected = view.summary_selected.saturating_sub(1);
+                view.summary.move_up();
                 ViewAction::None
             }
             KeyCode::Down => {
-                view.summary_selected = view.summary_selected.saturating_add(1);
+                view.summary.move_down();
                 ViewAction::None
             }
             KeyCode::Enter => {
-                if view.summary_selected < tabs_len {
-                    let idx = view.summary_selected;
+                if view.summary.selected < tabs_len {
+                    let idx = view.summary.selected;
                     view.overlay.close();
                     ViewAction::SwitchTab(idx)
                 } else {
@@ -220,7 +220,7 @@ pub(crate) fn handle_view_mouse(
     };
     match view.overlay.active {
         Some(OverlayKind::Summary) => {
-            view.summary_selected = row.min(tabs_len.saturating_sub(1));
+            view.summary.select(row.min(tabs_len.saturating_sub(1)));
             if matches!(kind, MouseEventKind::Down(_)) && row < tabs_len {
                 view.overlay.close();
                 return ViewAction::SwitchTab(row);
