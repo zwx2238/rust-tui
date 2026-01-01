@@ -1,8 +1,7 @@
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
-use crate::ui::popup_layout::popup_area;
-use crate::ui::popup_table::{
-    TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
+use crate::ui::overlay_table::{
+    OverlayTable, centered_area, draw_overlay_table, header_style, row_at, visible_rows,
 };
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
@@ -32,7 +31,7 @@ pub fn draw_model_popup(
             Cell::from(m.base_url.clone()),
         ])
     });
-    let popup_spec = TablePopup {
+    let popup_spec = OverlayTable {
         title: Line::from("模型切换 · Enter 确认 · Esc 取消 · F3 快速切换"),
         header,
         rows: body.collect(),
@@ -45,11 +44,11 @@ pub fn draw_model_popup(
         scroll,
         theme,
     };
-    draw_table_popup(f, popup, popup_spec);
+    draw_overlay_table(f, popup, popup_spec);
 }
 
 pub fn model_popup_area(area: Rect, rows: usize) -> Rect {
-    popup_area(area, 70, rows, POPUP_MAX_HEIGHT)
+    centered_area(area, 70, rows, POPUP_MAX_HEIGHT)
 }
 
 pub fn model_row_at(
@@ -60,14 +59,14 @@ pub fn model_row_at(
     mouse_y: u16,
 ) -> Option<usize> {
     let popup = model_popup_area(area, rows);
-    popup_row_at(popup, rows, scroll, mouse_x, mouse_y)
+    row_at(popup, rows, scroll, mouse_x, mouse_y)
 }
 
 pub fn model_visible_rows(area: Rect, rows: usize) -> usize {
     let popup = model_popup_area(area, rows);
-    popup_visible_rows(popup)
+    visible_rows(popup)
 }
 
-// layout helpers are centralized in popup_layout
+// layout helpers are centralized in overlay_table
 
-// selection color handled by popup_table
+// selection color handled by overlay_table

@@ -1,7 +1,7 @@
 use crate::ui::jump::{jump_row_at, jump_visible_rows};
 use crate::ui::model_popup::{model_row_at, model_visible_rows};
+use crate::ui::overlay_table::row_at as overlay_table_row_at;
 use crate::ui::overlay::OverlayKind;
-use crate::ui::popup_table::popup_row_at;
 use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
@@ -30,7 +30,7 @@ fn overlay_row_at(
 ) -> Option<usize> {
     match view.overlay.active {
         Some(OverlayKind::Summary) => {
-            popup_row_at(layout.msg_area, ctx.tabs.len(), 0, mouse_x, mouse_y)
+            overlay_table_row_at(layout.msg_area, ctx.tabs.len(), 0, mouse_x, mouse_y)
         }
         Some(OverlayKind::Jump) => jump_row_at(
             layout.msg_area,

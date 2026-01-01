@@ -2,7 +2,7 @@ use crate::render::RenderTheme;
 use crate::types::ROLE_USER;
 use crate::ui::draw::draw_tabs;
 use crate::ui::notice::draw_notice;
-use crate::ui::popup_table::{TablePopup, draw_table_popup, header_style};
+use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
 use ratatui::Terminal;
@@ -89,7 +89,7 @@ fn draw_summary_table(
         ])
     });
 
-    let popup = TablePopup {
+    let popup = OverlayTable {
         title: Line::from("汇总页 · F1 退出 · 点击行进入"),
         header,
         rows: body.collect(),
@@ -103,7 +103,7 @@ fn draw_summary_table(
         scroll: 0,
         theme,
     };
-    draw_table_popup(f, area, popup);
+    draw_overlay_table(f, area, popup);
 }
 
 fn inner_area(area: Rect) -> Rect {

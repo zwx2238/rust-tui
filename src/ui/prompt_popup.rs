@@ -1,8 +1,7 @@
 use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
-use crate::ui::popup_layout::popup_area;
-use crate::ui::popup_table::{
-    TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
+use crate::ui::overlay_table::{
+    OverlayTable, centered_area, draw_overlay_table, header_style, row_at, visible_rows,
 };
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use ratatui::layout::{Constraint, Rect};
@@ -33,7 +32,7 @@ pub fn draw_prompt_popup(
             )),
         ])
     });
-    let popup_spec = TablePopup {
+    let popup_spec = OverlayTable {
         title: Line::from("系统提示词 · Enter 确认 · Esc 取消"),
         header,
         rows: body.collect(),
@@ -42,11 +41,11 @@ pub fn draw_prompt_popup(
         scroll,
         theme,
     };
-    draw_table_popup(f, popup, popup_spec);
+    draw_overlay_table(f, popup, popup_spec);
 }
 
 pub fn prompt_popup_area(area: Rect, rows: usize) -> Rect {
-    popup_area(area, 80, rows, POPUP_MAX_HEIGHT)
+    centered_area(area, 80, rows, POPUP_MAX_HEIGHT)
 }
 
 pub fn prompt_row_at(
@@ -57,12 +56,12 @@ pub fn prompt_row_at(
     mouse_y: u16,
 ) -> Option<usize> {
     let popup = prompt_popup_area(area, rows);
-    popup_row_at(popup, rows, scroll, mouse_x, mouse_y)
+    row_at(popup, rows, scroll, mouse_x, mouse_y)
 }
 
 pub fn prompt_visible_rows(area: Rect, rows: usize) -> usize {
     let popup = prompt_popup_area(area, rows);
-    popup_visible_rows(popup)
+    visible_rows(popup)
 }
 
 fn max_preview_width(area: Rect, role_width: u16) -> usize {
@@ -79,8 +78,8 @@ fn role_col_width(area: Rect, prompts: &[SystemPrompt]) -> u16 {
     needed.min(max_allowed)
 }
 
-// layout helpers are centralized in popup_layout
+// layout helpers are centralized in overlay_table
 
-// selection color handled by popup_table
+// selection color handled by overlay_table
 
 // text utilities are centralized in text_utils

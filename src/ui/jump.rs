@@ -1,8 +1,8 @@
 use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::types::Message;
 use crate::ui::draw::draw_tabs;
-use crate::ui::popup_table::{
-    TablePopup, draw_table_popup, header_style, popup_row_at, popup_visible_rows,
+use crate::ui::overlay_table::{
+    OverlayTable, draw_overlay_table, header_style, row_at, visible_rows,
 };
 use crate::ui::notice::draw_notice;
 use crate::ui::runtime_helpers::TabState;
@@ -82,11 +82,11 @@ pub fn jump_row_at(
     mouse_y: u16,
     scroll: usize,
 ) -> Option<usize> {
-    popup_row_at(area, row_count, scroll, mouse_x, mouse_y)
+    row_at(area, row_count, scroll, mouse_x, mouse_y)
 }
 
 pub fn jump_visible_rows(area: Rect) -> usize {
-    popup_visible_rows(area)
+    visible_rows(area)
 }
 
 pub fn max_preview_width(area: Rect) -> usize {
@@ -115,7 +115,7 @@ fn draw_jump_table(
             Cell::from(row.preview.clone()),
         ])
     });
-    let popup = TablePopup {
+    let popup = OverlayTable {
         title: Line::from("消息定位 · Enter/点击 跳转 · E 复制用户消息到新 tab · F2 退出"),
         header,
         rows: body.collect(),
@@ -128,7 +128,7 @@ fn draw_jump_table(
         scroll,
         theme,
     };
-    draw_table_popup(f, area, popup);
+    draw_overlay_table(f, area, popup);
 }
 
 // text utilities are centralized in text_utils
