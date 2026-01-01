@@ -2,6 +2,7 @@ use crate::render::{count_message_lines, label_for_role, RenderTheme};
 use crate::ui::draw::draw_tabs;
 use crate::ui::popup_table::{draw_table_popup, TablePopup};
 use crate::ui::summary::summary_row_at;
+use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use crate::types::Message;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -10,7 +11,6 @@ use ratatui::widgets::{Cell, Row};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io::Stdout;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 pub struct JumpRow {
     pub index: usize,
@@ -120,29 +120,4 @@ fn draw_jump_table(
     draw_table_popup(f, area, popup);
 }
 
-fn collapse_text(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn truncate_to_width(text: &str, max_width: usize) -> String {
-    if max_width == 0 {
-        return String::new();
-    }
-    if text.width() <= max_width {
-        return text.to_string();
-    }
-    let ellipsis = "...";
-    let mut out = String::new();
-    let mut width = 0usize;
-    let limit = max_width.saturating_sub(ellipsis.width());
-    for ch in text.chars() {
-        let w = UnicodeWidthChar::width(ch).unwrap_or(1);
-        if width.saturating_add(w) > limit {
-            break;
-        }
-        out.push(ch);
-        width = width.saturating_add(w);
-    }
-    out.push_str(ellipsis);
-    out
-}
+// text utilities are centralized in text_utils

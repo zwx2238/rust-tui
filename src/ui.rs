@@ -13,6 +13,7 @@ mod prompt_popup;
 mod popup_table;
 mod popup_layout;
 mod selection_state;
+mod text_utils;
 mod runtime;
 mod runtime_events;
 mod runtime_helpers;

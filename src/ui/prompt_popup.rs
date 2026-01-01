@@ -1,12 +1,13 @@
 use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
+use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use crate::ui::popup_layout::popup_area;
 use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthStr;
 
 pub fn draw_prompt_popup(
     f: &mut ratatui::Frame<'_>,
@@ -84,29 +85,4 @@ fn role_col_width(area: Rect, prompts: &[SystemPrompt]) -> u16 {
 
 // selection color handled by popup_table
 
-fn collapse_text(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn truncate_to_width(text: &str, max_width: usize) -> String {
-    if max_width == 0 {
-        return String::new();
-    }
-    if text.width() <= max_width {
-        return text.to_string();
-    }
-    let ellipsis = "...";
-    let mut out = String::new();
-    let mut width = 0usize;
-    let limit = max_width.saturating_sub(ellipsis.width());
-    for ch in text.chars() {
-        let w = UnicodeWidthChar::width(ch).unwrap_or(1);
-        if width.saturating_add(w) > limit {
-            break;
-        }
-        out.push(ch);
-        width = width.saturating_add(w);
-    }
-    out.push_str(ellipsis);
-    out
-}
+// text utilities are centralized in text_utils
