@@ -133,5 +133,5 @@ fn draw_base(
         &app.model_key,
         &app.prompt_key,
     );
-    header_footer::draw_footer(f, footer_area, theme);
+    header_footer::draw_footer(f, footer_area, theme, app.nav_mode);
 }

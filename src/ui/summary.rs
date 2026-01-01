@@ -56,7 +56,7 @@ pub fn redraw_summary(
         draw_header(f, header_area, theme);
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_summary_table(f, body_area, &rows, selected_row, scroll, theme);
-        draw_footer(f, footer_area, theme);
+        draw_footer(f, footer_area, theme, false);
         if let Some(tab) = tabs.get_mut(active_tab) {
             draw_notice(f, size, &mut tab.app, theme);
         }

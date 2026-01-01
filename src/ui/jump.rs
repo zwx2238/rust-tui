@@ -71,7 +71,7 @@ pub fn redraw_jump(
         draw_header(f, header_area, theme);
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_jump_table(f, area, rows, selected, theme, scroll);
-        draw_footer(f, footer_area, theme);
+        draw_footer(f, footer_area, theme, false);
         if let Some(tab) = tabs.get_mut(active_tab) {
             draw_notice(f, f.area(), &mut tab.app, theme);
         }
