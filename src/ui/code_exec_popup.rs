@@ -33,6 +33,8 @@ pub(crate) fn draw_code_exec_popup(
         width,
         height,
     };
+    let mask = Block::default().style(base_style(theme));
+    f.render_widget(mask, popup);
     let block = Block::default()
         .borders(Borders::ALL)
         .title_top(Line::from(vec![
