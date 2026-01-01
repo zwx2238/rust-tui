@@ -43,10 +43,8 @@ pub(crate) fn draw_notice(f: &mut Frame<'_>, area: Rect, app: &mut App, theme: &
         .max(MIN_HEIGHT) as u16;
     let x = area
         .x
-        .saturating_add(area.width.saturating_sub(popup_width + 1));
-    let y = area
-        .y
-        .saturating_add(area.height.saturating_sub(popup_height + 1));
+        .saturating_add(area.width.saturating_sub(popup_width) / 2);
+    let y = area.y.saturating_add(1);
 
     let mut config = PopupConfig::default();
     config.show_title = false;

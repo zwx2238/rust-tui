@@ -25,16 +25,11 @@ use std::time::Instant;
 
 pub fn run(
     args: Args,
-    api_key: String,
-    cfg: Option<crate::config::Config>,
+    cfg: crate::config::Config,
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let registry = build_model_registry(cfg.as_ref(), &args, Some(&api_key));
-    let prompt_registry = load_prompts(
-        cfg.as_ref().and_then(|c| c.prompts_dir.as_deref()),
-        "default",
-        &args.system,
-    );
+    let registry = build_model_registry(&cfg);
+    let prompt_registry = load_prompts(&cfg.prompts_dir, "default", &args.system)?;
 
     let mut session_location: Option<SessionLocation> = None;
     let (mut tabs, mut active_tab) = if let Some(resume) = args.resume.as_deref() {

@@ -63,6 +63,8 @@ pub(crate) fn render_jump_overlay(
     view: &mut ViewState,
     msg_area: Rect,
     tabs_area: Rect,
+    header_area: Rect,
+    footer_area: Rect,
     jump_rows: &[JumpRow],
 ) -> Result<(), Box<dyn Error>> {
     redraw_jump(
@@ -74,7 +76,9 @@ pub(crate) fn render_jump_overlay(
         jump_rows,
         view.jump.selected,
         msg_area,
+        header_area,
         tabs_area,
+        footer_area,
         view.jump.scroll,
     )?;
     Ok(())

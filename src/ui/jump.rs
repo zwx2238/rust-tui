@@ -1,6 +1,6 @@
 use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::types::Message;
-use crate::ui::draw::draw_tabs;
+use crate::ui::draw::{draw_footer, draw_header, draw_tabs};
 use crate::ui::overlay_table::{
     OverlayTable, draw_overlay_table, header_style,
 };
@@ -62,12 +62,16 @@ pub fn redraw_jump(
     rows: &[JumpRow],
     selected: usize,
     area: Rect,
+    header_area: Rect,
     tabs_area: Rect,
+    footer_area: Rect,
     scroll: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal.draw(|f| {
+        draw_header(f, header_area, theme);
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_jump_table(f, area, rows, selected, theme, scroll);
+        draw_footer(f, footer_area, theme);
         if let Some(tab) = tabs.get_mut(active_tab) {
             draw_notice(f, f.area(), &mut tab.app, theme);
         }

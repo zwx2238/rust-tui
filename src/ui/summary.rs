@@ -1,13 +1,13 @@
 use crate::render::RenderTheme;
 use crate::types::ROLE_USER;
-use crate::ui::draw::draw_tabs;
+use crate::ui::draw::{draw_footer, draw_header, draw_tabs, layout_chunks};
 use crate::ui::notice::draw_notice;
 use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};
 use std::io::Stdout;
@@ -48,17 +48,15 @@ pub fn redraw_summary(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
     let size = Rect::new(0, 0, size.width, size.height);
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(3)].as_ref())
-        .split(size);
-    let tabs_area = layout[0];
-    let body_area = layout[1];
+    let (header_area, tabs_area, body_area, _input_area, footer_area) =
+        layout_chunks(size, 0);
     let max_latest_width = inner_area(body_area).width.saturating_sub(30) as usize;
     let rows = build_summary_rows(tabs, max_latest_width.max(10));
     terminal.draw(|f| {
+        draw_header(f, header_area, theme);
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_summary_table(f, body_area, &rows, selected_row, scroll, theme);
+        draw_footer(f, footer_area, theme);
         if let Some(tab) = tabs.get_mut(active_tab) {
             draw_notice(f, size, &mut tab.app, theme);
         }

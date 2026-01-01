@@ -24,6 +24,8 @@ pub(crate) fn render_view(
     input_height: u16,
     msg_area: Rect,
     tabs_area: Rect,
+    header_area: Rect,
+    footer_area: Rect,
     msg_width: usize,
     text: &Text<'_>,
     total_lines: usize,
@@ -59,6 +61,8 @@ pub(crate) fn render_view(
                 view,
                 msg_area,
                 tabs_area,
+                header_area,
+                footer_area,
                 &jump_rows,
             )?;
         }
