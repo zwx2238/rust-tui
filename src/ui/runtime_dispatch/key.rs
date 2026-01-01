@@ -1,7 +1,6 @@
+use crate::ui::overlay::OverlayKind;
 use crate::ui::prompt_popup::prompt_visible_rows;
-use crate::ui::runtime_view::{
-    apply_view_action, handle_view_key, ViewAction, ViewMode, ViewState,
-};
+use crate::ui::runtime_view::{apply_view_action, handle_view_key, ViewAction, ViewState};
 use crate::ui::runtime_events::handle_key_event;
 use crossterm::event::KeyEvent;
 
@@ -38,7 +37,7 @@ pub(crate) fn handle_key_event_loop(
         }
         return Ok(false);
     }
-    if key.code == crossterm::event::KeyCode::F(5) && view.mode == ViewMode::Prompt {
+    if key.code == crossterm::event::KeyCode::F(5) && view.overlay.is(OverlayKind::Prompt) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if let Some(idx) = ctx
                 .prompt_registry
@@ -46,7 +45,7 @@ pub(crate) fn handle_key_event_loop(
                 .iter()
                 .position(|p| p.key == tab_state.app.prompt_key)
             {
-                view.prompt_selected = idx;
+                view.prompt.selected = idx;
                 let viewport_rows =
                     prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
                 let max_scroll = ctx
@@ -57,12 +56,12 @@ pub(crate) fn handle_key_event_loop(
                     .max(1)
                     .saturating_sub(1);
                 if viewport_rows > 0 {
-                    view.prompt_scroll = view
-                        .prompt_selected
+                    view.prompt.scroll = view
+                        .prompt.selected
                         .saturating_sub(viewport_rows.saturating_sub(1))
                         .min(max_scroll);
                 } else {
-                    view.prompt_scroll = 0;
+                    view.prompt.scroll = 0;
                 }
             }
         }
@@ -99,7 +98,7 @@ pub(crate) fn handle_key_event_loop(
     if key.code == crossterm::event::KeyCode::F(4) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
-                view.model_selected = idx;
+                view.model.selected = idx;
             }
         }
         return Ok(false);

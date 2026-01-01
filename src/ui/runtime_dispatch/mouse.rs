@@ -1,10 +1,9 @@
 use crate::ui::jump::jump_row_at;
 use crate::ui::model_popup::model_row_at;
+use crate::ui::overlay::OverlayKind;
 use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
 use crate::ui::runtime_events::handle_mouse_event;
-use crate::ui::runtime_view::{
-    apply_view_action, handle_view_mouse, ViewAction, ViewMode, ViewState,
-};
+use crate::ui::runtime_view::{apply_view_action, handle_view_mouse, ViewAction, ViewState};
 use crate::ui::summary::summary_row_at;
 use crossterm::event::{MouseEvent, MouseEventKind};
 
@@ -31,18 +30,18 @@ pub(crate) fn handle_mouse_event_loop(
             ctx.theme,
         );
     } else {
-        if view.mode == ViewMode::Jump {
+        if view.overlay.is(OverlayKind::Jump) {
             match m.kind {
                 MouseEventKind::ScrollUp => {
-                    view.jump_scroll = view.jump_scroll.saturating_sub(3);
+                    view.jump.scroll = view.jump.scroll.saturating_sub(3);
                 }
                 MouseEventKind::ScrollDown => {
-                    view.jump_scroll = view.jump_scroll.saturating_add(3);
+                    view.jump.scroll = view.jump.scroll.saturating_add(3);
                 }
                 _ => {}
             }
         }
-        if view.mode == ViewMode::Prompt {
+        if view.overlay.is(OverlayKind::Prompt) {
             let viewport_rows = prompt_visible_rows(layout.size, ctx.prompt_registry.prompts.len());
             let max_scroll = ctx
                 .prompt_registry
@@ -53,30 +52,32 @@ pub(crate) fn handle_mouse_event_loop(
                 .saturating_sub(1);
             match m.kind {
                 MouseEventKind::ScrollUp => {
-                    view.prompt_scroll = view.prompt_scroll.saturating_sub(3);
+                    view.prompt.scroll = view.prompt.scroll.saturating_sub(3);
                 }
                 MouseEventKind::ScrollDown => {
-                    view.prompt_scroll = view.prompt_scroll.saturating_add(3);
+                    view.prompt.scroll = view.prompt.scroll.saturating_add(3);
                 }
                 _ => {}
             }
-            view.prompt_scroll = view.prompt_scroll.min(max_scroll);
-            if view.prompt_selected < view.prompt_scroll {
-                view.prompt_selected = view.prompt_scroll;
-            }
+            view.prompt.scroll = view.prompt.scroll.min(max_scroll);
+            view.prompt.ensure_visible(viewport_rows);
         }
-        let row = match view.mode {
-            ViewMode::Summary => summary_row_at(layout.msg_area, ctx.tabs.len(), m.row),
-            ViewMode::Jump => jump_row_at(layout.msg_area, jump_rows.len(), m.row, view.jump_scroll),
-            ViewMode::Model => model_row_at(layout.size, ctx.registry.models.len(), m.column, m.row),
-            ViewMode::Prompt => prompt_row_at(
+        let row = match view.overlay.active {
+            Some(OverlayKind::Summary) => summary_row_at(layout.msg_area, ctx.tabs.len(), m.row),
+            Some(OverlayKind::Jump) => {
+                jump_row_at(layout.msg_area, jump_rows.len(), m.row, view.jump.scroll)
+            }
+            Some(OverlayKind::Model) => {
+                model_row_at(layout.size, ctx.registry.models.len(), m.column, m.row)
+            }
+            Some(OverlayKind::Prompt) => prompt_row_at(
                 layout.size,
                 ctx.prompt_registry.prompts.len(),
-                view.prompt_scroll,
+                view.prompt.scroll,
                 m.column,
                 m.row,
             ),
-            ViewMode::Chat => None,
+            None => None,
         };
         let action = handle_view_mouse(view, row, ctx.tabs.len(), jump_rows.len(), m.kind);
         if let ViewAction::SelectModel(idx) = action {

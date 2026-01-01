@@ -1,22 +1,14 @@
 use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum ViewMode {
-    Chat,
-    Summary,
-    Jump,
-    Model,
-    Prompt,
-}
+use crate::ui::overlay::{OverlayKind, OverlayState};
+use crate::ui::selection_state::SelectionState;
 
 pub(crate) struct ViewState {
-    pub(crate) mode: ViewMode,
+    pub(crate) overlay: OverlayState,
     pub(crate) summary_selected: usize,
-    pub(crate) jump_selected: usize,
-    pub(crate) jump_scroll: usize,
-    pub(crate) model_selected: usize,
-    pub(crate) prompt_selected: usize,
-    pub(crate) prompt_scroll: usize,
+    pub(crate) jump: SelectionState,
+    pub(crate) model: SelectionState,
+    pub(crate) prompt: SelectionState,
 }
 
 pub(crate) enum ViewAction {
@@ -58,18 +50,16 @@ pub(crate) fn apply_view_action(
 impl ViewState {
     pub(crate) fn new() -> Self {
         Self {
-            mode: ViewMode::Chat,
+            overlay: OverlayState::default(),
             summary_selected: 0,
-            jump_selected: 0,
-            jump_scroll: 0,
-            model_selected: 0,
-            prompt_selected: 0,
-            prompt_scroll: 0,
+            jump: SelectionState::default(),
+            model: SelectionState::default(),
+            prompt: SelectionState::default(),
         }
     }
 
     pub(crate) fn is_chat(&self) -> bool {
-        self.mode == ViewMode::Chat
+        self.overlay.is_chat()
     }
 }
 
@@ -84,51 +74,46 @@ pub(crate) fn handle_view_key(
         return ViewAction::CycleModel;
     }
     if key.code == KeyCode::F(4) {
-        view.mode = if view.mode == ViewMode::Model {
-            ViewMode::Chat
-        } else {
-            ViewMode::Model
-        };
+        view.overlay.toggle(OverlayKind::Model);
         return ViewAction::None;
     }
 
     match key.code {
         KeyCode::F(1) => {
-            view.mode = if view.mode == ViewMode::Summary {
-                ViewMode::Chat
+            if view.overlay.is(OverlayKind::Summary) {
+                view.overlay.close();
             } else {
                 view.summary_selected = active_tab.min(tabs_len.saturating_sub(1));
-                ViewMode::Summary
-            };
+                view.overlay.open(OverlayKind::Summary);
+            }
             return ViewAction::None;
         }
         KeyCode::F(2) => {
-            view.mode = if view.mode == ViewMode::Jump {
-                ViewMode::Chat
+            if view.overlay.is(OverlayKind::Jump) {
+                view.overlay.close();
             } else {
-                view.jump_selected = 0;
-                view.jump_scroll = 0;
-                ViewMode::Jump
-            };
+                view.jump = SelectionState::default();
+                view.overlay.open(OverlayKind::Jump);
+            }
             return ViewAction::None;
         }
         KeyCode::F(5) => {
-            view.mode = if view.mode == ViewMode::Prompt {
-                ViewMode::Chat
+            if view.overlay.is(OverlayKind::Prompt) {
+                view.overlay.close();
             } else {
-                view.prompt_scroll = 0;
-                ViewMode::Prompt
-            };
+                view.prompt.scroll = 0;
+                view.overlay.open(OverlayKind::Prompt);
+            }
             return ViewAction::None;
         }
         _ => {}
     }
 
-    match view.mode {
-        ViewMode::Chat => ViewAction::None,
-        ViewMode::Summary => match key.code {
+    match view.overlay.active {
+        None => ViewAction::None,
+        Some(OverlayKind::Summary) => match key.code {
             KeyCode::Esc => {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 ViewAction::None
             }
             KeyCode::Up => {
@@ -142,7 +127,7 @@ pub(crate) fn handle_view_key(
             KeyCode::Enter => {
                 if view.summary_selected < tabs_len {
                     let idx = view.summary_selected;
-                    view.mode = ViewMode::Chat;
+                    view.overlay.close();
                     ViewAction::SwitchTab(idx)
                 } else {
                     ViewAction::None
@@ -150,40 +135,31 @@ pub(crate) fn handle_view_key(
             }
             _ => ViewAction::None,
         },
-        ViewMode::Jump => match key.code {
+        Some(OverlayKind::Jump) => match key.code {
             KeyCode::Esc => {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 ViewAction::None
             }
             KeyCode::Up => {
-                view.jump_selected = view.jump_selected.saturating_sub(1);
-                if view.jump_selected < view.jump_scroll {
-                    view.jump_scroll = view.jump_selected;
-                }
+                view.jump.move_up();
                 ViewAction::None
             }
             KeyCode::Down => {
-                view.jump_selected = view.jump_selected.saturating_add(1);
+                view.jump.move_down();
                 ViewAction::None
             }
             KeyCode::PageUp => {
-                view.jump_scroll = view.jump_scroll.saturating_sub(5);
-                if view.jump_selected < view.jump_scroll {
-                    view.jump_selected = view.jump_scroll;
-                }
+                view.jump.page_up(5);
                 ViewAction::None
             }
             KeyCode::PageDown => {
-                view.jump_scroll = view.jump_scroll.saturating_add(5);
-                if view.jump_selected < view.jump_scroll {
-                    view.jump_selected = view.jump_scroll;
-                }
+                view.jump.page_down(5);
                 ViewAction::None
             }
             KeyCode::Enter => {
-                if view.jump_selected < jump_len {
-                    let idx = view.jump_selected;
-                    view.mode = ViewMode::Chat;
+                if view.jump.selected < jump_len {
+                    let idx = view.jump.selected;
+                    view.overlay.close();
                     ViewAction::JumpTo(idx)
                 } else {
                     ViewAction::None
@@ -191,44 +167,41 @@ pub(crate) fn handle_view_key(
             }
             _ => ViewAction::None,
         },
-        ViewMode::Model => match key.code {
+        Some(OverlayKind::Model) => match key.code {
             KeyCode::Esc => {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 ViewAction::None
             }
             KeyCode::Up => {
-                view.model_selected = view.model_selected.saturating_sub(1);
+                view.model.move_up();
                 ViewAction::None
             }
             KeyCode::Down => {
-                view.model_selected = view.model_selected.saturating_add(1);
+                view.model.move_down();
                 ViewAction::None
             }
             KeyCode::Enter => {
-                view.mode = ViewMode::Chat;
-                ViewAction::SelectModel(view.model_selected)
+                view.overlay.close();
+                ViewAction::SelectModel(view.model.selected)
             }
             _ => ViewAction::None,
         },
-        ViewMode::Prompt => match key.code {
+        Some(OverlayKind::Prompt) => match key.code {
             KeyCode::Esc => {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 ViewAction::None
             }
             KeyCode::Up => {
-                view.prompt_selected = view.prompt_selected.saturating_sub(1);
-                if view.prompt_selected < view.prompt_scroll {
-                    view.prompt_scroll = view.prompt_selected;
-                }
+                view.prompt.move_up();
                 ViewAction::None
             }
             KeyCode::Down => {
-                view.prompt_selected = view.prompt_selected.saturating_add(1);
+                view.prompt.move_down();
                 ViewAction::None
             }
             KeyCode::Enter => {
-                view.mode = ViewMode::Chat;
-                ViewAction::SelectPrompt(view.prompt_selected)
+                view.overlay.close();
+                ViewAction::SelectPrompt(view.prompt.selected)
             }
             _ => ViewAction::None,
         },
@@ -245,39 +218,37 @@ pub(crate) fn handle_view_mouse(
     let Some(row) = row else {
         return ViewAction::None;
     };
-    match view.mode {
-        ViewMode::Summary => {
+    match view.overlay.active {
+        Some(OverlayKind::Summary) => {
             view.summary_selected = row.min(tabs_len.saturating_sub(1));
             if matches!(kind, MouseEventKind::Down(_)) && row < tabs_len {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 return ViewAction::SwitchTab(row);
             }
         }
-        ViewMode::Jump => {
-            view.jump_selected = row.min(jump_len.saturating_sub(1));
-            if view.jump_selected < view.jump_scroll {
-                view.jump_scroll = view.jump_selected;
-            }
+        Some(OverlayKind::Jump) => {
+            view.jump.select(row.min(jump_len.saturating_sub(1)));
+            view.jump.ensure_visible(1);
             if matches!(kind, MouseEventKind::Down(_)) && row < jump_len {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 return ViewAction::JumpTo(row);
             }
         }
-        ViewMode::Model => {
-            view.model_selected = row;
+        Some(OverlayKind::Model) => {
+            view.model.select(row);
             if matches!(kind, MouseEventKind::Down(_)) {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 return ViewAction::SelectModel(row);
             }
         }
-        ViewMode::Prompt => {
-            view.prompt_selected = row;
+        Some(OverlayKind::Prompt) => {
+            view.prompt.select(row);
             if matches!(kind, MouseEventKind::Down(_)) {
-                view.mode = ViewMode::Chat;
+                view.overlay.close();
                 return ViewAction::SelectPrompt(row);
             }
         }
-        ViewMode::Chat => {}
+        None => {}
     }
     ViewAction::None
 }

@@ -4,7 +4,8 @@ use crate::ui::jump::{build_jump_rows, max_preview_width, redraw_jump, JumpRow};
 use crate::ui::model_popup::draw_model_popup;
 use crate::ui::prompt_popup::{draw_prompt_popup, prompt_visible_rows};
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_view::{ViewMode, ViewState};
+use crate::ui::overlay::OverlayKind;
+use crate::ui::runtime_view::ViewState;
 use crate::ui::summary::redraw_summary;
 use ratatui::layout::Rect;
 use ratatui::text::Text;
@@ -29,7 +30,7 @@ pub(crate) fn render_view(
     models: &[crate::model_registry::ModelProfile],
     prompts: &[crate::system_prompts::SystemPrompt],
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
-    let jump_rows = if view.mode == ViewMode::Jump {
+    let jump_rows = if view.overlay.is(OverlayKind::Jump) {
         tabs.get(active_tab)
             .map(|tab| {
                 build_jump_rows(
@@ -43,8 +44,8 @@ pub(crate) fn render_view(
     } else {
         Vec::new()
     };
-    match view.mode {
-        ViewMode::Summary => {
+    match view.overlay.active {
+        Some(OverlayKind::Summary) => {
             view.summary_selected = view.summary_selected.min(tabs.len().saturating_sub(1));
             redraw_summary(
                 terminal,
@@ -55,20 +56,16 @@ pub(crate) fn render_view(
                 view.summary_selected,
             )?;
         }
-        ViewMode::Jump => {
+        Some(OverlayKind::Jump) => {
             let max_scroll = jump_rows
                 .len()
                 .saturating_sub(visible_jump_rows(msg_area))
                 .max(1)
                 .saturating_sub(1);
-            view.jump_scroll = view.jump_scroll.min(max_scroll);
-            view.jump_selected = view.jump_selected.min(jump_rows.len().saturating_sub(1));
+            view.jump.scroll = view.jump.scroll.min(max_scroll);
+            view.jump.clamp(jump_rows.len());
             let viewport_rows = visible_jump_rows(msg_area);
-            if view.jump_selected >= view.jump_scroll + viewport_rows {
-                view.jump_scroll = view
-                    .jump_selected
-                    .saturating_sub(viewport_rows.saturating_sub(1));
-            }
+            view.jump.ensure_visible(viewport_rows);
             redraw_jump(
                 terminal,
                 theme,
@@ -76,13 +73,13 @@ pub(crate) fn render_view(
                 active_tab,
                 startup_text,
                 &jump_rows,
-                view.jump_selected,
+                view.jump.selected,
                 msg_area,
                 tabs_area,
-                view.jump_scroll,
+                view.jump.scroll,
             )?;
         }
-        ViewMode::Chat => {
+        None => {
             let tabs_len = tabs.len();
             if let Some(tab_state) = tabs.get_mut(active_tab) {
                 redraw(
@@ -98,11 +95,11 @@ pub(crate) fn render_view(
                 )?;
             }
         }
-        ViewMode::Model => {
+        Some(OverlayKind::Model) => {
             let tabs_len = tabs.len();
             if let Some(tab_state) = tabs.get_mut(active_tab) {
                 if !models.is_empty() {
-                    view.model_selected = view.model_selected.min(models.len() - 1);
+                    view.model.clamp(models.len());
                 }
                 redraw_with_overlay(
                     terminal,
@@ -119,7 +116,7 @@ pub(crate) fn render_view(
                             f,
                             f.area(),
                             models,
-                            view.model_selected,
+                            view.model.selected,
                             0,
                             theme,
                         );
@@ -127,27 +124,18 @@ pub(crate) fn render_view(
                 )?;
             }
         }
-        ViewMode::Prompt => {
+        Some(OverlayKind::Prompt) => {
             let tabs_len = tabs.len();
             if let Some(tab_state) = tabs.get_mut(active_tab) {
-                if !prompts.is_empty() {
-                    view.prompt_selected = view.prompt_selected.min(prompts.len() - 1);
-                }
+                view.prompt.clamp(prompts.len());
                 let viewport_rows = prompt_visible_rows(full_area, prompts.len());
                 let max_scroll = prompts
                     .len()
                     .saturating_sub(viewport_rows)
                     .max(1)
                     .saturating_sub(1);
-                view.prompt_scroll = view.prompt_scroll.min(max_scroll);
-                if view.prompt_selected < view.prompt_scroll {
-                    view.prompt_scroll = view.prompt_selected;
-                }
-                if view.prompt_selected >= view.prompt_scroll + viewport_rows {
-                    view.prompt_scroll = view
-                        .prompt_selected
-                        .saturating_sub(viewport_rows.saturating_sub(1));
-                }
+                view.prompt.scroll = view.prompt.scroll.min(max_scroll);
+                view.prompt.ensure_visible(viewport_rows);
                 redraw_with_overlay(
                     terminal,
                     &mut tab_state.app,
@@ -163,8 +151,8 @@ pub(crate) fn render_view(
                             f,
                             f.area(),
                             prompts,
-                            view.prompt_selected,
-                            view.prompt_scroll,
+                            view.prompt.selected,
+                            view.prompt.scroll,
                             theme,
                         );
                     },

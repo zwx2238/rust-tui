@@ -39,7 +39,7 @@ pub(crate) fn run_loop(
     loop {
         let size = terminal.size()?;
         let size = ratatui::layout::Rect::new(0, 0, size.width, size.height);
-        let layout = compute_layout(size, view.mode, tabs, *active_tab);
+        let layout = compute_layout(size, &view, tabs, *active_tab);
         let tabs_area = layout.tabs_area;
         let msg_area = layout.msg_area;
         let input_area = layout.input_area;
