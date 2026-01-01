@@ -85,12 +85,7 @@ impl TableBuild {
         if !self.in_table {
             return out;
         }
-        let cols = self
-            .header
-            .as_ref()
-            .map(|h| h.len())
-            .unwrap_or(0)
-            .max(self.rows.iter().map(|r| r.len()).max().unwrap_or(0));
+        let cols = table_cols(&self.header, &self.rows);
         if cols == 0 {
             self.in_table = false;
             return out;
@@ -143,12 +138,7 @@ impl TableBuild {
         if !self.in_table {
             return 0;
         }
-        let cols = self
-            .header
-            .as_ref()
-            .map(|h| h.len())
-            .unwrap_or(0)
-            .max(self.rows.iter().map(|r| r.len()).max().unwrap_or(0));
+        let cols = table_cols(&self.header, &self.rows);
         if cols == 0 {
             self.in_table = false;
             return 0;
@@ -159,6 +149,14 @@ impl TableBuild {
         self.in_table = false;
         header_lines + row_lines
     }
+}
+
+fn table_cols(header: &Option<Vec<String>>, rows: &[Vec<String>]) -> usize {
+    header
+        .as_ref()
+        .map(|h| h.len())
+        .unwrap_or(0)
+        .max(rows.iter().map(|r| r.len()).max().unwrap_or(0))
 }
 
 fn compute_table_widths(
