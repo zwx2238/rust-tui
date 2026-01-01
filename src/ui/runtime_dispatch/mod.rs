@@ -58,6 +58,12 @@ pub(crate) fn can_change_prompt(app: &crate::ui::state::App) -> bool {
     !app.messages.iter().any(|m| m.role == "user")
 }
 
+fn with_active_tab<F: FnOnce(&mut TabState)>(ctx: &mut DispatchContext<'_>, f: F) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+        f(tab_state);
+    }
+}
+
 pub(crate) fn sync_model_selection(
     view: &mut crate::ui::runtime_view::ViewState,
     ctx: &DispatchContext<'_>,
@@ -101,18 +107,18 @@ pub(crate) fn apply_model_selection(
     ctx: &mut DispatchContext<'_>,
     idx: usize,
 ) {
-    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+    with_active_tab(ctx, |tab_state| {
         if let Some(model) = ctx.registry.models.get(idx) {
             tab_state.app.model_key = model.key.clone();
         }
-    }
+    });
 }
 
 pub(crate) fn apply_prompt_selection(
     ctx: &mut DispatchContext<'_>,
     idx: usize,
 ) {
-    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+    with_active_tab(ctx, |tab_state| {
         if can_change_prompt(&tab_state.app) {
             if let Some(prompt) = ctx.prompt_registry.prompts.get(idx) {
                 tab_state
@@ -122,7 +128,7 @@ pub(crate) fn apply_prompt_selection(
         } else {
             push_prompt_locked(tab_state);
         }
-    }
+    });
 }
 
 pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
