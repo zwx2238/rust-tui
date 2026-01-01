@@ -41,6 +41,12 @@ impl TabState {
             last_width: 0,
         }
     }
+
+    pub(crate) fn apply_cache_shift(&mut self, theme: &RenderTheme) {
+        if let Some(shift) = self.app.cache_shift.take() {
+            insert_empty_cache_entry(&mut self.render_cache, shift, theme);
+        }
+    }
 }
 
 pub(crate) fn enqueue_preheat_tasks(
@@ -51,9 +57,7 @@ pub(crate) fn enqueue_preheat_tasks(
     limit: usize,
     tx: &mpsc::Sender<PreheatTask>,
 ) {
-    if let Some(shift) = tab.app.cache_shift.take() {
-        insert_empty_cache_entry(&mut tab.render_cache, shift, theme);
-    }
+    tab.apply_cache_shift(theme);
     let mut remaining = limit;
     while remaining > 0 {
         let idx = match tab.app.dirty_indices.pop() {

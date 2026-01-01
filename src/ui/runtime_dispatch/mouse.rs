@@ -3,14 +3,12 @@ use crate::ui::model_popup::{model_row_at, model_visible_rows};
 use crate::ui::overlay::OverlayKind;
 use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
 use crate::ui::runtime_events::handle_mouse_event;
-use crate::ui::selection_state::max_scroll;
+use crate::ui::scroll::{max_scroll, SCROLL_STEP_I32};
 use crate::ui::runtime_view::{apply_view_action, handle_view_mouse, ViewAction, ViewState};
 use crate::ui::popup_table::popup_row_at;
 use crossterm::event::{MouseEvent, MouseEventKind};
 
 use super::{apply_model_selection, apply_prompt_selection, DispatchContext, LayoutContext};
-
-const SCROLL_STEP: i32 = 3;
 
 fn scroll_selection(
     selection: &mut crate::ui::selection_state::SelectionState,
@@ -74,10 +72,20 @@ fn handle_overlay_scroll(
         let viewport_rows = jump_visible_rows(layout.msg_area);
         match kind {
             MouseEventKind::ScrollUp => {
-                scroll_selection(&mut view.jump, -SCROLL_STEP, jump_rows.len(), viewport_rows)
+                scroll_selection(
+                    &mut view.jump,
+                    -SCROLL_STEP_I32,
+                    jump_rows.len(),
+                    viewport_rows,
+                )
             }
             MouseEventKind::ScrollDown => {
-                scroll_selection(&mut view.jump, SCROLL_STEP, jump_rows.len(), viewport_rows)
+                scroll_selection(
+                    &mut view.jump,
+                    SCROLL_STEP_I32,
+                    jump_rows.len(),
+                    viewport_rows,
+                )
             }
             _ => {}
         }
@@ -87,13 +95,13 @@ fn handle_overlay_scroll(
         match kind {
             MouseEventKind::ScrollUp => scroll_selection(
                 &mut view.model,
-                -SCROLL_STEP,
+                -SCROLL_STEP_I32,
                 ctx.registry.models.len(),
                 viewport_rows,
             ),
             MouseEventKind::ScrollDown => scroll_selection(
                 &mut view.model,
-                SCROLL_STEP,
+                SCROLL_STEP_I32,
                 ctx.registry.models.len(),
                 viewport_rows,
             ),
@@ -105,13 +113,13 @@ fn handle_overlay_scroll(
         match kind {
             MouseEventKind::ScrollUp => scroll_selection(
                 &mut view.prompt,
-                -SCROLL_STEP,
+                -SCROLL_STEP_I32,
                 ctx.prompt_registry.prompts.len(),
                 viewport_rows,
             ),
             MouseEventKind::ScrollDown => scroll_selection(
                 &mut view.prompt,
-                SCROLL_STEP,
+                SCROLL_STEP_I32,
                 ctx.prompt_registry.prompts.len(),
                 viewport_rows,
             ),

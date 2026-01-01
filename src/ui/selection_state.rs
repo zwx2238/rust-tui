@@ -1,13 +1,9 @@
+use crate::ui::scroll::max_scroll;
+
 #[derive(Copy, Clone, Debug, Default)]
 pub(crate) struct SelectionState {
     pub(crate) selected: usize,
     pub(crate) scroll: usize,
-}
-
-pub(crate) fn max_scroll(len: usize, viewport_rows: usize) -> usize {
-    len.saturating_sub(viewport_rows)
-        .max(1)
-        .saturating_sub(1)
 }
 
 impl SelectionState {

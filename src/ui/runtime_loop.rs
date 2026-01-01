@@ -1,7 +1,7 @@
 use crate::args::Args;
-use crate::render::{insert_empty_cache_entry, messages_to_viewport_text_cached, RenderTheme};
+use crate::render::{messages_to_viewport_text_cached, RenderTheme};
 use crate::ui::input_click::update_input_view_top;
-use crate::ui::logic::{build_label_suffixes, drain_events, format_timer, handle_stream_event};
+use crate::ui::logic::{build_label_suffixes, drain_events, handle_stream_event, timer_text};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_dispatch::{
     handle_key_event_loop, handle_mouse_event_loop, start_pending_request, DispatchContext,
@@ -12,6 +12,7 @@ use crate::ui::runtime_helpers::{enqueue_preheat_tasks, PreheatResult, PreheatTa
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
+use crate::ui::scroll::max_scroll_u16;
 use crossterm::event::{self, Event};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{
@@ -64,9 +65,7 @@ pub(crate) fn run_loop(
                 if handle_stream_event(&mut tab_state.app, event, elapsed) {
                     done_tabs.push(tab);
                 }
-                if let Some(shift) = tab_state.app.cache_shift.take() {
-                    insert_empty_cache_entry(&mut tab_state.render_cache, shift, theme);
-                }
+                tab_state.apply_cache_shift(theme);
             }
         }
         for &tab in &done_tabs {
@@ -90,15 +89,7 @@ pub(crate) fn run_loop(
             let tabs_len = tabs.len();
             let tab_state = &mut tabs[*active_tab];
             let app = &mut tab_state.app;
-            let timer_text = if app.busy {
-                let ms = app
-                    .busy_since
-                    .map(|t| t.elapsed().as_millis() as u64)
-                    .unwrap_or(0);
-                format_timer(ms)
-            } else {
-                String::new()
-            };
+            let timer_text = timer_text(app);
             let label_suffixes = build_label_suffixes(&app, &timer_text);
             let prev_scroll = app.scroll;
             tab_state.last_width = msg_width;
@@ -112,9 +103,7 @@ pub(crate) fn run_loop(
                 view_height,
                 &mut tab_state.render_cache,
             );
-            let max_scroll = computed_total_lines
-                .saturating_sub(view_height as usize)
-                .min(u16::MAX as usize) as u16;
+            let max_scroll = max_scroll_u16(computed_total_lines, view_height);
             if app.follow {
                 app.scroll = max_scroll;
             } else if app.scroll > max_scroll {
@@ -171,7 +160,7 @@ pub(crate) fn run_loop(
         if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(key) => {
-                    let mut ctx = DispatchContext {
+                    let mut ctx = make_dispatch_context(
                         tabs,
                         active_tab,
                         last_session_id,
@@ -180,15 +169,15 @@ pub(crate) fn run_loop(
                         registry,
                         prompt_registry,
                         args,
-                    };
-                    let layout_ctx = LayoutContext {
+                    );
+                    let layout_ctx = make_layout_context(
                         size,
                         tabs_area,
                         msg_area,
                         input_area,
                         view_height,
                         total_lines,
-                    };
+                    );
                     if handle_key_event_loop(key, &mut ctx, layout_ctx, &mut view, &jump_rows)? {
                         break;
                     }
@@ -199,7 +188,7 @@ pub(crate) fn run_loop(
                     }
                 }
                 Event::Mouse(m) => {
-                    let mut ctx = DispatchContext {
+                    let mut ctx = make_dispatch_context(
                         tabs,
                         active_tab,
                         last_session_id,
@@ -208,15 +197,15 @@ pub(crate) fn run_loop(
                         registry,
                         prompt_registry,
                         args,
-                    };
-                    let layout_ctx = LayoutContext {
+                    );
+                    let layout_ctx = make_layout_context(
                         size,
                         tabs_area,
                         msg_area,
                         input_area,
                         view_height,
                         total_lines,
-                    };
+                    );
                     handle_mouse_event_loop(m, &mut ctx, layout_ctx, &mut view, &jump_rows);
                 }
                 _ => {}
@@ -225,4 +214,44 @@ pub(crate) fn run_loop(
     }
 
     Ok(())
+}
+
+fn make_dispatch_context<'a>(
+    tabs: &'a mut Vec<TabState>,
+    active_tab: &'a mut usize,
+    last_session_id: &'a mut Option<String>,
+    msg_width: usize,
+    theme: &'a RenderTheme,
+    registry: &'a crate::model_registry::ModelRegistry,
+    prompt_registry: &'a crate::system_prompts::PromptRegistry,
+    args: &'a Args,
+) -> DispatchContext<'a> {
+    DispatchContext {
+        tabs,
+        active_tab,
+        last_session_id,
+        msg_width,
+        theme,
+        registry,
+        prompt_registry,
+        args,
+    }
+}
+
+fn make_layout_context(
+    size: ratatui::layout::Rect,
+    tabs_area: ratatui::layout::Rect,
+    msg_area: ratatui::layout::Rect,
+    input_area: ratatui::layout::Rect,
+    view_height: u16,
+    total_lines: usize,
+) -> LayoutContext {
+    LayoutContext {
+        size,
+        tabs_area,
+        msg_area,
+        input_area,
+        view_height,
+        total_lines,
+    }
 }

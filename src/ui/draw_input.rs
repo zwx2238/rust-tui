@@ -1,12 +1,11 @@
 use crate::render::RenderTheme;
+use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
+use crate::ui::draw::style::{base_style, focus_border_style};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::block::Padding;
 use ratatui::widgets::{Block, Borders};
 use tui_textarea::TextArea;
-
-const PADDING_X: u16 = 1;
-const PADDING_Y: u16 = 0;
 
 pub(crate) fn draw_input(
     f: &mut ratatui::Frame<'_>,
@@ -18,14 +17,8 @@ pub(crate) fn draw_input(
     model_key: &str,
     prompt_key: &str,
 ) {
-    let style = Style::default()
-        .bg(theme.bg)
-        .fg(theme.fg.unwrap_or(Color::White));
-    let border_style = if focused {
-        Style::default().fg(Color::Blue)
-    } else {
-        Style::default().fg(theme.fg.unwrap_or(Color::White))
-    };
+    let style = base_style(theme);
+    let border_style = focus_border_style(theme, focused);
     let (line_idx, col) = input.cursor();
     let total_lines = input.lines().len().max(1);
     let status = format!(

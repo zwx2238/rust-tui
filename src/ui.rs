@@ -25,6 +25,7 @@ mod runtime_loop;
 mod runtime_view;
 mod summary;
 mod scroll_debug;
+mod scroll;
 mod selection;
 mod state;
 

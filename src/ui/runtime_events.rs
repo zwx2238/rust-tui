@@ -1,9 +1,11 @@
 use crate::render::{messages_to_plain_lines, messages_to_viewport_text_cached, RenderTheme};
 use crate::ui::clipboard;
 use crate::ui::draw::{inner_area, scrollbar_area};
+use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::input::handle_key;
 use crate::ui::input_click::click_to_cursor;
-use crate::ui::logic::{build_label_suffixes, format_timer, point_in_rect, scroll_from_mouse};
+use crate::ui::logic::{build_label_suffixes, point_in_rect, scroll_from_mouse, timer_text};
+use crate::ui::scroll::SCROLL_STEP_U16;
 use crate::ui::runtime_helpers::{tab_index_at, TabState};
 use crate::ui::selection::{chat_position_from_mouse, extract_selection, Selection};
 use crate::ui::state::Focus;
@@ -83,8 +85,8 @@ pub(crate) fn handle_mouse_event(
                 return;
             }
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                let app = &mut tab_state.app;
                 if point_in_rect(m.column, m.row, input_area) {
+                    let app = &mut tab_state.app;
                     app.focus = Focus::Input;
                     app.chat_selection = None;
                     app.chat_selecting = false;
@@ -93,30 +95,13 @@ pub(crate) fn handle_mouse_event(
                     app.input.cancel_selection();
                     app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
                 } else if point_in_rect(m.column, m.row, msg_area) {
+                    let text =
+                        selection_view_text(tab_state, msg_width, theme, view_height);
+                    let app = &mut tab_state.app;
                     app.focus = Focus::Chat;
                     app.follow = false;
                     app.input_selecting = false;
-                    let timer_text = if app.busy {
-                        let secs = app
-                            .busy_since
-                            .map(|t| t.elapsed().as_secs())
-                            .unwrap_or(0);
-                        format_timer(secs)
-                    } else {
-                        String::new()
-                    };
-                    let label_suffixes = build_label_suffixes(app, &timer_text);
-                    let (text, _) = messages_to_viewport_text_cached(
-                        &app.messages,
-                        msg_width,
-                        theme,
-                        &label_suffixes,
-                        app.pending_assistant,
-                        app.scroll,
-                        view_height,
-                        &mut tab_state.render_cache,
-                    );
-                    let inner = inner_area(msg_area, 1, 0);
+                    let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
                     let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
                     app.chat_selecting = true;
                     app.chat_selection = Some(Selection {
@@ -141,40 +126,27 @@ pub(crate) fn handle_mouse_event(
         }
         MouseEventKind::Drag(_) => {
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                let app = &mut tab_state.app;
-                if app.scrollbar_dragging {
+                let dragging = tab_state.app.scrollbar_dragging;
+                let input_selecting = tab_state.app.input_selecting;
+                let chat_selecting = tab_state.app.chat_selecting;
+                if dragging {
                     let scroll_area = scrollbar_area(msg_area);
+                    let app = &mut tab_state.app;
                     app.follow = false;
                     app.scroll = scroll_from_mouse(total_lines, view_height, scroll_area, m.row);
                     app.focus = Focus::Chat;
-                } else if app.input_selecting && point_in_rect(m.column, m.row, input_area) {
+                } else if input_selecting && point_in_rect(m.column, m.row, input_area) {
+                    let app = &mut tab_state.app;
                     let (row, col) = click_to_cursor(app, input_area, m.column, m.row);
                     if !app.input.is_selecting() {
                         app.input.start_selection();
                     }
                     app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
-                } else if app.chat_selecting {
-                    let timer_text = if app.busy {
-                        let secs = app
-                            .busy_since
-                            .map(|t| t.elapsed().as_secs())
-                            .unwrap_or(0);
-                        format_timer(secs)
-                    } else {
-                        String::new()
-                    };
-                    let label_suffixes = build_label_suffixes(app, &timer_text);
-                    let (text, _) = messages_to_viewport_text_cached(
-                        &app.messages,
-                        msg_width,
-                        theme,
-                        &label_suffixes,
-                        app.pending_assistant,
-                        app.scroll,
-                        view_height,
-                        &mut tab_state.render_cache,
-                    );
-                    let inner = inner_area(msg_area, 1, 0);
+                } else if chat_selecting {
+                    let text =
+                        selection_view_text(tab_state, msg_width, theme, view_height);
+                    let app = &mut tab_state.app;
+                    let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
                     let pos =
                         chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
                     if let Some(sel) = app.chat_selection {
@@ -189,7 +161,7 @@ pub(crate) fn handle_mouse_event(
         MouseEventKind::ScrollUp => {
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
                 let app = &mut tab_state.app;
-                app.scroll = app.scroll.saturating_sub(3);
+                app.scroll = app.scroll.saturating_sub(SCROLL_STEP_U16);
                 app.follow = false;
                 app.focus = Focus::Chat;
             }
@@ -197,7 +169,7 @@ pub(crate) fn handle_mouse_event(
         MouseEventKind::ScrollDown => {
             if let Some(tab_state) = tabs.get_mut(*active_tab) {
                 let app = &mut tab_state.app;
-                app.scroll = app.scroll.saturating_add(3);
+                app.scroll = app.scroll.saturating_add(SCROLL_STEP_U16);
                 app.follow = false;
                 app.focus = Focus::Chat;
             }
@@ -218,4 +190,25 @@ pub(crate) fn handle_paste_event(
             app.input.insert_str(text);
         }
     }
+}
+
+fn selection_view_text(
+    tab_state: &mut TabState,
+    msg_width: usize,
+    theme: &RenderTheme,
+    view_height: u16,
+) -> ratatui::text::Text<'static> {
+    let app = &tab_state.app;
+    let label_suffixes = build_label_suffixes(app, &timer_text(app));
+    let (text, _) = messages_to_viewport_text_cached(
+        &app.messages,
+        msg_width,
+        theme,
+        &label_suffixes,
+        app.pending_assistant,
+        app.scroll,
+        view_height,
+        &mut tab_state.render_cache,
+    );
+    text
 }

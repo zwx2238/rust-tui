@@ -7,6 +7,7 @@ use crate::render::util::{
 };
 use crate::types::Message;
 use ratatui::text::{Line, Text};
+use std::borrow::Cow;
 #[derive(Clone)]
 pub struct RenderCacheEntry {
     pub(crate) role: String,
@@ -211,12 +212,8 @@ fn render_message_content_lines(
 ) -> Vec<Line<'static>> {
     match msg.role.as_str() {
         "user" | "assistant" | "system" => {
-            let content = if streaming {
-                close_unbalanced_code_fence(&msg.content)
-            } else {
-                msg.content.clone()
-            };
-            render_markdown_lines(&content, width, theme, streaming)
+            let content = message_content(msg, streaming);
+            render_markdown_lines(content.as_ref(), width, theme, streaming)
         }
         _ => Vec::new(),
     }
@@ -224,13 +221,17 @@ fn render_message_content_lines(
 pub(crate) fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
     match msg.role.as_str() {
         "user" | "assistant" | "system" => {
-            let content = if streaming {
-                close_unbalanced_code_fence(&msg.content)
-            } else {
-                msg.content.clone()
-            };
-            count_markdown_lines(&content, width)
+            let content = message_content(msg, streaming);
+            count_markdown_lines(content.as_ref(), width)
         }
         _ => 0,
+    }
+}
+
+fn message_content<'a>(msg: &'a Message, streaming: bool) -> Cow<'a, str> {
+    if streaming {
+        Cow::Owned(close_unbalanced_code_fence(&msg.content))
+    } else {
+        Cow::Borrowed(&msg.content)
     }
 }

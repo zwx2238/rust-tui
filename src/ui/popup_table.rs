@@ -1,6 +1,7 @@
 use crate::render::RenderTheme;
+use crate::ui::draw::style::{base_fg, base_style, selection_bg};
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Row, Table, TableState};
 
@@ -22,19 +23,19 @@ pub fn draw_table_popup(f: &mut ratatui::Frame<'_>, area: Rect, popup: TablePopu
     let block = Block::default()
         .borders(Borders::ALL)
         .title_top(popup.title)
-        .style(Style::default().bg(popup.theme.bg).fg(popup.theme.fg.unwrap_or(Color::White)))
-        .border_style(Style::default().fg(popup.theme.fg.unwrap_or(Color::White)));
+        .style(base_style(popup.theme))
+        .border_style(Style::default().fg(base_fg(popup.theme)));
     let table = Table::new(popup.rows, popup.widths)
         .header(popup.header)
         .row_highlight_style(Style::default().bg(selection_bg(popup.theme.bg)))
-        .style(Style::default().bg(popup.theme.bg).fg(popup.theme.fg.unwrap_or(Color::White)))
+        .style(base_style(popup.theme))
         .block(block);
     f.render_stateful_widget(table, area, &mut state);
 }
 
 pub fn header_style(theme: &RenderTheme) -> Style {
     Style::default()
-        .fg(theme.fg.unwrap_or(Color::White))
+        .fg(base_fg(theme))
         .add_modifier(Modifier::BOLD)
 }
 
@@ -68,9 +69,4 @@ pub fn popup_visible_rows(popup: Rect) -> usize {
     popup.height.saturating_sub(3).max(1) as usize
 }
 
-fn selection_bg(bg: Color) -> Color {
-    match bg {
-        Color::White => Color::Gray,
-        _ => Color::DarkGray,
-    }
-}
+// selection_bg moved to draw::style

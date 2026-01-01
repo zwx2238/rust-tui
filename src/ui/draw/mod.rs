@@ -7,6 +7,7 @@ use std::io::Stdout;
 
 pub mod layout;
 mod messages;
+pub(crate) mod style;
 mod tabs;
 
 pub use layout::{
@@ -28,26 +29,18 @@ pub fn redraw(
     let size = Rect::new(0, 0, size.width, size.height);
     let (tabs_area, msg_area, input_area) = layout_chunks(size, input_height);
     terminal.draw(|f| {
-        tabs::draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
-        messages::draw_messages(
+        draw_base(
             f,
-            msg_area,
+            app,
+            theme,
             text,
-            app.scroll,
-            theme,
-            app.focus == Focus::Chat,
             total_lines,
-            app.chat_selection,
-        );
-        crate::ui::draw_input::draw_input(
-            f,
+            tabs_area,
+            msg_area,
             input_area,
-            &mut app.input,
-            theme,
-            app.focus == Focus::Input,
-            app.busy,
-            &app.model_key,
-            &app.prompt_key,
+            tabs_len,
+            active_tab,
+            startup_text,
         );
     })?;
     Ok(())
@@ -72,26 +65,18 @@ where
     let size = Rect::new(0, 0, size.width, size.height);
     let (tabs_area, msg_area, input_area) = layout_chunks(size, input_height);
     terminal.draw(|f| {
-        tabs::draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
-        messages::draw_messages(
+        draw_base(
             f,
-            msg_area,
+            app,
+            theme,
             text,
-            app.scroll,
-            theme,
-            app.focus == Focus::Chat,
             total_lines,
-            app.chat_selection,
-        );
-        crate::ui::draw_input::draw_input(
-            f,
+            tabs_area,
+            msg_area,
             input_area,
-            &mut app.input,
-            theme,
-            app.focus == Focus::Input,
-            app.busy,
-            &app.model_key,
-            &app.prompt_key,
+            tabs_len,
+            active_tab,
+            startup_text,
         );
         overlay(f);
     })?;
@@ -99,3 +84,39 @@ where
 }
 
 pub(crate) use tabs::draw_tabs;
+
+fn draw_base(
+    f: &mut ratatui::Frame<'_>,
+    app: &mut App,
+    theme: &RenderTheme,
+    text: &Text<'_>,
+    total_lines: usize,
+    tabs_area: Rect,
+    msg_area: Rect,
+    input_area: Rect,
+    tabs_len: usize,
+    active_tab: usize,
+    startup_text: Option<&str>,
+) {
+    tabs::draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
+    messages::draw_messages(
+        f,
+        msg_area,
+        text,
+        app.scroll,
+        theme,
+        app.focus == Focus::Chat,
+        total_lines,
+        app.chat_selection,
+    );
+    crate::ui::draw_input::draw_input(
+        f,
+        input_area,
+        &mut app.input,
+        theme,
+        app.focus == Focus::Input,
+        app.busy,
+        &app.model_key,
+        &app.prompt_key,
+    );
+}

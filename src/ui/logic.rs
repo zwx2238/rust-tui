@@ -1,5 +1,6 @@
 use crate::types::Message;
 use crate::ui::net::LlmEvent;
+use crate::ui::scroll::max_scroll_u16;
 use crate::ui::state::App;
 
 pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> bool {
@@ -30,6 +31,17 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> b
             true
         }
     }
+}
+
+pub fn timer_text(app: &App) -> String {
+    if !app.busy {
+        return String::new();
+    }
+    let ms = app
+        .busy_since
+        .map(|t| t.elapsed().as_millis() as u64)
+        .unwrap_or(0);
+    format_timer(ms)
 }
 
 pub fn build_label_suffixes(app: &App, timer_text: &str) -> Vec<(usize, String)> {
@@ -74,9 +86,7 @@ pub fn scroll_from_mouse(
     if total_lines <= view_height as usize || scroll_area.height <= 1 {
         return 0;
     }
-    let max_scroll = total_lines
-        .saturating_sub(view_height as usize)
-        .min(u16::MAX as usize) as u16;
+    let max_scroll = max_scroll_u16(total_lines, view_height);
     let y = mouse_y.saturating_sub(scroll_area.y);
     let track = scroll_area.height.saturating_sub(1).max(1);
     let ratio = y.min(track) as f32 / track as f32;

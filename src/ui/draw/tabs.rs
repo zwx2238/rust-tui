@@ -1,4 +1,5 @@
 use crate::render::RenderTheme;
+use crate::ui::draw::style::base_fg;
 use crate::ui::logic::tab_label;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
@@ -28,14 +29,14 @@ pub(crate) fn draw_tabs(
         let style = if i == active_tab {
             Style::default().fg(Color::Blue)
         } else {
-            Style::default().fg(theme.fg.unwrap_or(Color::White))
+            Style::default().fg(base_fg(theme))
         };
         spans.push(Span::styled(part.to_string(), style));
         cursor += part.width();
         if i + 1 < tabs_len {
             spans.push(Span::styled(
                 "│",
-                Style::default().fg(theme.fg.unwrap_or(Color::White)),
+                Style::default().fg(base_fg(theme)),
             ));
             cursor += 1;
         }
