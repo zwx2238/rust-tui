@@ -135,12 +135,6 @@ pub fn handle_command(
         "/save" => {
             app.pending_command = Some(PendingCommand::SaveSession);
         }
-        "/approve" => {
-            app.pending_command = Some(PendingCommand::ApproveCodeExec);
-        }
-        "/deny" => {
-            app.pending_command = Some(PendingCommand::DenyCodeExec);
-        }
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),

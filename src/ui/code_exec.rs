@@ -20,6 +20,7 @@ fn run_docker(code: &str) -> Result<ExecOutput, String> {
     let mut child = Command::new("docker")
         .arg("run")
         .arg("--rm")
+        .arg("-i")
         .arg("--network=none")
         .arg("--cpus=1")
         .arg("--memory=512m")
