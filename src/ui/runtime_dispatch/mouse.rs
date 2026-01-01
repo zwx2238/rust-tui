@@ -80,6 +80,7 @@ pub(crate) fn handle_mouse_event_loop(
                     } else {
                         None
                     };
+                    return;
                 }
                 if in_popup && matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown)
                 {
