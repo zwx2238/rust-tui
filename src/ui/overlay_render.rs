@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
 use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
-use crate::ui::code_exec_popup::draw_code_exec_popup;
+use crate::ui::code_exec_popup::{code_exec_max_scroll, draw_code_exec_popup};
 use crate::ui::model_popup::draw_model_popup;
 use crate::ui::prompt_popup::draw_prompt_popup;
 use crate::ui::runtime_helpers::TabState;
@@ -200,11 +200,22 @@ pub(crate) fn render_code_exec_overlay(
     startup_text: Option<&str>,
     input_height: u16,
 ) -> Result<(), Box<dyn Error>> {
+    let size = terminal.size()?;
+    let full = Rect::new(0, 0, size.width, size.height);
     let tabs_len = tabs.len();
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let pending = tab_state.app.pending_code_exec.clone();
-        let selected = tab_state.app.code_exec_selection;
         if let Some(pending) = pending {
+            let layout = crate::ui::code_exec_popup::code_exec_popup_layout(full);
+            let max_scroll = code_exec_max_scroll(
+                &pending.code,
+                layout.code_area.width,
+                layout.code_area.height,
+            );
+            if tab_state.app.code_exec_scroll > max_scroll {
+                tab_state.app.code_exec_scroll = max_scroll;
+            }
+            let scroll = tab_state.app.code_exec_scroll;
             redraw_with_overlay(
                 terminal,
                 &mut tab_state.app,
@@ -216,7 +227,7 @@ pub(crate) fn render_code_exec_overlay(
                 startup_text,
                 input_height,
                 |f| {
-                    draw_code_exec_popup(f, f.area(), &pending, selected, theme);
+                    draw_code_exec_popup(f, f.area(), &pending, scroll, theme);
                 },
             )?;
         } else {

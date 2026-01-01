@@ -2,7 +2,6 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::logic::stop_stream;
 use crate::ui::runtime_events::handle_key_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_key};
-use crate::ui::state::PendingCommand;
 use crossterm::event::KeyEvent;
 
 use super::{
@@ -47,9 +46,8 @@ pub(crate) fn handle_key_event_loop(
         }
     }
     if view.overlay.is(OverlayKind::CodeExec) {
-        if handle_code_exec_overlay_key(ctx, view, key) {
-            return Ok(false);
-        }
+        handle_code_exec_overlay_key(ctx, view);
+        return Ok(false);
     }
     let action = handle_view_key(view, key, ctx.tabs.len(), jump_rows.len(), *ctx.active_tab);
     if matches!(action, ViewAction::CycleModel) {
@@ -101,42 +99,11 @@ pub(crate) fn handle_key_event_loop(
     Ok(false)
 }
 
-fn handle_code_exec_overlay_key(
-    ctx: &mut DispatchContext<'_>,
-    view: &mut ViewState,
-    key: KeyEvent,
-) -> bool {
-    let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) else {
-        return true;
-    };
-    if tab_state.app.pending_code_exec.is_none() {
-        view.overlay.close();
-        return true;
-    }
-    match key.code {
-        crossterm::event::KeyCode::Left
-        | crossterm::event::KeyCode::Right
-        | crossterm::event::KeyCode::Up
-        | crossterm::event::KeyCode::Down
-        | crossterm::event::KeyCode::Tab => {
-            tab_state.app.code_exec_selection = 1 - tab_state.app.code_exec_selection.min(1);
-            true
-        }
-        crossterm::event::KeyCode::Char('y')
-        | crossterm::event::KeyCode::Char('Y')
-        | crossterm::event::KeyCode::Enter => {
-            tab_state.app.pending_command = Some(PendingCommand::ApproveCodeExec);
+fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+        if tab_state.app.pending_code_exec.is_none() {
             view.overlay.close();
-            true
         }
-        crossterm::event::KeyCode::Char('n')
-        | crossterm::event::KeyCode::Char('N')
-        | crossterm::event::KeyCode::Esc => {
-            tab_state.app.pending_command = Some(PendingCommand::DenyCodeExec);
-            view.overlay.close();
-            true
-        }
-        _ => true,
     }
 }
 

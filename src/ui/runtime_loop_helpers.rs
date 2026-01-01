@@ -99,7 +99,7 @@ fn handle_code_exec_request(
         language,
         code,
     });
-    tab_state.app.code_exec_selection = 0;
+    tab_state.app.code_exec_scroll = 0;
     Ok(())
 }
 
@@ -190,10 +190,12 @@ fn handle_code_exec_approve(
                 if pending.code.trim().is_empty() {
                     text.push_str("(空)\n");
                 } else {
+                    text.push_str("```python\n");
                     text.push_str(&pending.code);
                     if !pending.code.ends_with('\n') {
                         text.push('\n');
                     }
+                    text.push_str("```\n");
                 }
                 text.push_str(&format!("exit_code: {}\n", out.exit_code));
                 text.push_str("stdout:\n");

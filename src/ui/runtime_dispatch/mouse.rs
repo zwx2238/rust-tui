@@ -1,10 +1,13 @@
+use crate::ui::code_exec_popup::{code_exec_max_scroll, code_exec_popup_layout};
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
 use crate::ui::scroll::SCROLL_STEP_I32;
 use crossterm::event::{MouseEvent, MouseEventKind};
 
-use super::{DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection};
+use super::{
+    DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
+};
 
 fn overlay_areas(layout: LayoutContext) -> OverlayAreas {
     OverlayAreas {
@@ -64,6 +67,44 @@ pub(crate) fn handle_mouse_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) {
+    if view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if let Some(pending) = tab_state.app.pending_code_exec.clone() {
+                let popup = code_exec_popup_layout(layout.size);
+                if matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) {
+                    let max_scroll = code_exec_max_scroll(
+                        &pending.code,
+                        popup.code_area.width,
+                        popup.code_area.height,
+                    );
+                    let delta = match m.kind {
+                        MouseEventKind::ScrollUp => -SCROLL_STEP_I32,
+                        MouseEventKind::ScrollDown => SCROLL_STEP_I32,
+                        _ => 0,
+                    };
+                    let next = (tab_state.app.code_exec_scroll as i32 + delta)
+                        .max(0) as usize;
+                    tab_state.app.code_exec_scroll = next.min(max_scroll);
+                    return;
+                }
+                if matches!(m.kind, MouseEventKind::Down(_)) {
+                    if point_in_rect(m.column, m.row, popup.approve_btn) {
+                        tab_state.app.pending_command =
+                            Some(crate::ui::state::PendingCommand::ApproveCodeExec);
+                        view.overlay.close();
+                        return;
+                    }
+                    if point_in_rect(m.column, m.row, popup.deny_btn) {
+                        tab_state.app.pending_command =
+                            Some(crate::ui::state::PendingCommand::DenyCodeExec);
+                        view.overlay.close();
+                        return;
+                    }
+                }
+            }
+        }
+        return;
+    }
     if view.is_chat() {
         if let Some(msg_idx) = handle_mouse_event(
             m,
@@ -93,4 +134,11 @@ pub(crate) fn handle_mouse_event_loop(
         }
         let _ = apply_view_action(action, jump_rows, ctx.tabs, ctx.active_tab);
     }
+}
+
+fn point_in_rect(x: u16, y: u16, rect: ratatui::layout::Rect) -> bool {
+    x >= rect.x
+        && x < rect.x.saturating_add(rect.width)
+        && y >= rect.y
+        && y < rect.y.saturating_add(rect.height)
 }
