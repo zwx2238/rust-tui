@@ -1,9 +1,10 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
+use crate::types::{ROLE_SYSTEM, ROLE_USER};
 use crate::ui::net::UiEvent;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
+use crate::ui::notice::push_notice;
 use crate::ui::runtime_helpers::{TabState, start_tab_request};
 use crate::ui::state::Focus;
 use ratatui::layout::Rect;
@@ -145,10 +146,7 @@ pub(crate) fn apply_prompt_selection(ctx: &mut DispatchContext<'_>, idx: usize) 
 }
 
 pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
-    tab_state.app.messages.push(crate::types::Message {
-        role: ROLE_ASSISTANT.to_string(),
-        content: PROMPT_LOCKED_MSG.to_string(),
-    });
+    push_notice(&mut tab_state.app, PROMPT_LOCKED_MSG);
 }
 
 pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
