@@ -1,6 +1,8 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
-use crate::ui::jump::{build_jump_rows, max_preview_width, redraw_jump, JumpRow};
+use crate::ui::jump::{
+    build_jump_rows, jump_visible_rows, max_preview_width, redraw_jump, JumpRow,
+};
 use crate::ui::model_popup::{draw_model_popup, model_visible_rows};
 use crate::ui::prompt_popup::{draw_prompt_popup, prompt_visible_rows};
 use crate::ui::runtime_helpers::TabState;
@@ -57,7 +59,7 @@ pub(crate) fn render_view(
             )?;
         }
         Some(OverlayKind::Jump) => {
-            let viewport_rows = visible_jump_rows(msg_area);
+            let viewport_rows = jump_visible_rows(msg_area);
             view.jump.clamp_with_viewport(jump_rows.len(), viewport_rows);
             redraw_jump(
                 terminal,
@@ -146,8 +148,4 @@ pub(crate) fn render_view(
         }
     }
     Ok(jump_rows)
-}
-
-fn visible_jump_rows(area: Rect) -> usize {
-    area.height.saturating_sub(2).saturating_sub(1) as usize
 }

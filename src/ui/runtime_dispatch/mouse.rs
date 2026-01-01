@@ -1,4 +1,4 @@
-use crate::ui::jump::jump_row_at;
+use crate::ui::jump::{jump_row_at, jump_visible_rows};
 use crate::ui::model_popup::{model_row_at, model_visible_rows};
 use crate::ui::overlay::OverlayKind;
 use crate::ui::prompt_popup::{prompt_row_at, prompt_visible_rows};
@@ -31,7 +31,7 @@ pub(crate) fn handle_mouse_event_loop(
         );
     } else {
         if view.overlay.is(OverlayKind::Jump) {
-            let viewport_rows = layout.msg_area.height.saturating_sub(3).max(1) as usize;
+            let viewport_rows = jump_visible_rows(layout.msg_area);
             let max_scroll = jump_rows
                 .len()
                 .saturating_sub(viewport_rows)

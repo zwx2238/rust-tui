@@ -71,6 +71,10 @@ pub fn jump_row_at(area: Rect, row_count: usize, mouse_y: u16, scroll: usize) ->
     summary_row_at(area, row_count, mouse_y).map(|r| r.saturating_add(scroll))
 }
 
+pub fn jump_visible_rows(area: Rect) -> usize {
+    area.height.saturating_sub(2).saturating_sub(1) as usize
+}
+
 pub fn max_preview_width(area: Rect) -> usize {
     let inner_width = area.width.saturating_sub(2) as usize;
     inner_width.saturating_sub(20).max(10)
