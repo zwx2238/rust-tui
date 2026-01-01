@@ -59,32 +59,8 @@ pub(crate) fn handle_key_event_loop(
     if !view.is_chat() {
         return Ok(false);
     }
-    if key
-        .modifiers
-        .contains(crossterm::event::KeyModifiers::CONTROL)
-    {
-        match key.code {
-            crossterm::event::KeyCode::Char('t') => {
-                new_tab(ctx);
-                return Ok(false);
-            }
-            crossterm::event::KeyCode::Char('w') => {
-                close_tab(ctx);
-                return Ok(false);
-            }
-            _ => {}
-        }
-    }
-    match key.code {
-        crossterm::event::KeyCode::F(8) => {
-            prev_tab(ctx);
-            return Ok(false);
-        }
-        crossterm::event::KeyCode::F(9) => {
-            next_tab(ctx);
-            return Ok(false);
-        }
-        _ => {}
+    if handle_chat_shortcuts(ctx, key) {
+        return Ok(false);
     }
     if handle_key_event(
         key,
@@ -97,4 +73,34 @@ pub(crate) fn handle_key_event_loop(
         return Ok(true);
     }
     Ok(false)
+}
+
+fn handle_chat_shortcuts(ctx: &mut DispatchContext<'_>, key: KeyEvent) -> bool {
+    if key
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
+    {
+        match key.code {
+            crossterm::event::KeyCode::Char('t') => {
+                new_tab(ctx);
+                return true;
+            }
+            crossterm::event::KeyCode::Char('w') => {
+                close_tab(ctx);
+                return true;
+            }
+            _ => {}
+        }
+    }
+    match key.code {
+        crossterm::event::KeyCode::F(8) => {
+            prev_tab(ctx);
+            true
+        }
+        crossterm::event::KeyCode::F(9) => {
+            next_tab(ctx);
+            true
+        }
+        _ => false,
+    }
 }
