@@ -2,7 +2,6 @@ use crate::args::Args;
 use crate::session::SessionLocation;
 use crate::ui::code_exec::run_python_in_docker;
 use crate::ui::net::UiEvent;
-use crate::ui::notice::push_notice;
 use crate::ui::runtime_helpers::{TabState, start_followup_request};
 use crate::ui::state::{PendingCodeExec, PendingCommand};
 use crate::ui::tools::{CodeExecRequest, ToolResult, parse_code_exec_args, run_tool};
@@ -100,10 +99,7 @@ fn handle_code_exec_request(
         language,
         code,
     });
-    push_notice(
-        &mut tab_state.app,
-        "检测到代码执行请求，输入 /approve 执行，/deny 取消。将使用隔离容器执行，禁止网络与写文件。",
-    );
+    tab_state.app.code_exec_selection = 0;
     Ok(())
 }
 

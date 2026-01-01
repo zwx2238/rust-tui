@@ -10,22 +10,25 @@ pub(crate) struct ExecOutput {
 }
 
 pub(crate) fn run_python_in_docker(code: &str) -> Result<ExecOutput, String> {
-    let mut path = std::env::temp_dir();
+    let mut dir = std::env::temp_dir();
     let uniq = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|e| format!("时间错误：{e}"))?
         .as_millis();
-    path.push(format!("deepchat_exec_{uniq}.py"));
-    fs::write(&path, code).map_err(|e| format!("写入临时文件失败：{e}"))?;
+    dir.push(format!("deepchat_exec_{uniq}"));
+    fs::create_dir(&dir).map_err(|e| format!("创建临时目录失败：{e}"))?;
+    let code_path = dir.join("code.py");
+    fs::write(&code_path, code).map_err(|e| format!("写入临时文件失败：{e}"))?;
 
-    let output = run_docker(&path);
+    let output = run_docker(&dir);
 
-    let _ = fs::remove_file(&path);
+    let _ = fs::remove_file(&code_path);
+    let _ = fs::remove_dir(&dir);
     output
 }
 
-fn run_docker(code_path: &PathBuf) -> Result<ExecOutput, String> {
-    let path = code_path
+fn run_docker(dir_path: &PathBuf) -> Result<ExecOutput, String> {
+    let path = dir_path
         .to_str()
         .ok_or_else(|| "临时路径无效".to_string())?;
     let out = Command::new("docker")
@@ -41,10 +44,10 @@ fn run_docker(code_path: &PathBuf) -> Result<ExecOutput, String> {
         .arg("--tmpfs")
         .arg("/tmp:rw,noexec,nosuid,size=64m")
         .arg("-v")
-        .arg(format!("{path}:/code.py:ro"))
+        .arg(format!("{path}:/work:ro"))
         .arg("python:3.11-slim")
         .arg("python")
-        .arg("/code.py")
+        .arg("/work/code.py")
         .output()
         .map_err(|e| format!("Docker 执行失败：{e}"))?;
 

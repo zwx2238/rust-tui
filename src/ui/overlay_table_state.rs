@@ -82,6 +82,10 @@ pub(crate) fn overlay_table_metrics(
             area: prompt_popup_area(areas.full, counts.prompts),
             rows: counts.prompts,
         },
+        OverlayKind::CodeExec => OverlayTableMetrics {
+            area: areas.msg,
+            rows: 0,
+        },
     }
 }
 
@@ -101,12 +105,16 @@ pub(crate) fn with_active_table_handle<R>(
     f: impl FnOnce(OverlayTableHandle<'_>) -> R,
 ) -> Option<R> {
     let kind = view.overlay.active?;
+    if matches!(kind, OverlayKind::CodeExec) {
+        return None;
+    }
     let metrics = overlay_table_metrics(kind, areas, counts);
     let selection: &mut SelectionState = match kind {
         OverlayKind::Summary => &mut view.summary,
         OverlayKind::Jump => &mut view.jump,
         OverlayKind::Model => &mut view.model,
         OverlayKind::Prompt => &mut view.prompt,
+        OverlayKind::CodeExec => &mut view.summary,
     };
     Some(f(OverlayTableHandle { metrics, selection }))
 }

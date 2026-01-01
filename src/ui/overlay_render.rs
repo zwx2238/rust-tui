@@ -1,6 +1,7 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
 use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
+use crate::ui::code_exec_popup::draw_code_exec_popup;
 use crate::ui::model_popup::draw_model_popup;
 use crate::ui::prompt_popup::draw_prompt_popup;
 use crate::ui::runtime_helpers::TabState;
@@ -185,6 +186,51 @@ pub(crate) fn render_prompt_overlay(
                 );
             },
         )?;
+    }
+    Ok(())
+}
+
+pub(crate) fn render_code_exec_overlay(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    tabs: &mut Vec<TabState>,
+    active_tab: usize,
+    theme: &RenderTheme,
+    text: &Text<'_>,
+    total_lines: usize,
+    startup_text: Option<&str>,
+    input_height: u16,
+) -> Result<(), Box<dyn Error>> {
+    let tabs_len = tabs.len();
+    if let Some(tab_state) = tabs.get_mut(active_tab) {
+        let pending = tab_state.app.pending_code_exec.clone();
+        let selected = tab_state.app.code_exec_selection;
+        if let Some(pending) = pending {
+            redraw_with_overlay(
+                terminal,
+                &mut tab_state.app,
+                theme,
+                text,
+                total_lines,
+                tabs_len,
+                active_tab,
+                startup_text,
+                input_height,
+                |f| {
+                    draw_code_exec_popup(f, f.area(), &pending, selected, theme);
+                },
+            )?;
+        } else {
+            render_chat_view(
+                terminal,
+                tabs,
+                active_tab,
+                theme,
+                text,
+                total_lines,
+                startup_text,
+                input_height,
+            )?;
+        }
     }
     Ok(())
 }

@@ -131,6 +131,7 @@ pub(crate) fn handle_view_key(
         Some(OverlayKind::Jump) => handle_jump_key(view, key, jump_len),
         Some(OverlayKind::Model) => handle_model_key(view, key),
         Some(OverlayKind::Prompt) => handle_prompt_key(view, key),
+        Some(OverlayKind::CodeExec) => ViewAction::None,
     }
 }
 
@@ -174,6 +175,7 @@ pub(crate) fn handle_view_mouse(
                 return ViewAction::SelectPrompt(row);
             }
         }
+        Some(OverlayKind::CodeExec) => {}
         None => {}
     }
     ViewAction::None

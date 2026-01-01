@@ -18,6 +18,7 @@ use crate::ui::runtime_loop_helpers::{apply_tool_calls, handle_pending_command};
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
+use crate::ui::overlay::OverlayKind;
 use std::sync::mpsc;
 use crossterm::event::{self, Event};
 use ratatui::{Terminal, backend::CrosstermBackend};
@@ -112,6 +113,14 @@ pub(crate) fn run_loop(
         for (idx, tab_state) in tabs.iter_mut().enumerate() {
             if idx != *active_tab {
                 enqueue_preheat_tasks(idx, tab_state, theme, msg_width, 32, preheat_tx);
+            }
+        }
+        if let Some(tab_state) = tabs.get_mut(*active_tab) {
+            let has_pending = tab_state.app.pending_code_exec.is_some();
+            if has_pending {
+                view.overlay.open(OverlayKind::CodeExec);
+            } else if view.overlay.is(OverlayKind::CodeExec) {
+                view.overlay.close();
             }
         }
         let (text, total_lines, _tabs_len, startup_text, mut pending_line, pending_command) = {

@@ -4,6 +4,7 @@ pub(crate) enum OverlayKind {
     Jump,
     Model,
     Prompt,
+    CodeExec,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -21,7 +22,10 @@ impl OverlayState {
     }
 
     pub(crate) fn uses_simple_layout(&self) -> bool {
-        matches!(self.active, Some(OverlayKind::Summary | OverlayKind::Jump))
+        matches!(
+            self.active,
+            Some(OverlayKind::Summary | OverlayKind::Jump)
+        )
     }
 
     pub(crate) fn toggle(&mut self, kind: OverlayKind) {

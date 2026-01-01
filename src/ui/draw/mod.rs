@@ -123,13 +123,14 @@ fn draw_base(
         total_lines,
         app.chat_selection,
     );
+    let input_disabled = app.busy || app.pending_code_exec.is_some();
     crate::ui::draw_input::draw_input(
         f,
         input_area,
         &mut app.input,
         theme,
-        app.focus == Focus::Input,
-        app.busy,
+        app.focus == Focus::Input && !input_disabled,
+        input_disabled,
         &app.model_key,
         &app.prompt_key,
     );
