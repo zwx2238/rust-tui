@@ -28,6 +28,14 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> b
             if let Some(idx) = app.pending_assistant.take() {
                 app.assistant_stats.insert(idx, stats);
             }
+            if let Some(u) = usage.as_ref() {
+                let p = u.prompt_tokens.unwrap_or(0);
+                let c = u.completion_tokens.unwrap_or(0);
+                let t = u.total_tokens.unwrap_or(p + c);
+                app.total_prompt_tokens = app.total_prompt_tokens.saturating_add(p);
+                app.total_completion_tokens = app.total_completion_tokens.saturating_add(c);
+                app.total_tokens = app.total_tokens.saturating_add(t);
+            }
             app.pending_reasoning = None;
             app.active_request = None;
             true

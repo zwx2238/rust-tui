@@ -126,6 +126,13 @@ pub fn run(
     if let Ok(loc) = save_session(&snapshot, active_tab, session_location.as_ref()) {
         session_location = Some(loc);
     }
+    let dialog_count = tabs.len();
+    let message_count: usize = tabs.iter().map(|t| t.app.messages.len()).sum();
+    let token_count: u64 = tabs.iter().map(|t| t.app.total_tokens).sum();
+    println!(
+        "退出统计：对话 {}，消息 {}，token {}",
+        dialog_count, message_count, token_count
+    );
     if let Some(loc) = session_location {
         println!("恢复指令：deepchat --resume {}", loc.display_hint());
     }
