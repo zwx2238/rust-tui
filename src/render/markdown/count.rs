@@ -23,8 +23,8 @@ pub(crate) fn count_markdown_lines(text: &str, width: usize) -> usize {
             Event::Start(Tag::List(start)) => {
                 if let Some(item) = item_stack.last_mut() {
                     if !item.buf.trim().is_empty() {
-                    let prefix = list_prefix(item.ordered, item.index);
-                    let indent = list_indent(item.depth);
+                        let prefix = list_prefix(item.ordered, item.index);
+                        let indent = list_indent(item.depth);
                         count +=
                             count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
                         item.buf.clear();
