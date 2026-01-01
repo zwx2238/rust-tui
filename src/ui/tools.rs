@@ -1,5 +1,4 @@
 use crate::types::ToolCall;
-use reqwest::Url;
 use serde_json::json;
 
 pub(crate) struct ToolResult {
@@ -35,26 +34,40 @@ fn run_web_search(args_json: &str) -> ToolResult {
         };
     }
     let top_k = args.top_k.unwrap_or(5).clamp(1, 10);
-    let url = match Url::parse_with_params("https://duckduckgo.com/html/", [("q", query)]) {
-        Ok(val) => val,
-        Err(e) => return tool_err(format!("web_search 构造 URL 失败：{e}")),
-    };
+    let api_key = std::env::var("TAVILY_API_KEY").unwrap_or_default();
+    if api_key.trim().is_empty() {
+        return tool_err("缺少 TAVILY_API_KEY 环境变量".to_string());
+    }
+
     let client = match reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(8))
+        .timeout(std::time::Duration::from_secs(10))
         .user_agent("deepchat/0.1")
         .build()
     {
         Ok(val) => val,
         Err(e) => return tool_err(format!("web_search 初始化失败：{e}")),
     };
-    let body = match client.get(url).send() {
+
+    let payload = json!({
+        "api_key": api_key,
+        "query": query,
+        "max_results": top_k,
+        "search_depth": "basic"
+    });
+
+    let body = match client
+        .post("https://api.tavily.com/search")
+        .json(&payload)
+        .send()
+    {
         Ok(resp) => match resp.text() {
             Ok(text) => text,
             Err(e) => return tool_err(format!("web_search 读取失败：{e}")),
         },
         Err(e) => return tool_err(format!("web_search 请求失败：{e}")),
     };
-    let results = parse_duckduckgo_results(&body, top_k);
+
+    let results = parse_tavily_results(&body);
     let content = format_web_search_output(query, &results);
     ToolResult {
         content,
@@ -62,65 +75,34 @@ fn run_web_search(args_json: &str) -> ToolResult {
     }
 }
 
-fn parse_duckduckgo_results(body: &str, top_k: usize) -> Vec<serde_json::Value> {
-    let mut results = Vec::new();
-    let mut cursor = body;
-    while results.len() < top_k {
-        let Some(pos) = cursor.find("result__a") else {
-            break;
-        };
-        cursor = &cursor[pos..];
-        let Some(href_pos) = cursor.find("href=\"") else {
-            cursor = &cursor["result__a".len()..];
-            continue;
-        };
-        let href_start = href_pos + "href=\"".len();
-        let Some(href_end) = cursor[href_start..].find('"') else {
-            break;
-        };
-        let href = &cursor[href_start..href_start + href_end];
-        let Some(gt_pos) = cursor[href_start + href_end..].find('>') else {
-            break;
-        };
-        let title_start = href_start + href_end + gt_pos + 1;
-        let Some(title_end) = cursor[title_start..].find("</a>") else {
-            break;
-        };
-        let title_raw = &cursor[title_start..title_start + title_end];
-        let title = html_unescape(title_raw);
-        let snippet = extract_snippet(cursor).unwrap_or_default();
-        results.push(json!({
-            "title": title,
-            "url": html_unescape(href),
-            "snippet": snippet,
-        }));
-        cursor = &cursor[title_start + title_end..];
+fn parse_tavily_results(body: &str) -> Vec<serde_json::Value> {
+    #[derive(serde::Deserialize)]
+    struct TavilyResult {
+        title: String,
+        url: String,
+        content: String,
     }
-    results
-}
+    #[derive(serde::Deserialize)]
+    struct TavilyResponse {
+        #[serde(default)]
+        results: Vec<TavilyResult>,
+    }
 
-fn extract_snippet(block: &str) -> Option<String> {
-    let Some(pos) = block.find("result__snippet") else {
-        return None;
+    let parsed: TavilyResponse = match serde_json::from_str(body) {
+        Ok(val) => val,
+        Err(_) => return Vec::new(),
     };
-    let block = &block[pos..];
-    let Some(gt) = block.find('>') else {
-        return None;
-    };
-    let start = gt + 1;
-    let Some(end) = block[start..].find("</a>") else {
-        return None;
-    };
-    Some(html_unescape(&block[start..start + end]))
-}
-
-fn html_unescape(input: &str) -> String {
-    input
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
+    parsed
+        .results
+        .into_iter()
+        .map(|item| {
+            json!({
+                "title": item.title,
+                "url": item.url,
+                "snippet": item.content,
+            })
+        })
+        .collect()
 }
 
 fn format_web_search_output(query: &str, results: &[serde_json::Value]) -> String {
