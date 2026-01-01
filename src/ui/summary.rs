@@ -3,6 +3,7 @@ use crate::ui::draw::draw_tabs;
 use crate::ui::popup_table::{draw_table_popup, header_style, TablePopup};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::truncate_to_width;
+use crate::types::ROLE_USER;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::Line;
@@ -114,7 +115,7 @@ fn latest_user_question(messages: &[crate::types::Message]) -> Option<&str> {
     messages
         .iter()
         .rev()
-        .find(|m| m.role == "user")
+        .find(|m| m.role == ROLE_USER)
         .map(|m| m.content.as_str())
 }
 

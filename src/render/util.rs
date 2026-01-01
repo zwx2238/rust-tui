@@ -1,4 +1,5 @@
 use crate::render::theme::RenderTheme;
+use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use std::collections::hash_map::DefaultHasher;
@@ -17,8 +18,8 @@ pub(crate) fn suffix_for_index<'a>(suffixes: &'a [(usize, String)], idx: usize) 
 
 pub(crate) fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String> {
     match role {
-        "user" => Some("👤".to_string()),
-        "assistant" => {
+        ROLE_USER => Some("👤".to_string()),
+        ROLE_ASSISTANT => {
             let mut label = "🤖".to_string();
             if let Some(s) = suffix {
                 if !s.is_empty() {
@@ -28,7 +29,7 @@ pub(crate) fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String>
             }
             Some(label)
         }
-        "system" => Some("⚙️".to_string()),
+        ROLE_SYSTEM => Some("⚙️".to_string()),
         _ => None,
     }
 }

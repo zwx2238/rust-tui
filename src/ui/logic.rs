@@ -1,4 +1,4 @@
-use crate::types::Message;
+use crate::types::{Message, ROLE_ASSISTANT};
 use crate::ui::net::LlmEvent;
 use crate::ui::scroll::max_scroll_u16;
 use crate::ui::state::App;
@@ -144,7 +144,7 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
             app.dirty_indices.push(idx);
         } else {
             app.messages.push(Message {
-                role: "assistant".to_string(),
+                role: ROLE_ASSISTANT.to_string(),
                 content: text.to_string(),
             });
             app.pending_assistant = Some(app.messages.len().saturating_sub(1));
@@ -154,7 +154,7 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
         }
     } else {
         app.messages.push(Message {
-            role: "assistant".to_string(),
+            role: ROLE_ASSISTANT.to_string(),
             content: text.to_string(),
         });
         app.pending_assistant = Some(app.messages.len().saturating_sub(1));
@@ -178,7 +178,7 @@ fn append_reasoning(app: &mut App, text: &str) {
     app.messages.insert(
         insert_at,
         Message {
-            role: "assistant".to_string(),
+            role: ROLE_ASSISTANT.to_string(),
             content: format!("推理> {text}"),
         },
     );
@@ -212,7 +212,7 @@ fn set_pending_assistant_content(app: &mut App, content: &str) {
         }
     }
     app.messages.push(Message {
-        role: "assistant".to_string(),
+        role: ROLE_ASSISTANT.to_string(),
         content: content.to_string(),
     });
     app.pending_assistant = Some(app.messages.len().saturating_sub(1));

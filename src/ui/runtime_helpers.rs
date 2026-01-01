@@ -1,5 +1,5 @@
 use crate::render::{insert_empty_cache_entry, RenderCacheEntry, RenderTheme};
-use crate::types::Message;
+use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::net::{request_llm_stream, UiEvent};
 use crate::ui::perf::seed_perf_messages;
 use crate::ui::state::App;
@@ -105,12 +105,12 @@ pub(crate) fn start_tab_request(
     let app = &mut tab_state.app;
     if !question.is_empty() {
         app.messages.push(Message {
-            role: "user".to_string(),
+            role: ROLE_USER.to_string(),
             content: question.to_string(),
         });
     } else if let Some(line) = app.pending_send.take() {
         app.messages.push(Message {
-            role: "user".to_string(),
+            role: ROLE_USER.to_string(),
             content: line,
         });
     } else {
@@ -118,7 +118,7 @@ pub(crate) fn start_tab_request(
     }
     if api_key.trim().is_empty() {
         app.messages.push(Message {
-            role: "assistant".to_string(),
+            role: ROLE_ASSISTANT.to_string(),
             content: "缺少 API Key，无法请求模型。".to_string(),
         });
         return;
@@ -126,7 +126,7 @@ pub(crate) fn start_tab_request(
     let outbound_messages = app.messages.clone();
     let idx = app.messages.len();
     app.messages.push(Message {
-        role: "assistant".to_string(),
+        role: ROLE_ASSISTANT.to_string(),
         content: String::new(),
     });
     app.busy = true;

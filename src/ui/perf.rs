@@ -1,3 +1,4 @@
+use crate::types::{ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::state::App;
 
 const PERF_MESSAGES: usize = 50;
@@ -5,7 +6,7 @@ const PERF_LINES_PER_MESSAGE: usize = 100;
 
 pub fn seed_perf_messages(app: &mut App) {
     for i in 0..PERF_MESSAGES {
-        let role = if i % 2 == 0 { "user" } else { "assistant" };
+        let role = if i % 2 == 0 { ROLE_USER } else { ROLE_ASSISTANT };
         let mut content = String::new();
         for line in 0..PERF_LINES_PER_MESSAGE {
             if line % 7 == 0 {

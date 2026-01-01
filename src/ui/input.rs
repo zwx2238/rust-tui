@@ -1,5 +1,5 @@
 use crate::session::save_session;
-use crate::types::Message;
+use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM};
 use crate::ui::clipboard;
 use crate::ui::state::{App, Focus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -130,7 +130,7 @@ pub fn handle_command(
             let system = app
                 .messages
                 .iter()
-                .find(|m| m.role == "system")
+                .find(|m| m.role == ROLE_SYSTEM)
                 .cloned();
             app.messages.clear();
             app.assistant_stats.clear();
@@ -143,20 +143,20 @@ pub fn handle_command(
             if let Ok(id) = save_session(&app.messages) {
                 *last_session_id = Some(id.clone());
                 app.messages.push(Message {
-                    role: "assistant".to_string(),
+                    role: ROLE_ASSISTANT.to_string(),
                     content: format!("已保存会话：{id}"),
                 });
             }
         }
         "/help" => {
             app.messages.push(Message {
-                role: "assistant".to_string(),
+                role: ROLE_ASSISTANT.to_string(),
                 content: "命令：/help /save /reset /clear /exit /quit".to_string(),
             });
         }
         _ => {
             app.messages.push(Message {
-                role: "assistant".to_string(),
+                role: ROLE_ASSISTANT.to_string(),
                 content: format!("未知命令：{line}"),
             });
         }

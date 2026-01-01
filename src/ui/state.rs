@@ -1,4 +1,4 @@
-use crate::types::Message;
+use crate::types::{Message, ROLE_SYSTEM};
 use tui_textarea::TextArea;
 use std::collections::BTreeMap;
 use std::time::Instant;
@@ -38,7 +38,7 @@ impl App {
         let mut messages = Vec::new();
         if !system_prompt.trim().is_empty() {
             messages.push(Message {
-                role: "system".to_string(),
+                role: ROLE_SYSTEM.to_string(),
                 content: system_prompt.to_string(),
             });
         }
@@ -69,7 +69,7 @@ impl App {
 
     pub fn set_system_prompt(&mut self, key: &str, content: &str) {
         self.prompt_key = key.to_string();
-        if let Some(msg) = self.messages.iter_mut().find(|m| m.role == "system") {
+        if let Some(msg) = self.messages.iter_mut().find(|m| m.role == ROLE_SYSTEM) {
             msg.content = content.to_string();
             return;
         }
@@ -77,7 +77,7 @@ impl App {
             self.messages.insert(
                 0,
                 Message {
-                    role: "system".to_string(),
+                    role: ROLE_SYSTEM.to_string(),
                     content: content.to_string(),
                 },
             );

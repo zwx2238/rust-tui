@@ -6,6 +6,10 @@ pub struct Message {
     pub content: String,
 }
 
+pub const ROLE_USER: &str = "user";
+pub const ROLE_ASSISTANT: &str = "assistant";
+pub const ROLE_SYSTEM: &str = "system";
+
 #[derive(Serialize)]
 pub struct ChatRequest<'a> {
     pub model: &'a str,

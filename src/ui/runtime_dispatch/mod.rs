@@ -1,6 +1,7 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::ui::runtime_helpers::{start_tab_request, TabState};
+use crate::types::{ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::net::UiEvent;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
@@ -55,7 +56,7 @@ pub(crate) fn start_pending_request(
 }
 
 pub(crate) fn can_change_prompt(app: &crate::ui::state::App) -> bool {
-    !app.messages.iter().any(|m| m.role == "user")
+    !app.messages.iter().any(|m| m.role == ROLE_USER)
 }
 
 fn with_active_tab<F: FnOnce(&mut TabState)>(ctx: &mut DispatchContext<'_>, f: F) {
@@ -133,7 +134,7 @@ pub(crate) fn apply_prompt_selection(
 
 pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
     tab_state.app.messages.push(crate::types::Message {
-        role: "assistant".to_string(),
+        role: ROLE_ASSISTANT.to_string(),
         content: PROMPT_LOCKED_MSG.to_string(),
     });
 }
