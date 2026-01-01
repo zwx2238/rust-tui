@@ -1,5 +1,6 @@
 use crate::render::RenderTheme;
 use crate::system_prompts::SystemPrompt;
+use crate::ui::popup_layout::popup_area;
 use crate::ui::popup_table::{draw_table_popup, popup_row_at, popup_visible_rows, TablePopup};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -44,7 +45,7 @@ pub fn draw_prompt_popup(
 }
 
 pub fn prompt_popup_area(area: Rect, rows: usize) -> Rect {
-    centered_rect(area, 80, popup_height(rows))
+    popup_area(area, 80, rows, 18)
 }
 
 pub fn prompt_row_at(
@@ -79,18 +80,7 @@ fn role_col_width(area: Rect, prompts: &[SystemPrompt]) -> u16 {
     needed.min(max_allowed)
 }
 
-fn popup_height(rows: usize) -> u16 {
-    let body = rows.max(1) as u16;
-    (body + 3).min(18)
-}
-
-fn centered_rect(area: Rect, percent_x: u16, height: u16) -> Rect {
-    let width = area.width * percent_x / 100;
-    let x = area.x + (area.width.saturating_sub(width)) / 2;
-    let h = height.min(area.height.saturating_sub(2)).max(3);
-    let y = area.y + (area.height.saturating_sub(h)) / 2;
-    Rect { x, y, width, height: h }
-}
+// layout helpers are centralized in popup_layout
 
 // selection color handled by popup_table
 

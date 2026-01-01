@@ -11,6 +11,7 @@ mod jump;
 mod model_popup;
 mod prompt_popup;
 mod popup_table;
+mod popup_layout;
 mod selection_state;
 mod runtime;
 mod runtime_events;
