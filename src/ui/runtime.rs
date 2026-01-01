@@ -32,11 +32,17 @@ pub fn run(
     let prompt_registry = load_prompts(&cfg.prompts_dir, "default", &args.system)?;
 
     let mut session_location: Option<SessionLocation> = None;
+    let tavily_api_key = cfg.tavily_api_key.clone();
     let (mut tabs, mut active_tab) = if let Some(resume) = args.resume.as_deref() {
         let loaded =
             load_session(resume).map_err(|_| format!("无法读取会话：{resume}"))?;
         session_location = Some(loaded.location.clone());
-        restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args)
+        let (mut tabs, active) =
+            restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args);
+        for tab in &mut tabs {
+            tab.app.tavily_api_key = tavily_api_key.clone();
+        }
+        (tabs, active)
     } else {
         let initial_tabs = if args.perf_batch {
             10
@@ -47,7 +53,7 @@ pub fn run(
         };
         let tabs = (0..initial_tabs)
             .map(|_| {
-                TabState::new(
+                let mut tab = TabState::new(
                     prompt_registry
                         .get(&prompt_registry.default_key)
                         .map(|p| p.content.as_str())
@@ -55,7 +61,9 @@ pub fn run(
                     args.perf,
                     &registry.default_key,
                     &prompt_registry.default_key,
-                )
+                );
+                tab.app.tavily_api_key = tavily_api_key.clone();
+                tab
             })
             .collect::<Vec<_>>();
         (tabs, 0)

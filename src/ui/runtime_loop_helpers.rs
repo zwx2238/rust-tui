@@ -16,11 +16,12 @@ pub(crate) fn apply_tool_calls(
     tx: &mpsc::Sender<UiEvent>,
 ) {
     let mut any_results = false;
+    let api_key = tab_state.app.tavily_api_key.clone();
     for call in calls {
         let ToolResult {
             content,
             has_results,
-        } = run_tool(call);
+        } = run_tool(call, &api_key);
         let idx = tab_state.app.messages.len();
         tab_state.app.messages.push(Message {
             role: crate::types::ROLE_TOOL.to_string(),

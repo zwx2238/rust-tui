@@ -10,6 +10,7 @@ pub struct Config {
     pub models: Vec<ModelItem>,
     pub default_model: String,
     pub prompts_dir: String,
+    pub tavily_api_key: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -42,6 +43,9 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     }
     if cfg.prompts_dir.trim().is_empty() {
         return Err("配置文件错误：prompts_dir 不能为空".into());
+    }
+    if cfg.tavily_api_key.trim().is_empty() {
+        return Err("配置文件错误：tavily_api_key 不能为空".into());
     }
     if cfg.models.is_empty() {
         return Err("配置文件错误：models 不能为空".into());

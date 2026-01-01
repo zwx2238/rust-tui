@@ -6,9 +6,9 @@ pub(crate) struct ToolResult {
     pub has_results: bool,
 }
 
-pub(crate) fn run_tool(call: &ToolCall) -> ToolResult {
+pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str) -> ToolResult {
     if call.function.name == "web_search" {
-        return run_web_search(&call.function.arguments);
+        return run_web_search(&call.function.arguments, tavily_api_key);
     }
     ToolResult {
         content: format!("未知工具：{}", call.function.name),
@@ -16,7 +16,7 @@ pub(crate) fn run_tool(call: &ToolCall) -> ToolResult {
     }
 }
 
-fn run_web_search(args_json: &str) -> ToolResult {
+fn run_web_search(args_json: &str, tavily_api_key: &str) -> ToolResult {
     #[derive(serde::Deserialize)]
     struct Args {
         query: String,
@@ -34,9 +34,8 @@ fn run_web_search(args_json: &str) -> ToolResult {
         };
     }
     let top_k = args.top_k.unwrap_or(5).clamp(1, 10);
-    let api_key = std::env::var("TAVILY_API_KEY").unwrap_or_default();
-    if api_key.trim().is_empty() {
-        return tool_err("缺少 TAVILY_API_KEY 环境变量".to_string());
+    if tavily_api_key.trim().is_empty() {
+        return tool_err("缺少配置：tavily_api_key".to_string());
     }
 
     let client = match reqwest::blocking::Client::builder()
@@ -49,7 +48,7 @@ fn run_web_search(args_json: &str) -> ToolResult {
     };
 
     let payload = json!({
-        "api_key": api_key,
+        "api_key": tavily_api_key,
         "query": query,
         "max_results": top_k,
         "search_depth": "basic"
