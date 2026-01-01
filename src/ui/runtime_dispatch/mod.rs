@@ -132,6 +132,44 @@ pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
     });
 }
 
+pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
+    ctx.tabs.push(TabState::new(
+        ctx.prompt_registry
+            .get(&ctx.prompt_registry.default_key)
+            .map(|p| p.content.as_str())
+            .unwrap_or(&ctx.args.system),
+        ctx.args.perf,
+        &ctx.registry.default_key,
+        &ctx.prompt_registry.default_key,
+    ));
+    *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+}
+
+pub(crate) fn close_tab(ctx: &mut DispatchContext<'_>) {
+    if ctx.tabs.len() > 1 {
+        ctx.tabs.remove(*ctx.active_tab);
+        if *ctx.active_tab >= ctx.tabs.len() {
+            *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+        }
+    }
+}
+
+pub(crate) fn prev_tab(ctx: &mut DispatchContext<'_>) {
+    if !ctx.tabs.is_empty() {
+        *ctx.active_tab = if *ctx.active_tab == 0 {
+            ctx.tabs.len().saturating_sub(1)
+        } else {
+            *ctx.active_tab - 1
+        };
+    }
+}
+
+pub(crate) fn next_tab(ctx: &mut DispatchContext<'_>) {
+    if !ctx.tabs.is_empty() {
+        *ctx.active_tab = (*ctx.active_tab + 1) % ctx.tabs.len();
+    }
+}
+
 pub(crate) fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {
     if registry.models.is_empty() {
         return;

@@ -5,7 +5,8 @@ use crossterm::event::KeyEvent;
 
 use super::{
     apply_model_selection, apply_prompt_selection, can_change_prompt, cycle_model, DispatchContext,
-    LayoutContext, push_prompt_locked, sync_model_selection, sync_prompt_selection,
+    LayoutContext, push_prompt_locked, sync_model_selection, sync_prompt_selection, new_tab,
+    close_tab, prev_tab, next_tab,
 };
 
 pub(crate) fn handle_key_event_loop(
@@ -64,45 +65,23 @@ pub(crate) fn handle_key_event_loop(
     {
         match key.code {
             crossterm::event::KeyCode::Char('t') => {
-                ctx.tabs.push(crate::ui::runtime_helpers::TabState::new(
-                    ctx.prompt_registry
-                        .get(&ctx.prompt_registry.default_key)
-                        .map(|p| p.content.as_str())
-                        .unwrap_or(&ctx.args.system),
-                    ctx.args.perf,
-                    &ctx.registry.default_key,
-                    &ctx.prompt_registry.default_key,
-                ));
-                *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+                new_tab(ctx);
                 return Ok(false);
             }
             crossterm::event::KeyCode::Char('w') => {
-                if ctx.tabs.len() > 1 {
-                    ctx.tabs.remove(*ctx.active_tab);
-                    if *ctx.active_tab >= ctx.tabs.len() {
-                        *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
-                    }
-                    return Ok(false);
-                }
+                close_tab(ctx);
+                return Ok(false);
             }
             _ => {}
         }
     }
     match key.code {
         crossterm::event::KeyCode::F(8) => {
-            if !ctx.tabs.is_empty() {
-                *ctx.active_tab = if *ctx.active_tab == 0 {
-                    ctx.tabs.len().saturating_sub(1)
-                } else {
-                    *ctx.active_tab - 1
-                };
-            }
+            prev_tab(ctx);
             return Ok(false);
         }
         crossterm::event::KeyCode::F(9) => {
-            if !ctx.tabs.is_empty() {
-                *ctx.active_tab = (*ctx.active_tab + 1) % ctx.tabs.len();
-            }
+            next_tab(ctx);
             return Ok(false);
         }
         _ => {}
