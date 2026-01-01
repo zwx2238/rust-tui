@@ -1,4 +1,5 @@
 use crate::render::markdown::table::TableBuild;
+use pulldown_cmark::{Options, Parser as MdParser};
 
 #[derive(Clone, Copy)]
 pub(crate) struct ListState {
@@ -38,4 +39,10 @@ pub(crate) fn list_prefix(ordered: bool, index: u64) -> String {
 
 pub(crate) fn list_indent(depth: usize) -> String {
     "  ".repeat(depth.saturating_sub(1))
+}
+
+pub(crate) fn markdown_parser<'a>(text: &'a str) -> MdParser<'a> {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    MdParser::new_ext(text, options)
 }

@@ -1,14 +1,12 @@
 use crate::render::markdown::list::count_list_item_lines;
 use crate::render::markdown::shared::{
-    append_text, list_indent, list_prefix, ItemContext, ListState,
+    append_text, list_indent, list_prefix, markdown_parser, ItemContext, ListState,
 };
 use crate::render::markdown::table::TableBuild;
-use pulldown_cmark::{Event, Options, Parser as MdParser, Tag, TagEnd};
+use pulldown_cmark::{Event, Tag, TagEnd};
 
 pub(crate) fn count_markdown_lines(text: &str, width: usize) -> usize {
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_TABLES);
-    let parser = MdParser::new_ext(text, options);
+    let parser = markdown_parser(text);
     let mut buf = String::new();
     let mut code_buf = String::new();
     let mut in_code = false;

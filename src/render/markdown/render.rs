@@ -1,12 +1,12 @@
 use crate::render::markdown::code::render_code_block_lines;
 use crate::render::markdown::list::render_list_item_lines;
-use crate::render::markdown::shared::{append_text, list_indent, list_prefix, ItemContext, ListState};
+use crate::render::markdown::shared::{
+    append_text, list_indent, list_prefix, markdown_parser, ItemContext, ListState,
+};
 use crate::render::markdown::table::TableBuild;
 use crate::render::markdown::text::{render_heading_lines, render_paragraph_lines};
 use crate::render::theme::RenderTheme;
-use pulldown_cmark::{
-    CodeBlockKind, Event, HeadingLevel, Options, Parser as MdParser, Tag, TagEnd,
-};
+use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Tag, TagEnd};
 use ratatui::text::Line;
 
 pub(crate) fn render_markdown_lines(
@@ -15,9 +15,7 @@ pub(crate) fn render_markdown_lines(
     theme: &RenderTheme,
     streaming: bool,
 ) -> Vec<Line<'static>> {
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_TABLES);
-    let parser = MdParser::new_ext(text, options);
+    let parser = markdown_parser(text);
     let mut buf = String::new();
     let mut in_code = false;
     let mut code_lang = String::new();
