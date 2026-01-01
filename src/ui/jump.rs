@@ -67,8 +67,14 @@ pub fn redraw_jump(
     Ok(())
 }
 
-pub fn jump_row_at(area: Rect, row_count: usize, mouse_y: u16, scroll: usize) -> Option<usize> {
-    summary_row_at(area, row_count, mouse_y).map(|r| r.saturating_add(scroll))
+pub fn jump_row_at(
+    area: Rect,
+    row_count: usize,
+    mouse_x: u16,
+    mouse_y: u16,
+    scroll: usize,
+) -> Option<usize> {
+    summary_row_at(area, row_count, mouse_x, mouse_y).map(|r| r.saturating_add(scroll))
 }
 
 pub fn jump_visible_rows(area: Rect) -> usize {

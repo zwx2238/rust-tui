@@ -74,10 +74,16 @@ pub(crate) fn handle_mouse_event_loop(
             }
         }
         let row = match view.overlay.active {
-            Some(OverlayKind::Summary) => summary_row_at(layout.msg_area, ctx.tabs.len(), m.row),
-            Some(OverlayKind::Jump) => {
-                jump_row_at(layout.msg_area, jump_rows.len(), m.row, view.jump.scroll)
+            Some(OverlayKind::Summary) => {
+                summary_row_at(layout.msg_area, ctx.tabs.len(), m.column, m.row)
             }
+            Some(OverlayKind::Jump) => jump_row_at(
+                layout.msg_area,
+                jump_rows.len(),
+                m.column,
+                m.row,
+                view.jump.scroll,
+            ),
             Some(OverlayKind::Model) => {
                 model_row_at(
                     layout.size,
