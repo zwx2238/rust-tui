@@ -1,11 +1,12 @@
 use crate::render::{count_message_lines, label_for_role, RenderTheme};
 use crate::ui::draw::draw_tabs;
+use crate::ui::popup_table::{draw_table_popup, TablePopup};
 use crate::ui::summary::summary_row_at;
 use crate::types::Message;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Cell, Row, Table, TableState};
+use ratatui::widgets::{Cell, Row};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io::Stdout;
@@ -100,47 +101,23 @@ fn draw_jump_table(
                 .fg(theme.fg.unwrap_or(Color::White))
                 .add_modifier(Modifier::BOLD),
         );
-    let viewport_rows = visible_rows(area);
-    let body = rows
-        .iter()
-        .skip(scroll)
-        .take(viewport_rows)
-        .map(|row| {
+    let body = rows.iter().map(|row| {
         Row::new(vec![
             Cell::from(row.index.to_string()),
             Cell::from(row.role.clone()),
             Cell::from(row.preview.clone()),
         ])
     });
-    let mut state = TableState::default();
-    if !rows.is_empty() {
-        let idx = selected
-            .saturating_sub(scroll)
-            .min(viewport_rows.saturating_sub(1));
-        state.select(Some(idx));
-    }
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title_top(Line::from("消息定位 · F2 退出 · 点击行跳转"))
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-        .border_style(Style::default().fg(theme.fg.unwrap_or(Color::White)));
-    let table = Table::new(body, [Constraint::Length(6), Constraint::Length(10), Constraint::Min(10)])
-        .header(header)
-        .row_highlight_style(Style::default().bg(selection_bg(theme.bg)))
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
-        .block(block);
-    f.render_stateful_widget(table, area, &mut state);
-}
-
-fn selection_bg(bg: Color) -> Color {
-    match bg {
-        Color::White => Color::Gray,
-        _ => Color::DarkGray,
-    }
-}
-
-fn visible_rows(area: Rect) -> usize {
-    area.height.saturating_sub(2).saturating_sub(1) as usize
+    let popup = TablePopup {
+        title: Line::from("消息定位 · F2 退出 · 点击行跳转"),
+        header,
+        rows: body.collect(),
+        widths: vec![Constraint::Length(6), Constraint::Length(10), Constraint::Min(10)],
+        selected,
+        scroll,
+        theme,
+    };
+    draw_table_popup(f, area, popup);
 }
 
 fn collapse_text(text: &str) -> String {
