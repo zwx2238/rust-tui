@@ -187,6 +187,8 @@ pub(crate) fn fork_message_into_new_tab(
         return;
     };
     let content = msg.content.clone();
+    let mut history: Vec<crate::types::Message> =
+        tab_state.app.messages[..msg_idx].to_vec();
     let system_prompt = tab_state
         .app
         .messages
@@ -213,9 +215,20 @@ pub(crate) fn fork_message_into_new_tab(
     } else {
         ctx.prompt_registry.default_key.clone()
     };
-    let mut new_tab = TabState::new(&system_prompt, false, &model_key, &prompt_key);
+    let mut new_tab = TabState::new("", false, &model_key, &prompt_key);
+    if history.iter().all(|m| m.role != ROLE_SYSTEM) && !system_prompt.trim().is_empty() {
+        history.insert(
+            0,
+            crate::types::Message {
+                role: ROLE_SYSTEM.to_string(),
+                content: system_prompt.clone(),
+            },
+        );
+    }
+    new_tab.app.messages = history;
     new_tab.app.model_key = model_key;
     new_tab.app.prompt_key = prompt_key;
+    new_tab.app.dirty_indices = (0..new_tab.app.messages.len()).collect();
     if !content.is_empty() {
         new_tab.app.input.insert_str(content);
     }
