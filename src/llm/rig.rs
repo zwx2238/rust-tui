@@ -1,12 +1,12 @@
 use crate::llm::templates::RigTemplates;
-use crate::types::Message as UiMessage;
+use crate::types::{Message as UiMessage, Usage};
 use rig::completion::{CompletionModel, Message, ModelChoice, ToolDefinition};
 use rig::providers::openai;
 
 #[derive(Debug)]
 pub enum RigOutcome {
-    Message(String),
-    ToolCall { name: String, args: serde_json::Value },
+    Message { content: String, usage: Option<Usage> },
+    ToolCall { name: String, args: serde_json::Value, usage: Option<Usage> },
 }
 
 pub struct RigRequestContext {
@@ -68,9 +68,10 @@ pub async fn rig_complete(
         .completion(request)
         .await
         .map_err(|e| format!("请求失败：{e}"))?;
+    let usage = extract_usage(&response.raw_response);
     match response.choice {
-        ModelChoice::Message(msg) => Ok(RigOutcome::Message(msg)),
-        ModelChoice::ToolCall(name, args) => Ok(RigOutcome::ToolCall { name, args }),
+        ModelChoice::Message(msg) => Ok(RigOutcome::Message { content: msg, usage }),
+        ModelChoice::ToolCall(name, args) => Ok(RigOutcome::ToolCall { name, args, usage }),
     }
 }
 
@@ -108,9 +109,11 @@ fn augment_system(base: &str) -> String {
     let mut out = String::new();
     if !base.trim().is_empty() {
         out.push_str(base.trim());
-        out.push('\n');
     }
-    out.push_str("注意：数学公式仅支持 $...$ 或 $$...$$，不支持 ```latex``` 代码块。");
+    if !out.is_empty() {
+        out.push_str("\n\n");
+    }
+    out.push_str("提示：公式渲染使用 txc，支持 LaTeX 子集，复杂公式可能无法渲染。");
     out
 }
 
@@ -122,6 +125,34 @@ fn build_history_and_prompt(
     for (idx, msg) in messages.iter().enumerate() {
         if msg.role == crate::types::ROLE_USER {
             last_user_idx = Some(idx);
+        }
+    }
+    if let Some(idx) = last_user_idx {
+        let has_tool_after_user = messages
+            .iter()
+            .skip(idx + 1)
+            .any(|m| m.role == crate::types::ROLE_TOOL);
+        if has_tool_after_user {
+            let mut history = Vec::new();
+            for msg in messages {
+                if msg.role == crate::types::ROLE_SYSTEM {
+                    continue;
+                }
+                if msg.role == crate::types::ROLE_TOOL {
+                    let wrapped =
+                        templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
+                    history.push(Message {
+                        role: "user".to_string(),
+                        content: wrapped,
+                    });
+                } else {
+                    history.push(Message {
+                        role: msg.role.clone(),
+                        content: msg.content.clone(),
+                    });
+                }
+            }
+            return Ok((history, templates.render_followup()?));
         }
     }
     let mut history = Vec::new();
@@ -164,4 +195,17 @@ fn build_history_and_prompt(
         }
         Ok((history, templates.render_followup()?))
     }
+}
+
+fn extract_usage(response: &openai::CompletionResponse) -> Option<Usage> {
+    response.usage.as_ref().map(|u| {
+        let prompt = u.prompt_tokens as u64;
+        let total = u.total_tokens as u64;
+        let completion = total.saturating_sub(prompt);
+        Usage {
+            prompt_tokens: Some(prompt),
+            completion_tokens: Some(completion),
+            total_tokens: Some(total),
+        }
+    })
 }

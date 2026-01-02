@@ -15,7 +15,7 @@ pub const ROLE_ASSISTANT: &str = "assistant";
 pub const ROLE_SYSTEM: &str = "system";
 pub const ROLE_TOOL: &str = "tool";
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Usage {
     #[serde(alias = "input_tokens")]
     pub prompt_tokens: Option<u64>,

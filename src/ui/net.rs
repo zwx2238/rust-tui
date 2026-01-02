@@ -7,8 +7,8 @@ use std::sync::{
 };
 use std::time::Duration;
 use tokio::runtime::Runtime;
-use std::fs::OpenOptions;
-use std::io::Write;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 pub enum LlmEvent {
     Chunk(String),
@@ -31,7 +31,9 @@ pub fn request_llm_stream(
     prompts_dir: &str,
     enable_web_search: bool,
     enable_code_exec: bool,
-    log_path: Option<String>,
+    log_dir: Option<String>,
+    log_session_id: String,
+    message_index: usize,
     cancel: Arc<AtomicBool>,
     tx: Sender<UiEvent>,
     tab: usize,
@@ -39,7 +41,8 @@ pub fn request_llm_stream(
 ) {
     let messages = messages.to_vec();
     let prompts_dir = prompts_dir.to_string();
-    let log_path = log_path.clone();
+    let log_dir = log_dir.clone();
+    let log_session_id = log_session_id.clone();
     let base_url = base_url.to_string();
     let api_key = api_key.to_string();
     let model = model.to_string();
@@ -56,26 +59,56 @@ pub fn request_llm_stream(
     let rt = rt.unwrap();
     let result = rt.block_on(async {
         let (ctx, _templates) = prepare_rig_context(&messages, &prompts_dir, &enabled)?;
-        if let Some(path) = log_path {
-            let _ = write_request_log(&path, &base_url, &model, &ctx);
+        if let Some(dir) = log_dir.as_deref() {
+            let _ = write_request_log(
+                dir,
+                &log_session_id,
+                tab,
+                message_index,
+                &base_url,
+                &model,
+                &ctx,
+            );
         }
         rig_complete(&base_url, &api_key, &model, ctx).await
     });
     match result {
-        Ok(RigOutcome::Message(content)) => {
+        Ok(RigOutcome::Message { content, usage }) => {
             if cancel.load(Ordering::Relaxed) {
                 return;
+            }
+            if let Some(dir) = log_dir.as_deref() {
+                let _ = write_response_log(
+                    dir,
+                    &log_session_id,
+                    tab,
+                    message_index,
+                    &content,
+                );
             }
             stream_chunks(&content, &cancel, &tx, tab, request_id);
             let _ = tx.send(UiEvent {
                 tab,
                 request_id,
-                event: LlmEvent::Done { usage: None },
+                event: LlmEvent::Done { usage },
             });
         }
-        Ok(RigOutcome::ToolCall { name, args }) => {
+        Ok(RigOutcome::ToolCall { name, args, usage }) => {
             if cancel.load(Ordering::Relaxed) {
                 return;
+            }
+            if let Some(dir) = log_dir.as_deref() {
+                let payload = format!(
+                    "tool_call: {name}\nargs: {}",
+                    serde_json::to_string_pretty(&args).unwrap_or_default()
+                );
+                let _ = write_response_log(
+                    dir,
+                    &log_session_id,
+                    tab,
+                    message_index,
+                    &payload,
+                );
             }
             let _ = tx.send(UiEvent {
                 tab,
@@ -93,10 +126,20 @@ pub fn request_llm_stream(
             let _ = tx.send(UiEvent {
                 tab,
                 request_id,
-                event: LlmEvent::ToolCalls { calls: vec![call], usage: None },
+                event: LlmEvent::ToolCalls { calls: vec![call], usage },
             });
         }
         Err(e) => {
+            if let Some(dir) = log_dir.as_deref() {
+                let payload = format!("error: {e}");
+                let _ = write_response_log(
+                    dir,
+                    &log_session_id,
+                    tab,
+                    message_index,
+                    &payload,
+                );
+            }
             let _ = tx.send(UiEvent {
                 tab,
                 request_id,
@@ -118,27 +161,80 @@ fn build_enabled_tools(enable_web_search: bool, enable_code_exec: bool) -> Vec<&
 }
 
 fn write_request_log(
-    path: &str,
+    dir: &str,
+    session_id: &str,
+    tab: usize,
+    message_index: usize,
     base_url: &str,
     model: &str,
     ctx: &crate::llm::rig::RigRequestContext,
 ) -> std::io::Result<()> {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    writeln!(file, "=== request ===")?;
-    writeln!(file, "base_url: {}", base_url)?;
-    writeln!(file, "model: {}", model)?;
-    writeln!(file, "--- preamble ---")?;
-    writeln!(file, "{}", ctx.preamble)?;
-    writeln!(file, "--- history ---")?;
+    let path = build_log_path(dir, session_id, tab, message_index, "input.txt")?;
+    let mut out = String::new();
+    out.push_str("base_url: ");
+    out.push_str(base_url);
+    out.push('\n');
+    out.push_str("model: ");
+    out.push_str(model);
+    out.push('\n');
+    out.push_str("--- preamble ---\n");
+    out.push_str(&ctx.preamble);
+    out.push('\n');
+    out.push_str("--- history ---\n");
     for msg in &ctx.history {
-        writeln!(file, "[{}]\n{}", msg.role, msg.content)?;
+        out.push('[');
+        out.push_str(&msg.role);
+        out.push_str("]\n");
+        out.push_str(&msg.content);
+        out.push('\n');
     }
-    writeln!(file, "--- prompt ---")?;
-    writeln!(file, "{}", ctx.prompt)?;
-    Ok(())
+    out.push_str("--- prompt ---\n");
+    out.push_str(&ctx.prompt);
+    out.push('\n');
+    fs::write(path, out)
+}
+
+fn write_response_log(
+    dir: &str,
+    session_id: &str,
+    tab: usize,
+    message_index: usize,
+    content: &str,
+) -> std::io::Result<()> {
+    let path = build_log_path(dir, session_id, tab, message_index, "output.txt")?;
+    fs::write(path, content)
+}
+
+fn build_log_path(
+    dir: &str,
+    session_id: &str,
+    tab: usize,
+    message_index: usize,
+    suffix: &str,
+) -> std::io::Result<PathBuf> {
+    let dir = Path::new(dir);
+    fs::create_dir_all(dir)?;
+    let session = sanitize_log_part(session_id);
+    let tab = tab + 1;
+    let msg = message_index + 1;
+    let filename = format!("{session}_tab{tab}_msg{msg}_{suffix}");
+    Ok(dir.join(filename))
+}
+
+fn sanitize_log_part(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for ch in input.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+            out.push(ch);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        "session".to_string()
+    } else {
+        out
+    }
 }
 
 fn stream_chunks(
