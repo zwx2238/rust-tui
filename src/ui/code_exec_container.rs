@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ui::code_exec_container_env::{
     code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url, pip_target_dir,
-    prepare_pip_cache_dir, site_tmpfs_mb,
+    prepare_pip_cache_dir, run_dir, site_tmpfs_mb, tmp_dir, work_dir,
 };
 
 pub(crate) fn ensure_container(container_id: &mut Option<String>) -> Result<String, String> {
@@ -148,37 +148,44 @@ fn start_container() -> Result<String, String> {
             .as_nanos()
     );
     let mut cmd = Command::new("docker");
+    let work_dir = work_dir();
+    let tmp_dir = tmp_dir();
+    let site_dir = pip_target_dir();
     cmd.arg("run")
         .arg("-d")
         .arg("--cpus=1")
         .arg("--memory=512m")
         .arg("--pids-limit=128")
         .arg("--read-only")
+        .arg("--user=1000:1000")
         .arg("--cap-drop=ALL")
         .arg("--security-opt=no-new-privileges")
         .arg("--tmpfs")
-        .arg("/tmp:rw,noexec,nosuid,size=64m")
-        .arg("--tmpfs")
         .arg(format!(
-            "/opt/deepchat:rw,exec,nosuid,size={}m",
+            "{work_dir}:rw,exec,nosuid,size={}m,uid=1000,gid=1000,mode=755",
             site_tmpfs_mb()
         ))
         .arg("-e")
-        .arg("TMPDIR=/opt/deepchat/tmp")
+        .arg(format!("TMPDIR={tmp_dir}"))
         .arg("-e")
-        .arg("TMP=/opt/deepchat/tmp")
+        .arg(format!("TMP={tmp_dir}"))
         .arg("-e")
-        .arg("TEMP=/opt/deepchat/tmp")
+        .arg(format!("TEMP={tmp_dir}"))
         .arg("-e")
-        .arg(format!("PIP_TARGET={}", pip_target_dir()))
+        .arg(format!("HOME={work_dir}"))
         .arg("-e")
-        .arg(format!("PYTHONPATH={}", pip_target_dir()))
+        .arg(format!("DEEPCHAT_WORKDIR={work_dir}"))
+        .arg("-e")
+        .arg(format!("PIP_TARGET={site_dir}"))
+        .arg("-e")
+        .arg(format!("PYTHONPATH={site_dir}"))
         .arg("-e")
         .arg("PIP_DISABLE_PIP_VERSION_CHECK=1")
         .arg("--label")
         .arg(format!("deepchat-container={run_id}"));
     let cache_dir = pip_cache_dir();
-    cmd.arg("-v").arg(format!("{cache_dir}:/root/.cache/pip"));
+    cmd.arg("-v")
+        .arg(format!("{cache_dir}:{work_dir}/.cache/pip"));
     if let Some(index_url) = pip_index_url() {
         cmd.arg("-e").arg(format!("PIP_INDEX_URL={index_url}"));
     }
@@ -232,12 +239,15 @@ fn is_container_running(container_id: &str) -> bool {
 }
 
 fn write_code_file(container_id: &str, run_id: &str, code: &str) -> Result<(), String> {
+    let run_dir = run_dir();
+    let tmp_dir = tmp_dir();
+    let site_dir = pip_target_dir();
     let _ = Command::new("docker")
         .arg("exec")
         .arg(container_id)
         .arg("sh")
         .arg("-lc")
-        .arg("mkdir -p /opt/deepchat/run")
+        .arg(format!("mkdir -p {run_dir} {tmp_dir} {site_dir}"))
         .status();
     let mut cmd = Command::new("docker");
     cmd.arg("exec")
@@ -280,5 +290,5 @@ fn remove_code_file(container_id: &str, run_id: &str) -> Result<(), String> {
 }
 
 fn code_path(run_id: &str) -> String {
-    format!("/opt/deepchat/run/{run_id}.py")
+    format!("{}/{}.py", run_dir(), run_id)
 }

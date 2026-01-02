@@ -22,8 +22,34 @@ pub(crate) fn code_exec_network_mode() -> CodeExecNetwork {
     }
 }
 
-pub(crate) fn pip_target_dir() -> &'static str {
-    "/tmp/deepchat/site-packages"
+pub(crate) fn read_only_enabled() -> bool {
+    match std::env::var("DEEPCHAT_READ_ONLY") {
+        Ok(value) => {
+            let v = value.trim().to_ascii_lowercase();
+            !(v.is_empty() || v == "0" || v == "false" || v == "off" || v == "no")
+        }
+        Err(_) => false,
+    }
+}
+
+pub(crate) fn work_dir() -> String {
+    if read_only_enabled() {
+        "/opt/deepchat/work".to_string()
+    } else {
+        "/opt/deepchat".to_string()
+    }
+}
+
+pub(crate) fn tmp_dir() -> String {
+    format!("{}/tmp", work_dir())
+}
+
+pub(crate) fn run_dir() -> String {
+    format!("{}/run", work_dir())
+}
+
+pub(crate) fn pip_target_dir() -> String {
+    format!("{}/site-packages", work_dir())
 }
 
 pub(crate) fn pip_cache_dir() -> String {

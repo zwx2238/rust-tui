@@ -47,6 +47,7 @@ mod runtime_session;
 mod runtime_tick;
 mod runtime_view;
 mod runtime_view_handlers;
+mod runtime_yolo;
 mod scroll;
 mod scroll_debug;
 mod selection;

@@ -19,6 +19,11 @@ pub fn augment_system(base: &str) -> String {
         out.push_str("\n\n");
     }
     out.push_str("提示：公式渲染使用 txc，支持 LaTeX 子集，复杂公式可能无法渲染。");
+    if std::env::var("DEEPCHAT_READ_ONLY").is_ok() {
+        out.push_str(
+            "\n\n只读模式：禁止文件修改工具；代码执行仍可用，但仅允许在沙箱工作目录内写入临时文件。",
+        );
+    }
     out
 }
 

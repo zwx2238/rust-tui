@@ -13,10 +13,23 @@ use args::Args;
 use clap::Parser;
 use config::{default_config_path, load_config};
 use render::theme_from_config;
+use std::env;
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    if (args.yolo_enabled() || args.read_only_enabled())
+        && env::var("DEEPCHAT_CODE_EXEC_NETWORK").is_err()
+    {
+        unsafe {
+            env::set_var("DEEPCHAT_CODE_EXEC_NETWORK", "none");
+        }
+    }
+    if args.read_only_enabled() && env::var("DEEPCHAT_READ_ONLY").is_err() {
+        unsafe {
+            env::set_var("DEEPCHAT_READ_ONLY", "1");
+        }
+    }
 
     let cfg_path = match args.config.as_deref() {
         Some(p) => PathBuf::from(p),

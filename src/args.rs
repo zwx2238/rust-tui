@@ -46,6 +46,14 @@ pub struct Args {
     /// 启动时批量创建 10 个 tab 并发起提问
     #[arg(long)]
     pub question_set: Option<String>,
+
+    /// YOLO 模式：工具调用无需用户同意（包含代码执行/文件修改等）
+    #[arg(long, default_value_t = false)]
+    pub yolo: bool,
+
+    /// 只读模式：禁止所有写入/修改类工具调用（包含代码执行/文件修改）
+    #[arg(long, default_value_t = false)]
+    pub read_only: bool,
 }
 
 impl Args {
@@ -66,7 +74,18 @@ impl Args {
     }
 
     pub fn modify_file_enabled(&self) -> bool {
+        if self.read_only {
+            return false;
+        }
         self.resolve_enabled().4
+    }
+
+    pub fn yolo_enabled(&self) -> bool {
+        self.yolo
+    }
+
+    pub fn read_only_enabled(&self) -> bool {
+        self.read_only
     }
 
     fn resolve_enabled(&self) -> (bool, bool, bool, bool, bool) {

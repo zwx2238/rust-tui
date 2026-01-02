@@ -1,5 +1,6 @@
 use crate::types::ToolCall;
 use serde_json::json;
+use std::path::{Path, PathBuf};
 
 pub(crate) struct ToolResult {
     pub content: String,
@@ -11,15 +12,15 @@ pub(crate) struct CodeExecRequest {
     pub code: String,
 }
 
-pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str) -> ToolResult {
+pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str, root: Option<&Path>) -> ToolResult {
     if call.function.name == "web_search" {
         return run_web_search(&call.function.arguments, tavily_api_key);
     }
     if call.function.name == "read_file" {
-        return run_read_file(&call.function.arguments, false);
+        return run_read_file(&call.function.arguments, false, root);
     }
     if call.function.name == "read_code" {
-        return run_read_file(&call.function.arguments, true);
+        return run_read_file(&call.function.arguments, true, root);
     }
     ToolResult {
         content: format!("未知工具：{}", call.function.name),
@@ -143,7 +144,7 @@ fn tool_err(msg: String) -> ToolResult {
     }
 }
 
-fn run_read_file(args_json: &str, with_line_numbers: bool) -> ToolResult {
+fn run_read_file(args_json: &str, with_line_numbers: bool, root: Option<&Path>) -> ToolResult {
     #[derive(serde::Deserialize)]
     struct Args {
         path: String,
@@ -158,6 +159,12 @@ fn run_read_file(args_json: &str, with_line_numbers: bool) -> ToolResult {
     let path = args.path.trim();
     if path.is_empty() {
         return tool_err("read_file 参数 path 不能为空".to_string());
+    }
+    if let Some(root) = root {
+        match enforce_root(path, root) {
+            Ok(()) => {}
+            Err(err) => return tool_err(format!("read_file 读取失败：{err}")),
+        }
     }
     let max_bytes = args.max_bytes.unwrap_or(200_000).clamp(1, 2_000_000);
     let meta = match std::fs::metadata(path) {
@@ -234,4 +241,19 @@ pub(crate) fn parse_code_exec_args(args_json: &str) -> Result<CodeExecRequest, S
         language,
         code: args.code,
     })
+}
+
+fn enforce_root(path: &str, root: &Path) -> Result<(), String> {
+    let target = PathBuf::from(path);
+    let root = root
+        .canonicalize()
+        .map_err(|e| format!("根目录不可用：{e}"))?;
+    let canonical = target
+        .canonicalize()
+        .map_err(|e| format!("路径不可用：{e}"))?;
+    if canonical.starts_with(&root) {
+        Ok(())
+    } else {
+        Err("禁止读取工作区外的文件".to_string())
+    }
 }

@@ -37,7 +37,12 @@ impl<'a> ToolService<'a> {
                     any_results = true;
                     continue;
                 }
-                let result = run_tool(call, &api_key);
+                let root = if self.args.yolo_enabled() {
+                    std::env::current_dir().ok()
+                } else {
+                    None
+                };
+                let result = run_tool(call, &api_key, root.as_deref());
                 let idx = tab_state.app.messages.len();
                 tab_state.app.messages.push(Message {
                     role: crate::types::ROLE_TOOL.to_string(),
@@ -69,7 +74,12 @@ impl<'a> ToolService<'a> {
                     any_results = true;
                     continue;
                 }
-                let result = run_tool(call, &api_key);
+                let root = if self.args.yolo_enabled() {
+                    std::env::current_dir().ok()
+                } else {
+                    None
+                };
+                let result = run_tool(call, &api_key, root.as_deref());
                 let idx = tab_state.app.messages.len();
                 tab_state.app.messages.push(Message {
                     role: crate::types::ROLE_TOOL.to_string(),
@@ -84,6 +94,18 @@ impl<'a> ToolService<'a> {
                 continue;
             }
             if call.function.name == "modify_file" {
+                if self.args.read_only_enabled() {
+                    let idx = tab_state.app.messages.len();
+                    tab_state.app.messages.push(Message {
+                        role: crate::types::ROLE_TOOL.to_string(),
+                        content: r#"{"error":"read_only 模式禁止 modify_file"}"#.to_string(),
+                        tool_call_id: Some(call.id.clone()),
+                        tool_calls: None,
+                    });
+                    tab_state.app.dirty_indices.push(idx);
+                    any_results = true;
+                    continue;
+                }
                 if !self.args.modify_file_enabled() {
                     let idx = tab_state.app.messages.len();
                     tab_state.app.messages.push(Message {
@@ -98,7 +120,17 @@ impl<'a> ToolService<'a> {
                 }
                 match crate::ui::runtime_file_patch::handle_file_patch_request(tab_state, call) {
                     Ok(()) => {
-                        needs_approval = true;
+                        if self.args.yolo_enabled() {
+                            crate::ui::runtime_file_patch::handle_file_patch_apply(
+                                tab_state,
+                                tab_id,
+                                self.registry,
+                                self.args,
+                                self.tx,
+                            );
+                        } else {
+                            needs_approval = true;
+                        }
                         any_results = true;
                     }
                     Err(err) => {
@@ -130,7 +162,17 @@ impl<'a> ToolService<'a> {
                 }
                 match handle_code_exec_request(tab_state, call) {
                     Ok(()) => {
-                        needs_approval = true;
+                        if self.args.yolo_enabled() {
+                            crate::ui::runtime_code_exec::handle_code_exec_approve(
+                                tab_state,
+                                tab_id,
+                                self.registry,
+                                self.args,
+                                self.tx,
+                            );
+                        } else {
+                            needs_approval = true;
+                        }
                         any_results = true;
                     }
                     Err(err) => {

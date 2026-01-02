@@ -25,8 +25,9 @@ pub(crate) fn inject_requirements(code: &str) -> String {
     }
     let mut out = String::new();
     out.push_str("import subprocess, sys, os\n");
-    out.push_str("tmp_dir = \"/opt/deepchat/tmp\"\n");
-    out.push_str("site_dir = \"/opt/deepchat/site-packages\"\n");
+    out.push_str("work_dir = os.environ.get(\"DEEPCHAT_WORKDIR\", \"/opt/deepchat\")\n");
+    out.push_str("tmp_dir = os.path.join(work_dir, \"tmp\")\n");
+    out.push_str("site_dir = os.path.join(work_dir, \"site-packages\")\n");
     out.push_str("os.makedirs(tmp_dir, exist_ok=True)\n");
     out.push_str("os.makedirs(site_dir, exist_ok=True)\n");
     out.push_str("print(\"DEEPCHAT_PIP_BEGIN\")\n");

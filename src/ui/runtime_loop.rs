@@ -17,6 +17,7 @@ use crate::ui::runtime_tick::{
     sync_file_patch_overlay, update_code_exec_results, update_tab_widths,
 };
 use crate::ui::runtime_view::ViewState;
+use crate::ui::runtime_yolo::auto_finalize_code_exec;
 use crate::ui::tool_service::ToolService;
 use crossterm::event::{self, Event};
 use ratatui::{Terminal, backend::CrosstermBackend};
@@ -84,11 +85,16 @@ pub(crate) fn run_loop(
             }
         }
         update_code_exec_results(tabs);
+        if args.yolo_enabled() {
+            auto_finalize_code_exec(tabs, registry, args, tx);
+        }
         finalize_done_tabs(tabs, &done_tabs)?;
         update_tab_widths(tabs, msg_width);
         preheat_inactive_tabs(tabs, *active_tab, theme, msg_width, preheat_tx);
-        sync_code_exec_overlay(tabs, *active_tab, &mut view);
-        sync_file_patch_overlay(tabs, *active_tab, &mut view);
+        if !args.yolo_enabled() {
+            sync_code_exec_overlay(tabs, *active_tab, &mut view);
+            sync_file_patch_overlay(tabs, *active_tab, &mut view);
+        }
         let ActiveFrameData {
             text,
             total_lines,
