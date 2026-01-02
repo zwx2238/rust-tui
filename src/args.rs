@@ -31,6 +31,18 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub replay_fork_last: bool,
 
+    /// 启用网页搜索工具
+    #[arg(long, default_value_t = false)]
+    pub enable_web_search: bool,
+
+    /// 启用代码执行工具
+    #[arg(long, default_value_t = false)]
+    pub enable_code_exec: bool,
+
+    /// 记录发送给模型的请求内容到文件
+    #[arg(long)]
+    pub log_requests: Option<String>,
+
     /// 填充历史消息用于性能手工测试
     #[arg(long, default_value_t = false)]
     pub perf: bool,

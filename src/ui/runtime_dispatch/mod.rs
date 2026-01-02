@@ -5,7 +5,8 @@ use crate::ui::net::UiEvent;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
 use crate::ui::notice::push_notice;
-use crate::ui::runtime_helpers::{TabState, start_tab_request};
+use crate::ui::runtime_helpers::TabState;
+use crate::ui::runtime_requests::start_tab_request;
 use crate::ui::state::Focus;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
@@ -61,6 +62,9 @@ pub(crate) fn start_pending_request(
         args.show_reasoning,
         tx,
         active_tab,
+        args.enable_web_search,
+        args.enable_code_exec,
+        args.log_requests.clone(),
     );
 }
 

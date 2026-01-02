@@ -92,25 +92,37 @@ fn render_inline_math(line: &str) -> String {
     if !line.contains('$') {
         return line.to_string();
     }
-    let mut out = String::new();
-    let mut i = 0;
     let bytes = line.as_bytes();
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0usize;
+    let mut last = 0usize;
     let mut in_code = false;
     while i < bytes.len() {
         let ch = bytes[i] as char;
         if ch == '`' {
+            if last < i {
+                out.push_str(&line[last..i]);
+            }
+            out.push('`');
             in_code = !in_code;
-            out.push(ch);
             i += 1;
+            last = i;
             continue;
         }
         if ch == '$' && !in_code && !is_escaped(bytes, i) {
             if i + 1 < bytes.len() && bytes[i + 1] as char == '$' {
+                if last < i {
+                    out.push_str(&line[last..i]);
+                }
                 out.push_str("$$");
                 i += 2;
+                last = i;
                 continue;
             }
             if let Some(end) = find_inline_end(bytes, i + 1) {
+                if last < i {
+                    out.push_str(&line[last..i]);
+                }
                 let expr = &line[i + 1..end];
                 if let Some(rendered) = render_texicode(expr) {
                     out.push_str(&rendered);
@@ -120,11 +132,14 @@ fn render_inline_math(line: &str) -> String {
                     out.push('$');
                 }
                 i = end + 1;
+                last = i;
                 continue;
             }
         }
-        out.push(ch);
         i += 1;
+    }
+    if last < line.len() {
+        out.push_str(&line[last..]);
     }
     out
 }

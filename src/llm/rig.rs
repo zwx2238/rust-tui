@@ -19,10 +19,16 @@ pub struct RigRequestContext {
 pub fn prepare_rig_context(
     messages: &[UiMessage],
     prompts_dir: &str,
+    enabled_tools: &[&str],
 ) -> Result<(RigRequestContext, RigTemplates), String> {
     let templates = RigTemplates::load(prompts_dir)?;
-    let tools = templates.tool_defs()?;
-    let preamble = templates.render_preamble(&extract_system(messages), &tools)?;
+    let tools = filter_tools(templates.tool_defs()?, enabled_tools);
+    let base_system = augment_system(&extract_system(messages));
+    let preamble = if tools.is_empty() {
+        base_system
+    } else {
+        templates.render_preamble(&base_system, &tools)?
+    };
     let (history, prompt) = build_history_and_prompt(messages, &templates)?;
     let tool_defs = tools
         .iter()
@@ -83,6 +89,29 @@ fn extract_system(messages: &[UiMessage]) -> String {
         .find(|m| m.role == crate::types::ROLE_SYSTEM)
         .map(|m| m.content.clone())
         .unwrap_or_default()
+}
+
+fn filter_tools(
+    tools: Vec<crate::llm::templates::ToolSchema>,
+    enabled: &[&str],
+) -> Vec<crate::llm::templates::ToolSchema> {
+    if enabled.is_empty() {
+        return Vec::new();
+    }
+    tools
+        .into_iter()
+        .filter(|tool| enabled.iter().any(|name| *name == tool.name))
+        .collect()
+}
+
+fn augment_system(base: &str) -> String {
+    let mut out = String::new();
+    if !base.trim().is_empty() {
+        out.push_str(base.trim());
+        out.push('\n');
+    }
+    out.push_str("注意：数学公式仅支持 $...$ 或 $$...$$，不支持 ```latex``` 代码块。");
+    out
 }
 
 fn build_history_and_prompt(

@@ -5,9 +5,10 @@ use crate::session::{SessionLocation, load_session, save_session};
 use crate::system_prompts::load_prompts;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{
-    PERF_QUESTIONS, PreheatResult, PreheatTask, TabState, collect_session_tabs, start_tab_request,
+    PERF_QUESTIONS, PreheatResult, PreheatTask, TabState, collect_session_tabs,
 };
 use crate::ui::runtime_loop::run_loop;
+use crate::ui::runtime_requests::start_tab_request;
 use crate::ui::runtime_session::{
     fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
 };
@@ -97,6 +98,9 @@ pub fn run(
                 args.show_reasoning,
                 &tx,
                 i,
+                args.enable_web_search,
+                args.enable_code_exec,
+                args.log_requests.clone(),
             );
         }
     }
@@ -114,6 +118,9 @@ pub fn run(
                 args.show_reasoning,
                 &tx,
                 tab_idx,
+                args.enable_web_search,
+                args.enable_code_exec,
+                args.log_requests.clone(),
             );
         }
     }
