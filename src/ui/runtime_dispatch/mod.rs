@@ -66,6 +66,7 @@ pub(crate) fn start_pending_request(
         args.code_exec_enabled(),
         args.read_file_enabled(),
         args.read_code_enabled(),
+        args.modify_file_enabled(),
         args.log_requests.clone(),
         tab_state.app.log_session_id.clone(),
     );

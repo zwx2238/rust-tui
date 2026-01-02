@@ -21,6 +21,8 @@ pub enum PendingCommand {
     DenyCodeExec,
     ExitCodeExec,
     StopCodeExec,
+    ApplyFilePatch,
+    CancelFilePatch,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -88,6 +90,9 @@ pub struct App {
     pub code_exec_reason_input: TextArea<'static>,
     pub code_exec_container_id: Option<String>,
     pub code_exec_run_id: Option<String>,
+    pub pending_file_patch: Option<PendingFilePatch>,
+    pub file_patch_scroll: usize,
+    pub file_patch_hover: Option<FilePatchHover>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
     pub total_tokens: u64,
@@ -124,6 +129,20 @@ pub enum CodeExecHover {
     Exit,
     ReasonConfirm,
     ReasonBack,
+}
+
+#[derive(Clone, Debug)]
+pub struct PendingFilePatch {
+    pub call_id: String,
+    pub path: Option<String>,
+    pub diff: String,
+    pub preview: String,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum FilePatchHover {
+    Apply,
+    Cancel,
 }
 
 impl App {
@@ -178,6 +197,9 @@ impl App {
             code_exec_reason_input: TextArea::default(),
             code_exec_container_id: None,
             code_exec_run_id: None,
+            pending_file_patch: None,
+            file_patch_scroll: 0,
+            file_patch_hover: None,
             total_prompt_tokens: 0,
             total_completion_tokens: 0,
             total_tokens: 0,

@@ -5,6 +5,7 @@ pub(crate) enum OverlayKind {
     Model,
     Prompt,
     CodeExec,
+    FilePatch,
     Help,
 }
 

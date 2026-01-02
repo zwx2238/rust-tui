@@ -145,6 +145,21 @@ pub fn sync_code_exec_overlay(
     }
 }
 
+pub fn sync_file_patch_overlay(
+    tabs: &mut [TabState],
+    active_tab: usize,
+    view: &mut ViewState,
+) {
+    if let Some(tab_state) = tabs.get_mut(active_tab) {
+        let has_pending = tab_state.app.pending_file_patch.is_some();
+        if has_pending && view.overlay.is_chat() {
+            view.overlay.open(OverlayKind::FilePatch);
+        } else if !has_pending && view.overlay.is(OverlayKind::FilePatch) {
+            view.overlay.close();
+        }
+    }
+}
+
 pub fn prepare_active_frame(
     tab_state: &mut TabState,
     theme: &RenderTheme,

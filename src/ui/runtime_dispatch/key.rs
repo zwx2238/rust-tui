@@ -64,6 +64,9 @@ pub(crate) fn handle_key_event_loop(
     if view.overlay.is(OverlayKind::CodeExec) {
         handle_code_exec_overlay_key(ctx, view);
     }
+    if view.overlay.is(OverlayKind::FilePatch) {
+        handle_file_patch_overlay_key(ctx, view);
+    }
     let action = handle_view_key(view, key, ctx.tabs.len(), jump_rows.len(), *ctx.active_tab);
     if matches!(action, ViewAction::CycleModel) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
@@ -114,6 +117,14 @@ pub(crate) fn handle_key_event_loop(
 fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
     if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
         if tab_state.app.pending_code_exec.is_none() {
+            view.overlay.close();
+        }
+    }
+}
+
+fn handle_file_patch_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+        if tab_state.app.pending_file_patch.is_none() {
             view.overlay.close();
         }
     }

@@ -1,5 +1,7 @@
 use crate::ui::code_exec_popup_layout::code_exec_popup_layout;
 use crate::ui::code_exec_popup_text::{code_max_scroll, stderr_max_scroll, stdout_max_scroll};
+use crate::ui::file_patch_popup_layout::file_patch_popup_layout;
+use crate::ui::file_patch_popup_text::patch_max_scroll;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
@@ -216,6 +218,67 @@ pub(crate) fn handle_mouse_event_loop(
         if matches!(m.kind, MouseEventKind::Moved) {
             if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
                 tab_state.app.code_exec_hover = None;
+            }
+        }
+    }
+    if view.overlay.is(crate::ui::overlay::OverlayKind::FilePatch) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if let Some(pending) = tab_state.app.pending_file_patch.clone() {
+                let popup = file_patch_popup_layout(layout.size);
+                let in_popup = point_in_rect(m.column, m.row, popup.popup);
+                if matches!(m.kind, MouseEventKind::Moved) {
+                    tab_state.app.file_patch_hover = if point_in_rect(m.column, m.row, popup.apply_btn) {
+                        Some(crate::ui::state::FilePatchHover::Apply)
+                    } else if point_in_rect(m.column, m.row, popup.cancel_btn) {
+                        Some(crate::ui::state::FilePatchHover::Cancel)
+                    } else {
+                        None
+                    };
+                    return;
+                }
+                if in_popup && matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) {
+                    let delta = match m.kind {
+                        MouseEventKind::ScrollUp => -SCROLL_STEP_I32,
+                        MouseEventKind::ScrollDown => SCROLL_STEP_I32,
+                        _ => 0,
+                    };
+                    if point_in_rect(m.column, m.row, popup.preview_area) {
+                        let max_scroll = patch_max_scroll(
+                            &pending.preview,
+                            popup.preview_area.width,
+                            popup.preview_area.height,
+                            ctx.theme,
+                        );
+                        let next = (tab_state.app.file_patch_scroll as i32 + delta)
+                            .max(0) as usize;
+                        tab_state.app.file_patch_scroll = next.min(max_scroll);
+                        return;
+                    }
+                }
+                if in_popup && matches!(m.kind, MouseEventKind::Down(_)) {
+                    if point_in_rect(m.column, m.row, popup.apply_btn) {
+                        tab_state.app.pending_command =
+                            Some(crate::ui::state::PendingCommand::ApplyFilePatch);
+                        tab_state.app.file_patch_hover = None;
+                        view.overlay.close();
+                        return;
+                    }
+                    if point_in_rect(m.column, m.row, popup.cancel_btn) {
+                        tab_state.app.pending_command =
+                            Some(crate::ui::state::PendingCommand::CancelFilePatch);
+                        tab_state.app.file_patch_hover = None;
+                        view.overlay.close();
+                        return;
+                    }
+                }
+            }
+        }
+        if matches!(m.kind, MouseEventKind::Down(_)) {
+            view.overlay.close();
+        }
+        if matches!(m.kind, MouseEventKind::Moved) {
+            if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+                tab_state.app.file_patch_hover = None;
             }
         }
     }

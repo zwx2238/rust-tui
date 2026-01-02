@@ -33,6 +33,7 @@ pub fn request_llm_stream(
     enable_code_exec: bool,
     enable_read_file: bool,
     enable_read_code: bool,
+    enable_modify_file: bool,
     log_dir: Option<String>,
     log_session_id: String,
     message_index: usize,
@@ -53,6 +54,7 @@ pub fn request_llm_stream(
         enable_code_exec,
         enable_read_file,
         enable_read_code,
+        enable_modify_file,
     );
     let rt = Runtime::new();
     if rt.is_err() {
@@ -161,6 +163,7 @@ fn build_enabled_tools(
     enable_code_exec: bool,
     enable_read_file: bool,
     enable_read_code: bool,
+    enable_modify_file: bool,
 ) -> Vec<&'static str> {
     let mut out = Vec::new();
     if enable_web_search {
@@ -174,6 +177,9 @@ fn build_enabled_tools(
     }
     if enable_read_code {
         out.push("read_code");
+    }
+    if enable_modify_file {
+        out.push("modify_file");
     }
     out
 }

@@ -14,7 +14,7 @@ use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_tick::{
     ActiveFrameData, build_exec_header_note, collect_stream_events, drain_preheat_results,
     finalize_done_tabs, preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay,
-    update_code_exec_results, update_tab_widths,
+    sync_file_patch_overlay, update_code_exec_results, update_tab_widths,
 };
 use crate::ui::tool_service::ToolService;
 use crate::ui::runtime_view::ViewState;
@@ -66,6 +66,7 @@ pub(crate) fn run_loop(
         update_tab_widths(tabs, msg_width);
         preheat_inactive_tabs(tabs, *active_tab, theme, msg_width, preheat_tx);
         sync_code_exec_overlay(tabs, *active_tab, &mut view);
+        sync_file_patch_overlay(tabs, *active_tab, &mut view);
         let ActiveFrameData {
             text,
             total_lines,

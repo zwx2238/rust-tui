@@ -92,6 +92,38 @@ impl<'a> ToolService<'a> {
                 }
                 continue;
             }
+            if call.function.name == "modify_file" {
+                if !self.args.modify_file_enabled() {
+                    let idx = tab_state.app.messages.len();
+                    tab_state.app.messages.push(Message {
+                        role: crate::types::ROLE_TOOL.to_string(),
+                        content: r#"{"error":"modify_file 未启用"}"#.to_string(),
+                        tool_call_id: Some(call.id.clone()),
+                        tool_calls: None,
+                    });
+                    tab_state.app.dirty_indices.push(idx);
+                    any_results = true;
+                    continue;
+                }
+                match crate::ui::runtime_file_patch::handle_file_patch_request(tab_state, call) {
+                    Ok(()) => {
+                        needs_approval = true;
+                        any_results = true;
+                    }
+                    Err(err) => {
+                        let idx = tab_state.app.messages.len();
+                        tab_state.app.messages.push(Message {
+                            role: crate::types::ROLE_TOOL.to_string(),
+                            content: format!(r#"{{"error":"{err}"}}"#),
+                            tool_call_id: Some(call.id.clone()),
+                            tool_calls: None,
+                        });
+                        tab_state.app.dirty_indices.push(idx);
+                        any_results = true;
+                    }
+                }
+                continue;
+            }
             if call.function.name == "code_exec" {
                 if !self.args.code_exec_enabled() {
                     let idx = tab_state.app.messages.len();
@@ -154,6 +186,7 @@ impl<'a> ToolService<'a> {
             self.args.code_exec_enabled(),
             self.args.read_file_enabled(),
             self.args.read_code_enabled(),
+            self.args.modify_file_enabled(),
             self.args.log_requests.clone(),
             tab_state.app.log_session_id.clone(),
         );

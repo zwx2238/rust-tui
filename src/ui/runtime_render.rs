@@ -3,6 +3,7 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_render::{
     build_jump_overlay_rows, render_chat_view, render_jump_overlay, render_model_overlay,
     render_prompt_overlay, render_summary_overlay, render_code_exec_overlay, render_help_overlay,
+    render_file_patch_overlay,
 };
 use crate::ui::shortcuts::all_shortcuts;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
@@ -47,6 +48,9 @@ pub(crate) fn render_view(
         }
         Some(OverlayKind::CodeExec) => {
             render_code_exec_overlay(ctx)?;
+        }
+        Some(OverlayKind::FilePatch) => {
+            render_file_patch_overlay(ctx)?;
         }
         Some(OverlayKind::Help) => {
             render_help_overlay(ctx, view)?;

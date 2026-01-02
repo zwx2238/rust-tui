@@ -152,7 +152,7 @@ pub(crate) fn handle_view_key(
         Some(OverlayKind::Jump) => handle_jump_key(view, key, jump_len),
         Some(OverlayKind::Model) => handle_model_key(view, key),
         Some(OverlayKind::Prompt) => handle_prompt_key(view, key),
-        Some(OverlayKind::CodeExec) => ViewAction::None,
+        Some(OverlayKind::CodeExec | OverlayKind::FilePatch) => ViewAction::None,
         Some(OverlayKind::Help) => handle_help_key(view, key),
     }
 }
@@ -205,7 +205,7 @@ pub(crate) fn handle_view_mouse(
                 return ViewAction::None;
             }
         }
-        Some(OverlayKind::CodeExec) => {}
+        Some(OverlayKind::CodeExec | OverlayKind::FilePatch) => {}
         None => {}
     }
     ViewAction::None

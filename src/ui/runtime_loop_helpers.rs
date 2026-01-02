@@ -4,6 +4,7 @@ use crate::ui::runtime_code_exec::{
     handle_code_exec_approve, handle_code_exec_deny, handle_code_exec_exit,
     handle_code_exec_stop,
 };
+use crate::ui::runtime_file_patch::{handle_file_patch_apply, handle_file_patch_cancel};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::net::UiEvent;
 use crate::ui::state::PendingCommand;
@@ -71,6 +72,16 @@ pub(crate) fn handle_pending_command(
         PendingCommand::StopCodeExec => {
             if let Some(tab_state) = tabs.get_mut(active_tab) {
                 handle_code_exec_stop(tab_state);
+            }
+        }
+        PendingCommand::ApplyFilePatch => {
+            if let Some(tab_state) = tabs.get_mut(active_tab) {
+                handle_file_patch_apply(tab_state, active_tab, registry, args, tx);
+            }
+        }
+        PendingCommand::CancelFilePatch => {
+            if let Some(tab_state) = tabs.get_mut(active_tab) {
+                handle_file_patch_cancel(tab_state, active_tab, registry, args, tx);
             }
         }
     }

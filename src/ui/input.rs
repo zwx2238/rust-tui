@@ -5,7 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::TextArea;
 
 pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
-    if app.pending_code_exec.is_some() {
+    if app.pending_code_exec.is_some() || app.pending_file_patch.is_some() {
         return Ok(false);
     }
     if key.code == KeyCode::Esc {

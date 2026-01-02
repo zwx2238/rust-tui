@@ -128,7 +128,9 @@ fn draw_base(
         total_lines,
         app.chat_selection,
     );
-    let input_disabled = app.busy || app.pending_code_exec.is_some();
+    let input_disabled = app.busy
+        || app.pending_code_exec.is_some()
+        || app.pending_file_patch.is_some();
     crate::ui::draw_input::draw_input(
         f,
         input_area,

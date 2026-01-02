@@ -21,6 +21,7 @@ pub(crate) fn start_tab_request(
     enable_code_exec: bool,
     enable_read_file: bool,
     enable_read_code: bool,
+    enable_modify_file: bool,
     log_requests: Option<String>,
     log_session_id: String,
 ) {
@@ -94,6 +95,7 @@ pub(crate) fn start_tab_request(
             enable_code_exec,
             enable_read_file,
             enable_read_code,
+            enable_modify_file,
             log_requests,
             log_session_id,
             idx,
@@ -117,6 +119,7 @@ pub(crate) fn start_followup_request(
     enable_code_exec: bool,
     enable_read_file: bool,
     enable_read_code: bool,
+    enable_modify_file: bool,
     log_requests: Option<String>,
     log_session_id: String,
 ) {
@@ -173,6 +176,7 @@ pub(crate) fn start_followup_request(
             enable_code_exec,
             enable_read_file,
             enable_read_code,
+            enable_modify_file,
             log_requests,
             log_session_id,
             idx,

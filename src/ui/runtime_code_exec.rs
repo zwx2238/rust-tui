@@ -99,6 +99,7 @@ pub(crate) fn handle_code_exec_exit(
         args.code_exec_enabled(),
         args.read_file_enabled(),
         args.read_code_enabled(),
+        args.modify_file_enabled(),
         args.log_requests.clone(),
         tab_state.app.log_session_id.clone(),
     );
@@ -247,6 +248,7 @@ pub(crate) fn handle_code_exec_deny(
         args.code_exec_enabled(),
         args.read_file_enabled(),
         args.read_code_enabled(),
+        args.modify_file_enabled(),
         args.log_requests.clone(),
         tab_state.app.log_session_id.clone(),
     );

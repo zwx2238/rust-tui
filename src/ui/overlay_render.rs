@@ -2,6 +2,8 @@ use crate::ui::draw::{redraw, redraw_with_overlay};
 use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
 use crate::ui::code_exec_popup::draw_code_exec_popup;
 use crate::ui::code_exec_popup_text::{code_max_scroll, stdout_max_scroll, stderr_max_scroll};
+use crate::ui::file_patch_popup::draw_file_patch_popup;
+use crate::ui::file_patch_popup_text::patch_max_scroll;
 use crate::ui::model_popup::draw_model_popup;
 use crate::ui::prompt_popup::draw_prompt_popup;
 use crate::ui::shortcut_help::draw_shortcut_help;
@@ -280,6 +282,56 @@ pub(crate) fn render_code_exec_overlay(
                 ctx.header_note,
             )?;
             tab_state.app.code_exec_reason_input = reason_input;
+        } else {
+            render_chat_view(ctx)?;
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn render_file_patch_overlay(
+    ctx: &mut RenderContext<'_>,
+) -> Result<(), Box<dyn Error>> {
+    let size = ctx.terminal.size()?;
+    let full = Rect::new(0, 0, size.width, size.height);
+    let tabs_len = ctx.tabs.len();
+    if let Some(tab_state) = ctx.tabs.get_mut(ctx.active_tab) {
+        let pending = tab_state.app.pending_file_patch.clone();
+        if let Some(pending) = pending {
+            let layout = crate::ui::file_patch_popup_layout::file_patch_popup_layout(full);
+            let max_scroll = patch_max_scroll(
+                &pending.preview,
+                layout.preview_area.width,
+                layout.preview_area.height,
+                ctx.theme,
+            );
+            if tab_state.app.file_patch_scroll > max_scroll {
+                tab_state.app.file_patch_scroll = max_scroll;
+            }
+            let scroll = tab_state.app.file_patch_scroll;
+            let hover = tab_state.app.file_patch_hover;
+            redraw_with_overlay(
+                ctx.terminal,
+                &mut tab_state.app,
+                ctx.theme,
+                ctx.text,
+                ctx.total_lines,
+                tabs_len,
+                ctx.active_tab,
+                ctx.startup_text,
+                ctx.input_height,
+                |f| {
+                    draw_file_patch_popup(
+                        f,
+                        f.area(),
+                        &pending,
+                        scroll,
+                        hover,
+                        ctx.theme,
+                    );
+                },
+                ctx.header_note,
+            )?;
         } else {
             render_chat_view(ctx)?;
         }
