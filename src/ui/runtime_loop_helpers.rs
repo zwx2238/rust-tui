@@ -305,6 +305,7 @@ fn handle_code_exec_approve(
     }
     let live = std::sync::Arc::new(std::sync::Mutex::new(CodeExecLive {
         started_at: std::time::Instant::now(),
+        finished_at: None,
         stdout: String::new(),
         stderr: String::new(),
         exit_code: None,
@@ -326,6 +327,7 @@ fn handle_code_exec_approve(
                     live.stderr.push_str(&format!("{err}\n"));
                     live.exit_code = Some(-1);
                     live.done = true;
+                    live.finished_at = Some(std::time::Instant::now());
                 }
             }
         });
@@ -333,6 +335,7 @@ fn handle_code_exec_approve(
         live.stderr = format!("不支持的语言：{}", pending.language);
         live.exit_code = Some(-1);
         live.done = true;
+        live.finished_at = Some(std::time::Instant::now());
     }
 }
 

@@ -7,17 +7,22 @@ use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_vis
 use crate::ui::notice::push_notice;
 use crate::ui::runtime_helpers::{TabState, start_tab_request};
 use crate::ui::state::Focus;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
 mod key;
 mod mouse;
+mod nav;
+mod tabs;
 
 const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新开 tab。";
 
 pub(crate) use key::handle_key_event_loop;
 pub(crate) use mouse::handle_mouse_event_loop;
+pub(crate) use nav::handle_nav_key;
+pub(crate) use tabs::{
+    close_all_tabs, close_other_tabs, close_tab, new_tab, next_tab, prev_tab,
+};
 
 pub(crate) struct DispatchContext<'a> {
     pub(crate) tabs: &'a mut Vec<TabState>,
@@ -121,74 +126,10 @@ fn overlay_counts(ctx: &DispatchContext<'_>) -> OverlayRowCounts {
         jump: 0,
         models: ctx.registry.models.len(),
         prompts: ctx.prompt_registry.prompts.len(),
+        help: crate::ui::shortcuts::all_shortcuts().len(),
     }
 }
 
-pub(crate) fn handle_nav_key(app: &mut crate::ui::state::App, key: KeyEvent) -> bool {
-    if !app.nav_mode {
-        if app.focus == Focus::Chat
-            && key.modifiers == KeyModifiers::NONE
-            && key.code == KeyCode::Char('g')
-        {
-            app.nav_mode = true;
-            app.focus = Focus::Chat;
-            app.follow = false;
-            return true;
-        }
-        return false;
-    }
-    match key.code {
-        KeyCode::Esc | KeyCode::Char('g') => {
-            app.nav_mode = false;
-            true
-        }
-        KeyCode::Char('j') | KeyCode::Char('n') => {
-            nav_next(app);
-            true
-        }
-        KeyCode::Char('k') | KeyCode::Char('p') => {
-            nav_prev(app);
-            true
-        }
-        _ => true,
-    }
-}
-
-fn nav_next(app: &mut crate::ui::state::App) {
-    if app.message_layouts.is_empty() {
-        return;
-    }
-    let current = app.scroll as usize;
-    let mut target = None;
-    for layout in &app.message_layouts {
-        if layout.label_line > current {
-            target = Some(layout.label_line);
-            break;
-        }
-    }
-    if let Some(line) = target {
-        app.scroll = line.min(u16::MAX as usize) as u16;
-        app.follow = false;
-    }
-}
-
-fn nav_prev(app: &mut crate::ui::state::App) {
-    if app.message_layouts.is_empty() {
-        return;
-    }
-    let current = app.scroll as usize;
-    let mut target = None;
-    for layout in app.message_layouts.iter().rev() {
-        if layout.label_line < current {
-            target = Some(layout.label_line);
-            break;
-        }
-    }
-    if let Some(line) = target {
-        app.scroll = line.min(u16::MAX as usize) as u16;
-        app.follow = false;
-    }
-}
 
 pub(crate) fn apply_model_selection(ctx: &mut DispatchContext<'_>, idx: usize) {
     with_active_tab(ctx, |tab_state| {
@@ -216,47 +157,6 @@ pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
     push_notice(&mut tab_state.app, PROMPT_LOCKED_MSG);
 }
 
-pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
-    let mut tab = TabState::new(
-        ctx.prompt_registry
-            .get(&ctx.prompt_registry.default_key)
-            .map(|p| p.content.as_str())
-            .unwrap_or(&ctx.args.system),
-        ctx.args.perf,
-        &ctx.registry.default_key,
-        &ctx.prompt_registry.default_key,
-    );
-    if let Some(active) = ctx.tabs.get(*ctx.active_tab) {
-        tab.app.prompts_dir = active.app.prompts_dir.clone();
-    }
-    ctx.tabs.push(tab);
-    *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
-}
-
-pub(crate) fn close_tab(ctx: &mut DispatchContext<'_>) {
-    if ctx.tabs.len() > 1 {
-        ctx.tabs.remove(*ctx.active_tab);
-        if *ctx.active_tab >= ctx.tabs.len() {
-            *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
-        }
-    }
-}
-
-pub(crate) fn prev_tab(ctx: &mut DispatchContext<'_>) {
-    if !ctx.tabs.is_empty() {
-        *ctx.active_tab = if *ctx.active_tab == 0 {
-            ctx.tabs.len().saturating_sub(1)
-        } else {
-            *ctx.active_tab - 1
-        };
-    }
-}
-
-pub(crate) fn next_tab(ctx: &mut DispatchContext<'_>) {
-    if !ctx.tabs.is_empty() {
-        *ctx.active_tab = (*ctx.active_tab + 1) % ctx.tabs.len();
-    }
-}
 
 pub(crate) fn fork_message_into_new_tab(
     ctx: &mut DispatchContext<'_>,
@@ -330,6 +230,8 @@ pub(crate) fn fork_message_by_index(
     new_tab.app.messages = history;
     new_tab.app.model_key = model_key;
     new_tab.app.prompt_key = prompt_key;
+    new_tab.app.prompts_dir = tab_state.app.prompts_dir.clone();
+    new_tab.app.tavily_api_key = tab_state.app.tavily_api_key.clone();
     new_tab.app.dirty_indices = (0..new_tab.app.messages.len()).collect();
     if !content.is_empty() {
         new_tab.app.input.insert_str(content);

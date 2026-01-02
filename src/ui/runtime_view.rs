@@ -2,8 +2,9 @@ use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 
 use crate::ui::overlay::{OverlayKind, OverlayState};
 use crate::ui::selection_state::SelectionState;
-
-const JUMP_PAGE_STEP: usize = 5;
+use crate::ui::runtime_view_handlers::{
+    handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key, handle_summary_key,
+};
 
 pub(crate) struct ViewState {
     pub(crate) overlay: OverlayState,
@@ -11,6 +12,7 @@ pub(crate) struct ViewState {
     pub(crate) jump: SelectionState,
     pub(crate) model: SelectionState,
     pub(crate) prompt: SelectionState,
+    pub(crate) help: SelectionState,
 }
 
 pub(crate) enum ViewAction {
@@ -59,6 +61,7 @@ impl ViewState {
             jump: SelectionState::default(),
             model: SelectionState::default(),
             prompt: SelectionState::default(),
+            help: SelectionState::default(),
         }
     }
 
@@ -80,6 +83,11 @@ impl ViewState {
         self.prompt.scroll = 0;
         self.overlay.open(OverlayKind::Prompt);
     }
+
+    fn open_help(&mut self) {
+        self.help.scroll = 0;
+        self.overlay.open(OverlayKind::Help);
+    }
 }
 
 pub(crate) fn handle_view_key(
@@ -94,6 +102,14 @@ pub(crate) fn handle_view_key(
     }
     if key.code == KeyCode::F(4) {
         view.overlay.toggle(OverlayKind::Model);
+        return ViewAction::None;
+    }
+    if key.code == KeyCode::F(10) {
+        if view.overlay.is(OverlayKind::Help) {
+            view.overlay.close();
+        } else {
+            view.open_help();
+        }
         return ViewAction::None;
     }
 
@@ -132,6 +148,7 @@ pub(crate) fn handle_view_key(
         Some(OverlayKind::Model) => handle_model_key(view, key),
         Some(OverlayKind::Prompt) => handle_prompt_key(view, key),
         Some(OverlayKind::CodeExec) => ViewAction::None,
+        Some(OverlayKind::Help) => handle_help_key(view, key),
     }
 }
 
@@ -175,121 +192,16 @@ pub(crate) fn handle_view_mouse(
                 return ViewAction::SelectPrompt(row);
             }
         }
+        Some(OverlayKind::Help) => {
+            view.help.select(row);
+            view.help.ensure_visible(1);
+            if matches!(kind, MouseEventKind::Down(_)) {
+                view.overlay.close();
+                return ViewAction::None;
+            }
+        }
         Some(OverlayKind::CodeExec) => {}
         None => {}
     }
     ViewAction::None
-}
-
-fn handle_summary_key(view: &mut ViewState, key: KeyEvent, tabs_len: usize) -> ViewAction {
-    match key.code {
-        KeyCode::Esc => {
-            view.overlay.close();
-            ViewAction::None
-        }
-        KeyCode::Up => {
-            view.summary.move_up();
-            ViewAction::None
-        }
-        KeyCode::Down => {
-            view.summary.move_down();
-            ViewAction::None
-        }
-        KeyCode::Enter => {
-            if view.summary.selected < tabs_len {
-                let idx = view.summary.selected;
-                view.overlay.close();
-                ViewAction::SwitchTab(idx)
-            } else {
-                ViewAction::None
-            }
-        }
-        _ => ViewAction::None,
-    }
-}
-
-fn handle_jump_key(view: &mut ViewState, key: KeyEvent, jump_len: usize) -> ViewAction {
-    match key.code {
-        KeyCode::Esc => {
-            view.overlay.close();
-            ViewAction::None
-        }
-        KeyCode::Char('e') | KeyCode::Char('E') => {
-            if view.jump.selected < jump_len {
-                ViewAction::ForkMessage(view.jump.selected)
-            } else {
-                ViewAction::None
-            }
-        }
-        KeyCode::Up => {
-            view.jump.move_up();
-            ViewAction::None
-        }
-        KeyCode::Down => {
-            view.jump.move_down();
-            ViewAction::None
-        }
-        KeyCode::PageUp => {
-            view.jump.page_up(JUMP_PAGE_STEP);
-            ViewAction::None
-        }
-        KeyCode::PageDown => {
-            view.jump.page_down(JUMP_PAGE_STEP);
-            ViewAction::None
-        }
-        KeyCode::Enter => {
-            if view.jump.selected < jump_len {
-                let idx = view.jump.selected;
-                view.overlay.close();
-                ViewAction::JumpTo(idx)
-            } else {
-                ViewAction::None
-            }
-        }
-        _ => ViewAction::None,
-    }
-}
-
-fn handle_model_key(view: &mut ViewState, key: KeyEvent) -> ViewAction {
-    match key.code {
-        KeyCode::Esc => {
-            view.overlay.close();
-            ViewAction::None
-        }
-        KeyCode::Up => {
-            view.model.move_up();
-            ViewAction::None
-        }
-        KeyCode::Down => {
-            view.model.move_down();
-            ViewAction::None
-        }
-        KeyCode::Enter => {
-            view.overlay.close();
-            ViewAction::SelectModel(view.model.selected)
-        }
-        _ => ViewAction::None,
-    }
-}
-
-fn handle_prompt_key(view: &mut ViewState, key: KeyEvent) -> ViewAction {
-    match key.code {
-        KeyCode::Esc => {
-            view.overlay.close();
-            ViewAction::None
-        }
-        KeyCode::Up => {
-            view.prompt.move_up();
-            ViewAction::None
-        }
-        KeyCode::Down => {
-            view.prompt.move_down();
-            ViewAction::None
-        }
-        KeyCode::Enter => {
-            view.overlay.close();
-            ViewAction::SelectPrompt(view.prompt.selected)
-        }
-        _ => ViewAction::None,
-    }
 }

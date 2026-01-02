@@ -3,8 +3,9 @@ use crate::ui::jump::JumpRow;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_render::{
     build_jump_overlay_rows, render_chat_view, render_jump_overlay, render_model_overlay,
-    render_prompt_overlay, render_summary_overlay, render_code_exec_overlay,
+    render_prompt_overlay, render_summary_overlay, render_code_exec_overlay, render_help_overlay,
 };
+use crate::ui::shortcuts::all_shortcuts;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
@@ -43,6 +44,7 @@ pub(crate) fn render_view(
         jump: jump_rows.len(),
         models: models.len(),
         prompts: prompts.len(),
+        help: all_shortcuts().len(),
     };
     let _ = with_active_table_handle(view, areas, counts, |mut handle| {
         handle.clamp();
@@ -116,6 +118,19 @@ pub(crate) fn render_view(
                 total_lines,
                 startup_text,
                 input_height,
+            )?;
+        }
+        Some(OverlayKind::Help) => {
+            render_help_overlay(
+                terminal,
+                tabs,
+                active_tab,
+                theme,
+                text,
+                total_lines,
+                startup_text,
+                input_height,
+                view,
             )?;
         }
     }

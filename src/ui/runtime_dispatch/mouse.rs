@@ -24,6 +24,7 @@ fn overlay_counts(ctx: &DispatchContext<'_>, jump_rows: usize) -> OverlayRowCoun
         jump: jump_rows,
         models: ctx.registry.models.len(),
         prompts: ctx.prompt_registry.prompts.len(),
+        help: crate::ui::shortcuts::all_shortcuts().len(),
     }
 }
 
@@ -143,7 +144,7 @@ pub(crate) fn handle_mouse_event_loop(
                         .app
                         .code_exec_live
                         .as_ref()
-                        .and_then(|l| l.lock().ok().map(|l| l.done))
+                        .and_then(|l| l.lock().ok().map(|l| l.done || l.exit_code.is_some()))
                         .unwrap_or(false);
                     let running = tab_state.app.code_exec_live.is_some() && !finished;
                     if finished && point_in_rect(m.column, m.row, popup.exit_btn) {

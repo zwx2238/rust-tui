@@ -300,32 +300,20 @@ pub(crate) fn draw_code_exec_popup(
         f.render_stateful_widget(scrollbar, layout.stderr_scrollbar_area, &mut state);
     }
 
-    let approve_style = match hover {
-        Some(CodeExecHover::Approve) => {
+    let button_style = |target: CodeExecHover| match hover {
+        Some(h) if h == target => {
             Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
         }
         _ => base_style(theme),
     };
-    let deny_style = match hover {
-        Some(CodeExecHover::Deny) => {
-            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
-        }
-        _ => base_style(theme),
-    };
-    let exit_style = match hover {
-        Some(CodeExecHover::Exit) => {
-            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
-        }
-        _ => base_style(theme),
-    };
-    let stop_style = match hover {
-        Some(CodeExecHover::Stop) => {
-            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
-        }
-        _ => base_style(theme),
-    };
+    let approve_style = button_style(CodeExecHover::Approve);
+    let deny_style = button_style(CodeExecHover::Deny);
+    let exit_style = button_style(CodeExecHover::Exit);
+    let stop_style = button_style(CodeExecHover::Stop);
 
-    let finished = live.map(|l| l.done).unwrap_or(false);
+    let finished = live
+        .map(|l| l.done || l.exit_code.is_some())
+        .unwrap_or(false);
     let running = live.is_some() && !finished;
     if finished {
         let exit_block = Block::default().borders(Borders::ALL).style(exit_style);
@@ -464,9 +452,18 @@ fn stderr_to_markdown(stderr: &str) -> String {
 fn build_title(live: Option<&crate::ui::state::CodeExecLive>) -> String {
     match live {
         Some(live) => {
-            let elapsed = live.started_at.elapsed().as_secs_f32();
-            let status = if live.done { "已完成" } else { "执行中" };
-            format!("代码执行确认 · {} {:.1}s", status, elapsed)
+            let finished = live.done || live.exit_code.is_some();
+            if finished {
+                let finished_at = live.finished_at.unwrap_or_else(std::time::Instant::now);
+                let exec = finished_at
+                    .duration_since(live.started_at)
+                    .as_secs_f32();
+                let wait = finished_at.elapsed().as_secs_f32();
+                format!("代码执行确认 · 已完成 {:.1}s | 等待 {:.1}s", exec, wait)
+            } else {
+                let elapsed = live.started_at.elapsed().as_secs_f32();
+                format!("代码执行确认 · 执行中 {:.1}s", elapsed)
+            }
         }
         None => "代码执行确认 · 等待确认".to_string(),
     }

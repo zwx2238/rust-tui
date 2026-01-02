@@ -1,4 +1,4 @@
-use minijinja::{Environment, context};
+use minijinja::{Environment, Value, context};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -21,6 +21,9 @@ impl RigTemplates {
         }
         let mut env = Environment::new();
         env.set_loader(minijinja::path_loader(root.clone()));
+        env.add_filter("tojson", |value: Value| -> Result<String, minijinja::Error> {
+            Ok(value.to_string())
+        });
         Ok(Self { env, root })
     }
 

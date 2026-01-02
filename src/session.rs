@@ -39,19 +39,6 @@ pub struct SessionData {
     pub active_tab: usize,
 }
 
-#[derive(Serialize, Deserialize)]
-struct SessionV1 {
-    id: String,
-    messages: Vec<Message>,
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum SessionFile {
-    V2(SessionData),
-    V1(SessionV1),
-}
-
 pub struct LoadedSession {
     pub location: SessionLocation,
     pub data: SessionData,
@@ -82,19 +69,7 @@ fn resolve_session_path(
 pub fn load_session(input: &str) -> Result<LoadedSession, Box<dyn std::error::Error>> {
     let (path, custom_path) = resolve_session_path(input)?;
     let text = fs::read_to_string(&path)?;
-    let file: SessionFile = serde_json::from_str(&text)?;
-    let mut data = match file {
-        SessionFile::V2(data) => data,
-        SessionFile::V1(v1) => SessionData {
-            id: v1.id.clone(),
-            tabs: vec![SessionTab {
-                messages: v1.messages,
-                model_key: None,
-                prompt_key: None,
-            }],
-            active_tab: 0,
-        },
-    };
+    let mut data: SessionData = serde_json::from_str(&text)?;
     let id = if !data.id.trim().is_empty() {
         data.id.clone()
     } else if !custom_path {

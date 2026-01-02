@@ -95,6 +95,7 @@ pub struct PendingCodeExec {
 #[derive(Clone, Debug)]
 pub struct CodeExecLive {
     pub started_at: Instant,
+    pub finished_at: Option<Instant>,
     pub stdout: String,
     pub stderr: String,
     pub exit_code: Option<i32>,

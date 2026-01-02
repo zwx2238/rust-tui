@@ -3,6 +3,7 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table::{row_at, visible_rows};
 use crate::ui::prompt_popup::prompt_popup_area;
 use crate::ui::runtime_view::ViewState;
+use crate::ui::shortcut_help::help_popup_area;
 use crate::ui::scroll::max_scroll;
 use crate::ui::selection_state::SelectionState;
 use ratatui::layout::Rect;
@@ -19,6 +20,7 @@ pub(crate) struct OverlayRowCounts {
     pub(crate) jump: usize,
     pub(crate) models: usize,
     pub(crate) prompts: usize,
+    pub(crate) help: usize,
 }
 
 #[derive(Copy, Clone)]
@@ -86,6 +88,10 @@ pub(crate) fn overlay_table_metrics(
             area: areas.msg,
             rows: 0,
         },
+        OverlayKind::Help => OverlayTableMetrics {
+            area: help_popup_area(areas.full, counts.help),
+            rows: counts.help,
+        },
     }
 }
 
@@ -114,6 +120,7 @@ pub(crate) fn with_active_table_handle<R>(
         OverlayKind::Jump => &mut view.jump,
         OverlayKind::Model => &mut view.model,
         OverlayKind::Prompt => &mut view.prompt,
+        OverlayKind::Help => &mut view.help,
         OverlayKind::CodeExec => &mut view.summary,
     };
     Some(f(OverlayTableHandle { metrics, selection }))

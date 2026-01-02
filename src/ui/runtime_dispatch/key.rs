@@ -6,8 +6,8 @@ use crossterm::event::KeyEvent;
 
 use super::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
-    can_change_prompt, close_tab, cycle_model, new_tab, next_tab, prev_tab, push_prompt_locked,
-    sync_model_selection, sync_prompt_selection, handle_nav_key,
+    can_change_prompt, close_all_tabs, close_other_tabs, close_tab, cycle_model, handle_nav_key,
+    new_tab, next_tab, prev_tab, push_prompt_locked, sync_model_selection, sync_prompt_selection,
 };
 
 pub(crate) fn handle_key_event_loop(
@@ -17,6 +17,11 @@ pub(crate) fn handle_key_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+        && key.code == crossterm::event::KeyCode::Char('q')
+    {
+        return Ok(true);
+    }
     if handle_global_shortcuts(ctx, key) {
         return Ok(false);
     }
@@ -111,7 +116,17 @@ fn handle_global_shortcuts(ctx: &mut DispatchContext<'_>, key: KeyEvent) -> bool
         .modifiers
         .contains(crossterm::event::KeyModifiers::CONTROL)
     {
+        if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT)
+            && key.code == crossterm::event::KeyCode::Char('w')
+        {
+            close_all_tabs(ctx);
+            return true;
+        }
         match key.code {
+            crossterm::event::KeyCode::Char('o') => {
+                close_other_tabs(ctx);
+                return true;
+            }
             crossterm::event::KeyCode::Char('t') => {
                 new_tab(ctx);
                 return true;

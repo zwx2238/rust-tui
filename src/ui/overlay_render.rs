@@ -4,6 +4,7 @@ use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
 use crate::ui::code_exec_popup::{code_exec_max_scroll, draw_code_exec_popup};
 use crate::ui::model_popup::draw_model_popup;
 use crate::ui::prompt_popup::draw_prompt_popup;
+use crate::ui::shortcut_help::draw_shortcut_help;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::summary::redraw_summary;
@@ -190,6 +191,43 @@ pub(crate) fn render_prompt_overlay(
     Ok(())
 }
 
+pub(crate) fn render_help_overlay(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    tabs: &mut Vec<TabState>,
+    active_tab: usize,
+    theme: &RenderTheme,
+    text: &Text<'_>,
+    total_lines: usize,
+    startup_text: Option<&str>,
+    input_height: u16,
+    view: &mut ViewState,
+) -> Result<(), Box<dyn Error>> {
+    let tabs_len = tabs.len();
+    if let Some(tab_state) = tabs.get_mut(active_tab) {
+        redraw_with_overlay(
+            terminal,
+            &mut tab_state.app,
+            theme,
+            text,
+            total_lines,
+            tabs_len,
+            active_tab,
+            startup_text,
+            input_height,
+            |f| {
+                draw_shortcut_help(
+                    f,
+                    f.area(),
+                    view.help.selected,
+                    view.help.scroll,
+                    theme,
+                );
+            },
+        )?;
+    }
+    Ok(())
+}
+
 pub(crate) fn render_code_exec_overlay(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     tabs: &mut Vec<TabState>,
@@ -223,6 +261,7 @@ pub(crate) fn render_code_exec_overlay(
                 .and_then(|l| l.lock().ok().map(|l| {
                     crate::ui::state::CodeExecLive {
                         started_at: l.started_at,
+                        finished_at: l.finished_at,
                         stdout: l.stdout.clone(),
                         stderr: l.stderr.clone(),
                         exit_code: l.exit_code,

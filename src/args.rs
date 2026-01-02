@@ -27,6 +27,10 @@ pub struct Args {
     #[arg(long, alias = "replay")]
     pub resume: Option<String>,
 
+    /// replay 后自动分叉最后一个 tab 并重试最后一条用户消息
+    #[arg(long, default_value_t = false)]
+    pub replay_fork_last: bool,
+
     /// 填充历史消息用于性能手工测试
     #[arg(long, default_value_t = false)]
     pub perf: bool,
