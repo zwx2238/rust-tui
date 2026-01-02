@@ -44,5 +44,6 @@ mod state;
 mod summary;
 mod text_utils;
 mod tools;
+mod tool_service;
 
 pub use runtime::run;

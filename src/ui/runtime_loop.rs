@@ -15,9 +15,10 @@ use crate::ui::runtime_events::handle_paste_event;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_code_exec::build_code_exec_tool_output;
-use crate::ui::runtime_loop_helpers::{apply_tool_calls, handle_pending_command};
+use crate::ui::runtime_loop_helpers::handle_pending_command;
 use crate::ui::render_context::RenderContext;
 use crate::ui::runtime_render::render_view;
+use crate::ui::tool_service::ToolService;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
 use crate::ui::overlay::OverlayKind;
@@ -95,9 +96,10 @@ pub(crate) fn run_loop(
                 tab_state.apply_cache_shift(theme);
             }
         }
+        let tool_service = ToolService::new(registry, args, tx);
         for (tab, calls) in tool_queue {
             if let Some(tab_state) = tabs.get_mut(tab) {
-                apply_tool_calls(tab_state, tab, &calls, registry, args, tx);
+                tool_service.apply_tool_calls(tab_state, tab, &calls);
             }
         }
         for tab_state in tabs.iter_mut() {
