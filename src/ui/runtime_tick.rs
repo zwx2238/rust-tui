@@ -6,7 +6,7 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
-use crate::ui::runtime_code_exec::build_code_exec_tool_output;
+use crate::ui::runtime_code_exec_output::build_code_exec_tool_output;
 use crate::ui::state::PendingCommand;
 use ratatui::layout::Rect;
 use ratatui::text::Text;

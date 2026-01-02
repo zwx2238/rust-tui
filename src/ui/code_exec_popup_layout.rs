@@ -13,13 +13,14 @@ pub(crate) struct CodeExecPopupLayout {
     pub(crate) stdout_scrollbar_area: Rect,
     pub(crate) stderr_text_area: Rect,
     pub(crate) stderr_scrollbar_area: Rect,
+    pub(crate) reason_input_area: Rect,
     pub(crate) approve_btn: Rect,
     pub(crate) deny_btn: Rect,
     pub(crate) stop_btn: Rect,
     pub(crate) exit_btn: Rect,
 }
 
-pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
+pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecPopupLayout {
     let safe = Rect {
         x: area.x.saturating_add(OUTER_MARGIN),
         y: area.y.saturating_add(OUTER_MARGIN),
@@ -41,9 +42,28 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         width: popup.width.saturating_sub(2),
         height: popup.height.saturating_sub(2),
     };
-    let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(3)]).split(inner);
+    let chunks = if with_reason {
+        Layout::vertical([
+            Constraint::Min(6),
+            Constraint::Length(3),
+            Constraint::Length(3),
+        ])
+        .split(inner)
+    } else {
+        Layout::vertical([Constraint::Min(6), Constraint::Length(3)]).split(inner)
+    };
     let body = chunks[0];
-    let actions_area = chunks[1];
+    let reason_area = if with_reason {
+        chunks[1]
+    } else {
+        Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        }
+    };
+    let actions_area = if with_reason { chunks[2] } else { chunks[1] };
     let body_cols = Layout::horizontal([Constraint::Percentage(55), Constraint::Percentage(45)])
         .split(body);
     let code_text_area = Rect {
@@ -125,6 +145,7 @@ pub(crate) fn code_exec_popup_layout(area: Rect) -> CodeExecPopupLayout {
         stdout_scrollbar_area,
         stderr_text_area,
         stderr_scrollbar_area,
+        reason_input_area: reason_area,
         approve_btn,
         deny_btn,
         stop_btn,

@@ -72,13 +72,25 @@ pub(crate) fn handle_mouse_event_loop(
     if view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if let Some(pending) = tab_state.app.pending_code_exec.clone() {
-                let popup = code_exec_popup_layout(layout.size);
+                let popup = code_exec_popup_layout(
+                    layout.size,
+                    tab_state.app.code_exec_reason_target.is_some(),
+                );
                 let in_popup = point_in_rect(m.column, m.row, popup.popup);
                 if matches!(m.kind, MouseEventKind::Moved) {
+                    let reason_mode = tab_state.app.code_exec_reason_target.is_some();
                     tab_state.app.code_exec_hover = if point_in_rect(m.column, m.row, popup.approve_btn) {
-                        Some(crate::ui::state::CodeExecHover::Approve)
+                        Some(if reason_mode {
+                            crate::ui::state::CodeExecHover::ReasonConfirm
+                        } else {
+                            crate::ui::state::CodeExecHover::Approve
+                        })
                     } else if point_in_rect(m.column, m.row, popup.deny_btn) {
-                        Some(crate::ui::state::CodeExecHover::Deny)
+                        Some(if reason_mode {
+                            crate::ui::state::CodeExecHover::ReasonBack
+                        } else {
+                            crate::ui::state::CodeExecHover::Deny
+                        })
                     } else if point_in_rect(m.column, m.row, popup.stop_btn) {
                         Some(crate::ui::state::CodeExecHover::Stop)
                     } else if point_in_rect(m.column, m.row, popup.exit_btn) {
@@ -146,14 +158,39 @@ pub(crate) fn handle_mouse_event_loop(
                         .and_then(|l| l.lock().ok().map(|l| l.done || l.exit_code.is_some()))
                         .unwrap_or(false);
                     let running = tab_state.app.code_exec_live.is_some() && !finished;
+                    let reason_target = tab_state.app.code_exec_reason_target;
+                    if let Some(target) = reason_target {
+                        if point_in_rect(m.column, m.row, popup.approve_btn) {
+                            tab_state.app.pending_command = Some(match target {
+                                crate::ui::state::CodeExecReasonTarget::Deny => {
+                                    crate::ui::state::PendingCommand::DenyCodeExec
+                                }
+                                crate::ui::state::CodeExecReasonTarget::Stop => {
+                                    crate::ui::state::PendingCommand::StopCodeExec
+                                }
+                            });
+                            if matches!(target, crate::ui::state::CodeExecReasonTarget::Deny) {
+                                view.overlay.close();
+                            }
+                            return;
+                        }
+                        if point_in_rect(m.column, m.row, popup.deny_btn) {
+                            tab_state.app.code_exec_reason_target = None;
+                            tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
+                            tab_state.app.code_exec_hover = None;
+                            return;
+                        }
+                    }
                     if finished && point_in_rect(m.column, m.row, popup.exit_btn) {
                         tab_state.app.pending_command =
                             Some(crate::ui::state::PendingCommand::ExitCodeExec);
                         return;
                     }
                     if running && point_in_rect(m.column, m.row, popup.stop_btn) {
-                        tab_state.app.pending_command =
-                            Some(crate::ui::state::PendingCommand::StopCodeExec);
+                        tab_state.app.code_exec_reason_target =
+                            Some(crate::ui::state::CodeExecReasonTarget::Stop);
+                        tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
+                        tab_state.app.code_exec_hover = None;
                         return;
                     }
                     if point_in_rect(m.column, m.row, popup.approve_btn) {
@@ -164,10 +201,10 @@ pub(crate) fn handle_mouse_event_loop(
                         return;
                     }
                     if point_in_rect(m.column, m.row, popup.deny_btn) {
-                        tab_state.app.pending_command =
-                            Some(crate::ui::state::PendingCommand::DenyCodeExec);
+                        tab_state.app.code_exec_reason_target =
+                            Some(crate::ui::state::CodeExecReasonTarget::Deny);
+                        tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
                         tab_state.app.code_exec_hover = None;
-                        view.overlay.close();
                         return;
                     }
                 }

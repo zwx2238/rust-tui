@@ -196,7 +196,10 @@ pub(crate) fn render_code_exec_overlay(
     if let Some(tab_state) = ctx.tabs.get_mut(ctx.active_tab) {
         let pending = tab_state.app.pending_code_exec.clone();
         if let Some(pending) = pending {
-            let layout = crate::ui::code_exec_popup_layout::code_exec_popup_layout(full);
+            let layout = crate::ui::code_exec_popup_layout::code_exec_popup_layout(
+                full,
+                tab_state.app.code_exec_reason_target.is_some(),
+            );
             let max_scroll = code_max_scroll(
                 &pending.code,
                 layout.code_text_area.width,
@@ -246,6 +249,9 @@ pub(crate) fn render_code_exec_overlay(
             let stdout_scroll = tab_state.app.code_exec_stdout_scroll;
             let stderr_scroll = tab_state.app.code_exec_stderr_scroll;
             let hover = tab_state.app.code_exec_hover;
+            let reason_target = tab_state.app.code_exec_reason_target;
+            let mut reason_input =
+                std::mem::take(&mut tab_state.app.code_exec_reason_input);
             redraw_with_overlay(
                 ctx.terminal,
                 &mut tab_state.app,
@@ -265,12 +271,15 @@ pub(crate) fn render_code_exec_overlay(
                         stdout_scroll,
                         stderr_scroll,
                         hover,
+                        reason_target,
+                        &mut reason_input,
                         live_snapshot.as_ref(),
                         ctx.theme,
                     );
                 },
                 ctx.header_note,
             )?;
+            tab_state.app.code_exec_reason_input = reason_input;
         } else {
             render_chat_view(ctx)?;
         }

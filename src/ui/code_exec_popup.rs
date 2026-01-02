@@ -2,13 +2,14 @@ use crate::render::RenderTheme;
 use crate::ui::code_exec_popup_layout::{OUTER_MARGIN, code_exec_popup_layout};
 use crate::ui::code_exec_popup_text::{build_code_text, build_stdout_text, build_stderr_text};
 use crate::ui::draw::style::{base_fg, base_style, selection_bg};
-use crate::ui::state::{CodeExecHover, PendingCodeExec};
+use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCodeExec};
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{
     Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
 };
+use tui_textarea::TextArea;
 
 
 pub(crate) fn draw_code_exec_popup(
@@ -19,10 +20,12 @@ pub(crate) fn draw_code_exec_popup(
     stdout_scroll: usize,
     stderr_scroll: usize,
     hover: Option<CodeExecHover>,
+    reason_target: Option<CodeExecReasonTarget>,
+    reason_input: &mut TextArea<'_>,
     live: Option<&crate::ui::state::CodeExecLive>,
     theme: &RenderTheme,
 ) {
-    let layout = code_exec_popup_layout(area);
+    let layout = code_exec_popup_layout(area, reason_target.is_some());
     let max_x = area.x.saturating_add(area.width);
     let max_y = area.y.saturating_add(area.height);
     let mask_x = layout.popup.x.saturating_sub(OUTER_MARGIN).max(area.x);
@@ -131,6 +134,16 @@ pub(crate) fn draw_code_exec_popup(
         f.render_stateful_widget(scrollbar, layout.stderr_scrollbar_area, &mut state);
     }
 
+    if let Some(target) = reason_target {
+        draw_reason_input(
+            f,
+            layout.reason_input_area,
+            reason_input,
+            target,
+            theme,
+        );
+    }
+
     let button_style = |target: CodeExecHover| match hover {
         Some(h) if h == target => {
             Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
@@ -146,6 +159,31 @@ pub(crate) fn draw_code_exec_popup(
         .map(|l| l.done || l.exit_code.is_some())
         .unwrap_or(false);
     let running = live.is_some() && !finished;
+    if let Some(target) = reason_target {
+        let confirm_style = button_style(CodeExecHover::ReasonConfirm);
+        let back_style = button_style(CodeExecHover::ReasonBack);
+        let confirm_label = match target {
+            CodeExecReasonTarget::Deny => "确认取消",
+            CodeExecReasonTarget::Stop => "确认中止",
+        };
+        let confirm_block = Block::default().borders(Borders::ALL).style(confirm_style);
+        let back_block = Block::default().borders(Borders::ALL).style(back_style);
+        f.render_widget(confirm_block, layout.approve_btn);
+        f.render_widget(
+            Paragraph::new(Line::from(confirm_label))
+                .style(confirm_style)
+                .alignment(ratatui::layout::Alignment::Center),
+            layout.approve_btn,
+        );
+        f.render_widget(back_block, layout.deny_btn);
+        f.render_widget(
+            Paragraph::new(Line::from("返回"))
+                .style(back_style)
+                .alignment(ratatui::layout::Alignment::Center),
+            layout.deny_btn,
+        );
+        return;
+    }
     if finished {
         let exit_block = Block::default().borders(Borders::ALL).style(exit_style);
         f.render_widget(exit_block, layout.exit_btn);
@@ -204,4 +242,32 @@ fn build_title(live: Option<&crate::ui::state::CodeExecLive>) -> String {
         }
         None => "代码执行确认 · 等待确认".to_string(),
     }
+}
+
+fn draw_reason_input(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    input: &mut TextArea<'_>,
+    target: CodeExecReasonTarget,
+    theme: &RenderTheme,
+) {
+    if area.width == 0 || area.height == 0 {
+        return;
+    }
+    let title = match target {
+        CodeExecReasonTarget::Deny => "取消原因(可选)",
+        CodeExecReasonTarget::Stop => "中止原因(可选)",
+    };
+    let style = base_style(theme);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title_top(Line::from(title))
+        .style(style);
+    input.set_block(block);
+    input.set_style(style);
+    input.set_selection_style(Style::default().bg(selection_bg(theme.bg)));
+    input.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    input.set_placeholder_text("可填写原因，留空使用默认提示");
+    input.set_placeholder_style(Style::default().fg(base_fg(theme)));
+    f.render_widget(&*input, area);
 }

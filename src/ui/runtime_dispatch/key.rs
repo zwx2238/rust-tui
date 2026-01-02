@@ -2,7 +2,7 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::logic::stop_stream;
 use crate::ui::runtime_events::handle_key_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_key};
-use crossterm::event::KeyEvent;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
@@ -24,6 +24,14 @@ pub(crate) fn handle_key_event_loop(
     }
     if handle_global_shortcuts(ctx, key) {
         return Ok(false);
+    }
+    if view.overlay.is(OverlayKind::CodeExec) {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            if tab_state.app.code_exec_reason_target.is_some() {
+                handle_code_exec_reason_key(&mut tab_state.app, key);
+                return Ok(false);
+            }
+        }
     }
     if key.code == crossterm::event::KeyCode::F(6) {
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
@@ -107,6 +115,24 @@ fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewSt
     if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
         if tab_state.app.pending_code_exec.is_none() {
             view.overlay.close();
+        }
+    }
+}
+
+fn handle_code_exec_reason_key(app: &mut crate::ui::state::App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => {
+            app.code_exec_reason_target = None;
+            app.code_exec_reason_input = tui_textarea::TextArea::default();
+        }
+        _ => {
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.code == KeyCode::Char('u')
+            {
+                app.code_exec_reason_input = tui_textarea::TextArea::default();
+                return;
+            }
+            let _ = app.code_exec_reason_input.input(key);
         }
     }
 }

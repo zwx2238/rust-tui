@@ -23,6 +23,12 @@ pub enum PendingCommand {
     StopCodeExec,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CodeExecReasonTarget {
+    Deny,
+    Stop,
+}
+
 #[derive(Clone)]
 pub struct RequestHandle {
     pub id: u64,
@@ -78,6 +84,8 @@ pub struct App {
     pub code_exec_finished_output: Option<String>,
     pub code_exec_cancel: Option<Arc<AtomicBool>>,
     pub code_exec_hover: Option<CodeExecHover>,
+    pub code_exec_reason_target: Option<CodeExecReasonTarget>,
+    pub code_exec_reason_input: TextArea<'static>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
     pub total_tokens: u64,
@@ -93,6 +101,7 @@ pub struct PendingCodeExec {
     pub code: String,
     pub exec_code: Option<String>,
     pub requested_at: Instant,
+    pub stop_reason: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -111,6 +120,8 @@ pub enum CodeExecHover {
     Deny,
     Stop,
     Exit,
+    ReasonConfirm,
+    ReasonBack,
 }
 
 impl App {
@@ -161,6 +172,8 @@ impl App {
             code_exec_finished_output: None,
             code_exec_cancel: None,
             code_exec_hover: None,
+            code_exec_reason_target: None,
+            code_exec_reason_input: TextArea::default(),
             total_prompt_tokens: 0,
             total_completion_tokens: 0,
             total_tokens: 0,

@@ -3,8 +3,9 @@ use crate::ui::code_exec::run_python_in_docker_stream;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
-use crate::ui::runtime_code_exec_helpers::{filter_pip_output, inject_requirements};
-use crate::ui::state::{CodeExecLive, PendingCodeExec};
+use crate::ui::runtime_code_exec_helpers::inject_requirements;
+use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
+use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 use crate::ui::tools::parse_code_exec_args;
 use crate::types::Message;
 use std::sync::mpsc;
@@ -24,6 +25,7 @@ pub(crate) fn handle_code_exec_request(
         code: request.code,
         exec_code: None,
         requested_at: Instant::now(),
+        stop_reason: None,
     });
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
@@ -32,10 +34,17 @@ pub(crate) fn handle_code_exec_request(
     tab_state.app.code_exec_finished_output = None;
     tab_state.app.code_exec_cancel = None;
     tab_state.app.code_exec_hover = None;
+    tab_state.app.code_exec_reason_target = None;
+    tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
     Ok(())
 }
 
 pub(crate) fn handle_code_exec_stop(tab_state: &mut TabState) {
+    let reason = take_code_exec_reason(tab_state, CodeExecReasonTarget::Stop)
+        .unwrap_or_else(|| "用户中止".to_string());
+    if let Some(pending) = tab_state.app.pending_code_exec.as_mut() {
+        pending.stop_reason = Some(reason);
+    }
     if let Some(cancel) = &tab_state.app.code_exec_cancel {
         cancel.store(true, std::sync::atomic::Ordering::Relaxed);
     }
@@ -67,6 +76,8 @@ pub(crate) fn handle_code_exec_exit(
     tab_state.app.code_exec_result_ready = false;
     tab_state.app.code_exec_cancel = None;
     tab_state.app.code_exec_hover = None;
+    tab_state.app.code_exec_reason_target = None;
+    tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
     tab_state.app.code_exec_stderr_scroll = 0;
@@ -86,64 +97,6 @@ pub(crate) fn handle_code_exec_exit(
         args.log_requests.clone(),
         tab_state.app.log_session_id.clone(),
     );
-}
-
-pub(crate) fn build_code_exec_tool_output(
-    pending: &PendingCodeExec,
-    live: &CodeExecLive,
-) -> String {
-    let stdout_filtered = filter_pip_output(&live.stdout, live.exit_code);
-    let stdout_empty = stdout_filtered.trim().is_empty();
-    let stderr_empty = live.stderr.trim().is_empty();
-    let mut text = String::new();
-    text.push_str("[code_exec]\n");
-    text.push_str(&format!("language: {}\n", pending.language));
-    text.push_str("code:\n");
-    if pending.code.trim().is_empty() {
-        text.push_str("(空)\n");
-    } else {
-        text.push_str("```python\n");
-        text.push_str(&pending.code);
-        if !pending.code.ends_with('\n') {
-            text.push('\n');
-        }
-        text.push_str("```\n");
-    }
-    if let Some(code) = live.exit_code {
-        text.push_str(&format!("exit_code: {}\n", code));
-    } else {
-        text.push_str("exit_code: (执行中)\n");
-    }
-    text.push_str("stdout:\n");
-    if stdout_empty {
-        text.push_str("(空)\n");
-    } else {
-        text.push_str("```text\n");
-        text.push_str(&stdout_filtered);
-        if !stdout_filtered.ends_with('\n') {
-            text.push('\n');
-        }
-        text.push_str("```\n");
-    }
-    text.push_str("stderr:\n");
-    if stderr_empty {
-        text.push_str("(空)\n");
-    } else {
-        text.push_str("```text\n");
-        text.push_str(&live.stderr);
-        if !live.stderr.ends_with('\n') {
-            text.push('\n');
-        }
-        text.push_str("```\n");
-    }
-    if live.done
-        && live.exit_code == Some(0)
-        && stdout_empty
-        && stderr_empty
-    {
-        text.push_str("note: 程序正常执行但没有输出。\n");
-    }
-    text
 }
 
 pub(crate) fn handle_code_exec_approve(
@@ -179,6 +132,8 @@ pub(crate) fn handle_code_exec_approve(
     tab_state.app.code_exec_result_ready = false;
     tab_state.app.code_exec_finished_output = None;
     tab_state.app.code_exec_hover = None;
+    tab_state.app.code_exec_reason_target = None;
+    tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
     tab_state.app.code_exec_stderr_scroll = 0;
@@ -235,10 +190,12 @@ pub(crate) fn handle_code_exec_deny(
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
     tab_state.app.code_exec_stderr_scroll = 0;
+    let reason = take_code_exec_reason(tab_state, CodeExecReasonTarget::Deny)
+        .unwrap_or_else(|| "用户取消".to_string());
     let idx = tab_state.app.messages.len();
     tab_state.app.messages.push(Message {
         role: crate::types::ROLE_TOOL.to_string(),
-        content: r#"{"error":"用户拒绝执行"}"#.to_string(),
+        content: format!(r#"{{"error":"用户拒绝执行","reason":"{}"}}"#, escape_json_string(&reason)),
         tool_call_id: Some(pending.call_id),
         tool_calls: None,
     });
