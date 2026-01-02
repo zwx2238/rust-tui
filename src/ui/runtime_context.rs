@@ -8,7 +8,7 @@ pub(crate) fn make_dispatch_context<'a>(
     msg_width: usize,
     theme: &'a RenderTheme,
     registry: &'a crate::model_registry::ModelRegistry,
-    prompt_registry: &'a crate::system_prompts::PromptRegistry,
+    prompt_registry: &'a crate::llm::prompts::PromptRegistry,
     args: &'a Args,
 ) -> DispatchContext<'a> {
     DispatchContext {

@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 pub(crate) fn restore_tabs_from_session(
     session: &crate::session::SessionData,
     registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::system_prompts::PromptRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
 ) -> (Vec<TabState>, usize) {
     let mut tabs = Vec::new();
@@ -61,7 +61,7 @@ pub(crate) fn fork_last_tab_for_retry(
     tabs: &mut Vec<TabState>,
     active_tab: &mut usize,
     registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::system_prompts::PromptRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
 ) -> Option<(usize, String)> {
     let source_idx = (*active_tab).min(tabs.len().saturating_sub(1));

@@ -23,5 +23,5 @@ pub struct RenderContext<'a> {
     pub total_lines: usize,
     pub header_note: Option<&'a str>,
     pub models: &'a [crate::model_registry::ModelProfile],
-    pub prompts: &'a [crate::system_prompts::SystemPrompt],
+    pub prompts: &'a [crate::llm::prompts::SystemPrompt],
 }

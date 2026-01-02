@@ -4,7 +4,6 @@ mod model_registry;
 mod question_set;
 mod render;
 mod session;
-mod system_prompts;
 mod types;
 mod ui;
 mod llm;

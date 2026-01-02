@@ -1,0 +1,114 @@
+use crate::llm::templates::RigTemplates;
+use crate::types::Message as UiMessage;
+use rig::completion::Message;
+
+pub fn extract_system(messages: &[UiMessage]) -> String {
+    messages
+        .iter()
+        .find(|m| m.role == crate::types::ROLE_SYSTEM)
+        .map(|m| m.content.clone())
+        .unwrap_or_default()
+}
+
+pub fn augment_system(base: &str) -> String {
+    let mut out = String::new();
+    if !base.trim().is_empty() {
+        out.push_str(base.trim());
+    }
+    if !out.is_empty() {
+        out.push_str("\n\n");
+    }
+    out.push_str("提示：公式渲染使用 txc，支持 LaTeX 子集，复杂公式可能无法渲染。");
+    out
+}
+
+pub fn build_history_and_prompt(
+    messages: &[UiMessage],
+    templates: &RigTemplates,
+) -> Result<(Vec<Message>, String), String> {
+    let mut last_user_idx = None;
+    for (idx, msg) in messages.iter().enumerate() {
+        if msg.role == crate::types::ROLE_USER {
+            last_user_idx = Some(idx);
+        }
+    }
+    if let Some(idx) = last_user_idx {
+        let has_tool_after_user = messages
+            .iter()
+            .skip(idx + 1)
+            .any(|m| m.role == crate::types::ROLE_TOOL);
+        if has_tool_after_user {
+            let mut history = Vec::new();
+            for msg in messages {
+                if msg.role == crate::types::ROLE_SYSTEM {
+                    continue;
+                }
+                if msg.role == crate::types::ROLE_TOOL {
+                    let wrapped = templates.render_tool_result(
+                        "tool",
+                        &serde_json::Value::Null,
+                        &msg.content,
+                    )?;
+                    history.push(Message {
+                        role: "user".to_string(),
+                        content: wrapped,
+                    });
+                } else {
+                    history.push(Message {
+                        role: msg.role.clone(),
+                        content: msg.content.clone(),
+                    });
+                }
+            }
+            return Ok((history, templates.render_followup()?));
+        }
+    }
+    let mut history = Vec::new();
+    if let Some(idx) = last_user_idx {
+        for msg in &messages[..idx] {
+            if msg.role == crate::types::ROLE_SYSTEM {
+                continue;
+            }
+            if msg.role == crate::types::ROLE_TOOL {
+                let wrapped = templates.render_tool_result(
+                    "tool",
+                    &serde_json::Value::Null,
+                    &msg.content,
+                )?;
+                history.push(Message {
+                    role: "user".to_string(),
+                    content: wrapped,
+                });
+            } else {
+                history.push(Message {
+                    role: msg.role.clone(),
+                    content: msg.content.clone(),
+                });
+            }
+        }
+        Ok((history, messages[idx].content.clone()))
+    } else {
+        for msg in messages {
+            if msg.role == crate::types::ROLE_SYSTEM {
+                continue;
+            }
+            if msg.role == crate::types::ROLE_TOOL {
+                let wrapped = templates.render_tool_result(
+                    "tool",
+                    &serde_json::Value::Null,
+                    &msg.content,
+                )?;
+                history.push(Message {
+                    role: "user".to_string(),
+                    content: wrapped,
+                });
+            } else {
+                history.push(Message {
+                    role: msg.role.clone(),
+                    content: msg.content.clone(),
+                });
+            }
+        }
+        Ok((history, templates.render_followup()?))
+    }
+}

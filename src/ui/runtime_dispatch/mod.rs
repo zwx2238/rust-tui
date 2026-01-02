@@ -31,7 +31,7 @@ pub(crate) struct DispatchContext<'a> {
     pub(crate) msg_width: usize,
     pub(crate) theme: &'a RenderTheme,
     pub(crate) registry: &'a crate::model_registry::ModelRegistry,
-    pub(crate) prompt_registry: &'a crate::system_prompts::PromptRegistry,
+    pub(crate) prompt_registry: &'a crate::llm::prompts::PromptRegistry,
     pub(crate) args: &'a Args,
 }
 

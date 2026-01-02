@@ -37,7 +37,7 @@ pub(crate) fn run_loop(
     preheat_tx: &mpsc::Sender<PreheatTask>,
     preheat_res_rx: &mpsc::Receiver<PreheatResult>,
     registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::system_prompts::PromptRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
     theme: &RenderTheme,
     start_time: Instant,

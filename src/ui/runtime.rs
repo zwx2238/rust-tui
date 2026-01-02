@@ -2,7 +2,7 @@ use crate::args::Args;
 use crate::model_registry::build_model_registry;
 use crate::render::RenderTheme;
 use crate::session::{SessionLocation, load_session, save_session};
-use crate::system_prompts::load_prompts;
+use crate::llm::prompts::load_prompts;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, collect_session_tabs};
 use crate::ui::runtime_loop::run_loop;

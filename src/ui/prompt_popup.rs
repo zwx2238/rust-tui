@@ -1,5 +1,5 @@
 use crate::render::RenderTheme;
-use crate::system_prompts::SystemPrompt;
+use crate::llm::prompts::SystemPrompt;
 use crate::ui::overlay_table::{
     OverlayTable, centered_area, draw_overlay_table, header_style,
 };
