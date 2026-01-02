@@ -57,11 +57,21 @@ impl Args {
         self.resolve_enabled().1
     }
 
-    fn resolve_enabled(&self) -> (bool, bool) {
+    pub fn read_file_enabled(&self) -> bool {
+        self.resolve_enabled().2
+    }
+
+    pub fn read_code_enabled(&self) -> bool {
+        self.resolve_enabled().3
+    }
+
+    fn resolve_enabled(&self) -> (bool, bool, bool, bool) {
         let mut web_search = false;
         let mut code_exec = true;
+        let mut read_file = true;
+        let mut read_code = true;
         let Some(expr) = self.enable.as_deref() else {
-            return (web_search, code_exec);
+            return (web_search, code_exec, read_file, read_code);
         };
         for raw in expr.split(',') {
             let item = raw.trim();
@@ -76,9 +86,11 @@ impl Args {
             match name {
                 "web_search" => web_search = enable,
                 "code_exec" => code_exec = enable,
+                "read_file" => read_file = enable,
+                "read_code" => read_code = enable,
                 _ => {}
             }
         }
-        (web_search, code_exec)
+        (web_search, code_exec, read_file, read_code)
     }
 }

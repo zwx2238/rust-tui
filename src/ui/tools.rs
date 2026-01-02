@@ -15,6 +15,12 @@ pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str) -> ToolResult {
     if call.function.name == "web_search" {
         return run_web_search(&call.function.arguments, tavily_api_key);
     }
+    if call.function.name == "read_file" {
+        return run_read_file(&call.function.arguments, false);
+    }
+    if call.function.name == "read_code" {
+        return run_read_file(&call.function.arguments, true);
+    }
     ToolResult {
         content: format!("未知工具：{}", call.function.name),
         has_results: false,
@@ -134,6 +140,72 @@ fn tool_err(msg: String) -> ToolResult {
     ToolResult {
         content: msg,
         has_results: false,
+    }
+}
+
+fn run_read_file(args_json: &str, with_line_numbers: bool) -> ToolResult {
+    #[derive(serde::Deserialize)]
+    struct Args {
+        path: String,
+        start_line: Option<usize>,
+        end_line: Option<usize>,
+        max_bytes: Option<usize>,
+    }
+    let args: Args = match serde_json::from_str(args_json) {
+        Ok(val) => val,
+        Err(e) => return tool_err(format!("read_file 参数解析失败：{e}")),
+    };
+    let path = args.path.trim();
+    if path.is_empty() {
+        return tool_err("read_file 参数 path 不能为空".to_string());
+    }
+    let max_bytes = args.max_bytes.unwrap_or(200_000).clamp(1, 2_000_000);
+    let meta = match std::fs::metadata(path) {
+        Ok(m) => m,
+        Err(e) => return tool_err(format!("read_file 读取失败：{e}")),
+    };
+    if meta.is_file() && meta.len() as usize > max_bytes {
+        return tool_err(format!("read_file 文件过大：{} bytes", meta.len()));
+    }
+    let content = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) => return tool_err(format!("read_file 读取失败：{e}")),
+    };
+    let lines: Vec<&str> = content.lines().collect();
+    let total_lines = lines.len().max(1);
+    let start = args.start_line.unwrap_or(1).max(1);
+    let end = args.end_line.unwrap_or(total_lines).max(start);
+    let end = end.min(total_lines);
+    let slice = if lines.is_empty() {
+        Vec::new()
+    } else {
+        lines[start - 1..end].to_vec()
+    };
+    let mut out = String::new();
+    out.push_str(if with_line_numbers {
+        "[read_code]\n"
+    } else {
+        "[read_file]\n"
+    });
+    out.push_str(&format!("path: {}\n", path));
+    out.push_str(&format!("lines: {}-{} (total {})\n", start, end, total_lines));
+    out.push_str("content:\n");
+    out.push_str("```text\n");
+    if with_line_numbers {
+        for (idx, line) in slice.iter().enumerate() {
+            let line_no = start + idx;
+            out.push_str(&format!("{:>4} | {}\n", line_no, line));
+        }
+    } else {
+        for line in slice {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out.push_str("```\n");
+    ToolResult {
+        content: out,
+        has_results: true,
     }
 }
 

@@ -60,6 +60,38 @@ impl<'a> ToolService<'a> {
                 }
                 continue;
             }
+            if call.function.name == "read_file" || call.function.name == "read_code" {
+                let enabled = if call.function.name == "read_file" {
+                    self.args.read_file_enabled()
+                } else {
+                    self.args.read_code_enabled()
+                };
+                if !enabled {
+                    let idx = tab_state.app.messages.len();
+                    tab_state.app.messages.push(Message {
+                        role: crate::types::ROLE_TOOL.to_string(),
+                        content: format!(r#"{{"error":"{} 未启用"}}"#, call.function.name),
+                        tool_call_id: Some(call.id.clone()),
+                        tool_calls: None,
+                    });
+                    tab_state.app.dirty_indices.push(idx);
+                    any_results = true;
+                    continue;
+                }
+                let result = run_tool(call, &api_key);
+                let idx = tab_state.app.messages.len();
+                tab_state.app.messages.push(Message {
+                    role: crate::types::ROLE_TOOL.to_string(),
+                    content: result.content,
+                    tool_call_id: Some(call.id.clone()),
+                    tool_calls: None,
+                });
+                tab_state.app.dirty_indices.push(idx);
+                if result.has_results {
+                    any_results = true;
+                }
+                continue;
+            }
             if call.function.name == "code_exec" {
                 if !self.args.code_exec_enabled() {
                     let idx = tab_state.app.messages.len();
@@ -120,6 +152,8 @@ impl<'a> ToolService<'a> {
             tab_id,
             self.args.web_search_enabled(),
             self.args.code_exec_enabled(),
+            self.args.read_file_enabled(),
+            self.args.read_code_enabled(),
             self.args.log_requests.clone(),
             tab_state.app.log_session_id.clone(),
         );

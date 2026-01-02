@@ -97,6 +97,8 @@ pub(crate) fn handle_code_exec_exit(
         tab_id,
         args.web_search_enabled(),
         args.code_exec_enabled(),
+        args.read_file_enabled(),
+        args.read_code_enabled(),
         args.log_requests.clone(),
         tab_state.app.log_session_id.clone(),
     );
@@ -243,6 +245,8 @@ pub(crate) fn handle_code_exec_deny(
         tab_id,
         args.web_search_enabled(),
         args.code_exec_enabled(),
+        args.read_file_enabled(),
+        args.read_code_enabled(),
         args.log_requests.clone(),
         tab_state.app.log_session_id.clone(),
     );

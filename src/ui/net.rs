@@ -31,6 +31,8 @@ pub fn request_llm_stream(
     prompts_dir: &str,
     enable_web_search: bool,
     enable_code_exec: bool,
+    enable_read_file: bool,
+    enable_read_code: bool,
     log_dir: Option<String>,
     log_session_id: String,
     message_index: usize,
@@ -46,7 +48,12 @@ pub fn request_llm_stream(
     let base_url = base_url.to_string();
     let api_key = api_key.to_string();
     let model = model.to_string();
-    let enabled = build_enabled_tools(enable_web_search, enable_code_exec);
+    let enabled = build_enabled_tools(
+        enable_web_search,
+        enable_code_exec,
+        enable_read_file,
+        enable_read_code,
+    );
     let rt = Runtime::new();
     if rt.is_err() {
         let _ = tx.send(UiEvent {
@@ -149,13 +156,24 @@ pub fn request_llm_stream(
     }
 }
 
-fn build_enabled_tools(enable_web_search: bool, enable_code_exec: bool) -> Vec<&'static str> {
+fn build_enabled_tools(
+    enable_web_search: bool,
+    enable_code_exec: bool,
+    enable_read_file: bool,
+    enable_read_code: bool,
+) -> Vec<&'static str> {
     let mut out = Vec::new();
     if enable_web_search {
         out.push("web_search");
     }
     if enable_code_exec {
         out.push("code_exec");
+    }
+    if enable_read_file {
+        out.push("read_file");
+    }
+    if enable_read_code {
+        out.push("read_code");
     }
     out
 }
