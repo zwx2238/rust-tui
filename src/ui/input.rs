@@ -1,7 +1,11 @@
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM};
 use crate::ui::clipboard;
+use crate::ui::commands::{command_has_args, command_names, commands_help_text};
 use crate::ui::state::{App, Focus, PendingCommand};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
+use tui_textarea::CursorMove;
 use tui_textarea::TextArea;
 
 pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
@@ -45,6 +49,13 @@ pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::err
             }
         }
         match key.code {
+            KeyCode::Tab => {
+                if try_autocomplete_command(app) {
+                    return Ok(false);
+                }
+                let _ = app.input.input(key);
+                return Ok(false);
+            }
             KeyCode::Enter => {
                 let line = app.input.lines().join("\n");
                 let line = line.trim_end().to_string();
@@ -138,8 +149,7 @@ pub fn handle_command(line: &str, app: &mut App) -> Result<bool, Box<dyn std::er
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
-                content: "命令：/help /save /reset /clear /exit /quit /category [name] /open <id> /list-conv；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新对话），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
-                    .to_string(),
+                content: commands_help_text(),
                 tool_call_id: None,
                 tool_calls: None,
             });
@@ -209,4 +219,65 @@ pub fn handle_command(line: &str, app: &mut App) -> Result<bool, Box<dyn std::er
         }
     }
     Ok(false)
+}
+
+fn try_autocomplete_command(app: &mut App) -> bool {
+    let (row, col) = app.input.cursor();
+    let mut lines = app.input.lines().to_vec();
+    if row >= lines.len() {
+        return false;
+    }
+    let line = lines[row].clone();
+    if !line.starts_with('/') {
+        return false;
+    }
+    let cursor = col.min(line.len());
+    let token_end = line.find(char::is_whitespace).unwrap_or(line.len());
+    if cursor > token_end {
+        return false;
+    }
+    let token = &line[..token_end];
+    if !token.starts_with('/') {
+        return false;
+    }
+    let pattern = token.trim_start_matches('/');
+    let matcher = SkimMatcherV2::default();
+    let mut best: Option<(&str, i64)> = None;
+    for name in command_names() {
+        let candidate = name.trim_start_matches('/');
+        let score = if pattern.is_empty() {
+            Some(0)
+        } else {
+            matcher.fuzzy_match(candidate, pattern)
+        };
+        if let Some(score) = score {
+            let should_replace = match best {
+                None => true,
+                Some((_, best_score)) => score > best_score,
+            };
+            if should_replace {
+                best = Some((candidate, score));
+            }
+        }
+    }
+    let Some((best_name, _)) = best else {
+        return false;
+    };
+    let mut new_line = String::new();
+    new_line.push('/');
+    new_line.push_str(best_name);
+    let mut new_col = new_line.len();
+    let needs_args = command_has_args(&format!("/{best_name}"));
+    if token_end == line.len() && needs_args {
+        new_line.push(' ');
+        new_col += 1;
+    }
+    if token_end < line.len() {
+        new_line.push_str(&line[token_end..]);
+    }
+    lines[row] = new_line;
+    app.input = TextArea::from(lines);
+    app.input
+        .move_cursor(CursorMove::Jump(row as u16, new_col as u16));
+    true
 }

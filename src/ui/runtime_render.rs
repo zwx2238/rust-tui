@@ -8,7 +8,6 @@ use crate::ui::overlay_render::{
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::render_context::RenderContext;
 use crate::ui::runtime_view::ViewState;
-use crate::ui::shortcuts::all_shortcuts;
 use std::error::Error;
 
 pub(crate) fn render_view(
@@ -25,7 +24,7 @@ pub(crate) fn render_view(
         jump: jump_rows.len(),
         models: ctx.models.len(),
         prompts: ctx.prompts.len(),
-        help: all_shortcuts().len(),
+        help: crate::ui::shortcut_help::help_rows_len(),
     };
     let _ = with_active_table_handle(view, areas, counts, |mut handle| {
         handle.clamp();

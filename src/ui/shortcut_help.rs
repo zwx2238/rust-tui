@@ -1,4 +1,5 @@
 use crate::render::RenderTheme;
+use crate::ui::commands::all_commands;
 use crate::ui::overlay_table::{OverlayTable, centered_area, draw_overlay_table, header_style};
 use crate::ui::shortcuts::all_shortcuts;
 use ratatui::layout::{Constraint, Rect};
@@ -14,28 +15,28 @@ pub(crate) fn draw_shortcut_help(
     scroll: usize,
     theme: &RenderTheme,
 ) {
-    let shortcuts = all_shortcuts();
-    let popup = help_popup_area(area, shortcuts.len());
+    let rows = help_rows();
+    let popup = help_popup_area(area, rows.len());
     let header = Row::new(vec![
-        Cell::from("区域"),
-        Cell::from("按键"),
+        Cell::from("类型"),
+        Cell::from("触发"),
         Cell::from("说明"),
     ])
     .style(header_style(theme));
-    let body = shortcuts.iter().map(|s| {
+    let body = rows.iter().map(|row| {
         Row::new(vec![
-            Cell::from(s.scope.label()),
-            Cell::from(s.keys),
-            Cell::from(s.description),
+            Cell::from(row.kind),
+            Cell::from(row.trigger.clone()),
+            Cell::from(row.description),
         ])
     });
     let popup_spec = OverlayTable {
-        title: Line::from("快捷键 · F10/Esc 退出"),
+        title: Line::from("帮助 · F10/Esc 退出"),
         header,
         rows: body.collect(),
         widths: vec![
-            Constraint::Length(6),
-            Constraint::Length(16),
+            Constraint::Length(8),
+            Constraint::Length(20),
             Constraint::Min(10),
         ],
         selected,
@@ -45,6 +46,40 @@ pub(crate) fn draw_shortcut_help(
     draw_overlay_table(f, popup, popup_spec);
 }
 
+pub(crate) fn help_rows_len() -> usize {
+    help_rows().len()
+}
+
 pub(crate) fn help_popup_area(area: Rect, rows: usize) -> Rect {
     centered_area(area, 90, rows, POPUP_MAX_HEIGHT)
+}
+
+struct HelpRow {
+    kind: &'static str,
+    trigger: String,
+    description: &'static str,
+}
+
+fn help_rows() -> Vec<HelpRow> {
+    let mut rows = Vec::new();
+    for s in all_shortcuts() {
+        rows.push(HelpRow {
+            kind: "快捷键",
+            trigger: s.keys.to_string(),
+            description: s.description,
+        });
+    }
+    for c in all_commands() {
+        let trigger = if c.args.is_empty() {
+            c.name.to_string()
+        } else {
+            format!("{} {}", c.name, c.args)
+        };
+        rows.push(HelpRow {
+            kind: "命令",
+            trigger,
+            description: c.description,
+        });
+    }
+    rows
 }

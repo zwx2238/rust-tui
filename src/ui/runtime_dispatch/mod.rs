@@ -139,7 +139,7 @@ fn overlay_counts(ctx: &DispatchContext<'_>) -> OverlayRowCounts {
         jump: 0,
         models: ctx.registry.models.len(),
         prompts: ctx.prompt_registry.prompts.len(),
-        help: crate::ui::shortcuts::all_shortcuts().len(),
+        help: crate::ui::shortcut_help::help_rows_len(),
     }
 }
 
