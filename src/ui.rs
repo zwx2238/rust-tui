@@ -34,6 +34,7 @@ mod runtime_loop_helpers;
 mod runtime_render;
 mod runtime_session;
 mod runtime_requests;
+mod runtime_tick;
 mod runtime_view;
 mod runtime_view_handlers;
 mod scroll;
