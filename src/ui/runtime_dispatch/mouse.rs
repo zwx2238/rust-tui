@@ -1,6 +1,5 @@
-use crate::ui::code_exec_popup::{
-    code_exec_max_scroll, code_exec_popup_layout, stderr_max_scroll, stdout_max_scroll,
-};
+use crate::ui::code_exec_popup_layout::code_exec_popup_layout;
+use crate::ui::code_exec_popup_text::{code_max_scroll, stderr_max_scroll, stdout_max_scroll};
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
@@ -97,7 +96,7 @@ pub(crate) fn handle_mouse_event_loop(
                         _ => 0,
                     };
                     if point_in_rect(m.column, m.row, popup.code_text_area) {
-                        let max_scroll = code_exec_max_scroll(
+                        let max_scroll = code_max_scroll(
                             &pending.code,
                             popup.code_text_area.width,
                             popup.code_text_area.height,

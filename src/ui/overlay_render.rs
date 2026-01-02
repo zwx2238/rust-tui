@@ -1,7 +1,8 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::{redraw, redraw_with_overlay};
 use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
-use crate::ui::code_exec_popup::{code_exec_max_scroll, draw_code_exec_popup};
+use crate::ui::code_exec_popup::draw_code_exec_popup;
+use crate::ui::code_exec_popup_text::{code_max_scroll, stdout_max_scroll, stderr_max_scroll};
 use crate::ui::model_popup::draw_model_popup;
 use crate::ui::prompt_popup::draw_prompt_popup;
 use crate::ui::shortcut_help::draw_shortcut_help;
@@ -244,8 +245,8 @@ pub(crate) fn render_code_exec_overlay(
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let pending = tab_state.app.pending_code_exec.clone();
         if let Some(pending) = pending {
-            let layout = crate::ui::code_exec_popup::code_exec_popup_layout(full);
-            let max_scroll = code_exec_max_scroll(
+            let layout = crate::ui::code_exec_popup_layout::code_exec_popup_layout(full);
+            let max_scroll = code_max_scroll(
                 &pending.code,
                 layout.code_text_area.width,
                 layout.code_text_area.height,
@@ -272,13 +273,13 @@ pub(crate) fn render_code_exec_overlay(
                 .as_ref()
                 .map(|l| (l.stdout.clone(), l.stderr.clone()))
                 .unwrap_or_else(|| (String::new(), String::new()));
-            let max_stdout_scroll = crate::ui::code_exec_popup::stdout_max_scroll(
+            let max_stdout_scroll = stdout_max_scroll(
                 &stdout,
                 layout.stdout_text_area.width,
                 layout.stdout_text_area.height,
                 theme,
             );
-            let max_stderr_scroll = crate::ui::code_exec_popup::stderr_max_scroll(
+            let max_stderr_scroll = stderr_max_scroll(
                 &stderr,
                 layout.stderr_text_area.width,
                 layout.stderr_text_area.height,

@@ -1,6 +1,8 @@
 mod clipboard;
 mod code_exec;
 mod code_exec_popup;
+mod code_exec_popup_layout;
+mod code_exec_popup_text;
 mod draw;
 mod draw_input;
 mod input;
@@ -20,6 +22,7 @@ mod shortcut_help;
 mod shortcuts;
 mod runtime_context;
 mod runtime_code_exec;
+mod runtime_code_exec_helpers;
 mod runtime;
 mod runtime_dispatch;
 mod runtime_events;
