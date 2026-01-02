@@ -1,16 +1,18 @@
 use crate::args::Args;
+use crate::llm::prompts::load_prompts;
 use crate::model_registry::build_model_registry;
+use crate::question_set::load_question_set;
 use crate::render::RenderTheme;
 use crate::session::{SessionLocation, load_session, save_session};
-use crate::llm::prompts::load_prompts;
 use crate::ui::net::UiEvent;
-use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, collect_session_tabs};
+use crate::ui::runtime_helpers::{
+    PreheatResult, PreheatTask, TabState, collect_open_conversations,
+};
 use crate::ui::runtime_loop::run_loop;
 use crate::ui::runtime_requests::start_tab_request;
 use crate::ui::runtime_session::{
     fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
 };
-use crate::question_set::load_question_set;
 use crossterm::event::{
     DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
 };
@@ -42,45 +44,57 @@ pub fn run(
     } else {
         None
     };
-    let (mut tabs, mut active_tab, log_session_id) = if let Some(resume) = args.resume.as_deref() {
-        let loaded =
-            load_session(resume).map_err(|_| format!("无法读取会话：{resume}"))?;
-        session_location = Some(loaded.location.clone());
-        let (tabs, active) =
-            restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args);
-        (tabs, active, loaded.data.id.clone())
-    } else {
-        let log_session_id = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| "系统时间异常")?
-            .as_secs()
-            .to_string();
-        let initial_tabs = if let Some(ref questions) = question_set {
-            questions.len().max(1)
-        } else if args.perf {
-            3
+    let (mut tabs, mut active_tab, mut categories, mut active_category, log_session_id) =
+        if let Some(resume) = args.resume.as_deref() {
+            let loaded = load_session(resume).map_err(|_| format!("无法读取会话：{resume}"))?;
+            session_location = Some(loaded.location.clone());
+            let (tabs, active, categories, active_category) =
+                restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args)?;
+            (
+                tabs,
+                active,
+                categories,
+                active_category,
+                loaded.data.id.clone(),
+            )
         } else {
-            1
+            let log_session_id = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| "系统时间异常")?
+                .as_secs()
+                .to_string();
+            let categories = vec!["默认".to_string()];
+            let active_category = 0usize;
+            let initial_tabs = if let Some(ref questions) = question_set {
+                questions.len().max(1)
+            } else if args.perf {
+                3
+            } else {
+                1
+            };
+            let tabs = (0..initial_tabs)
+                .map(|_| {
+                    let conv_id = crate::conversation::new_conversation_id()
+                        .unwrap_or_else(|_| log_session_id.clone());
+                    let mut tab = TabState::new(
+                        conv_id,
+                        categories[active_category].clone(),
+                        prompt_registry
+                            .get(&prompt_registry.default_key)
+                            .map(|p| p.content.as_str())
+                            .unwrap_or(&args.system),
+                        args.perf,
+                        &registry.default_key,
+                        &prompt_registry.default_key,
+                    );
+                    tab.app.tavily_api_key = tavily_api_key.clone();
+                    tab.app.prompts_dir = cfg.prompts_dir.clone();
+                    tab.app.set_log_session_id(&log_session_id);
+                    tab
+                })
+                .collect::<Vec<_>>();
+            (tabs, 0, categories, active_category, log_session_id)
         };
-        let tabs = (0..initial_tabs)
-            .map(|_| {
-                let mut tab = TabState::new(
-                    prompt_registry
-                        .get(&prompt_registry.default_key)
-                        .map(|p| p.content.as_str())
-                        .unwrap_or(&args.system),
-                    args.perf,
-                    &registry.default_key,
-                    &prompt_registry.default_key,
-                );
-                tab.app.tavily_api_key = tavily_api_key.clone();
-                tab.app.prompts_dir = cfg.prompts_dir.clone();
-                tab.app.set_log_session_id(&log_session_id);
-                tab
-            })
-            .collect::<Vec<_>>();
-        (tabs, 0, log_session_id)
-    };
     for tab in &mut tabs {
         tab.app.tavily_api_key = tavily_api_key.clone();
         tab.app.prompts_dir = cfg.prompts_dir.clone();
@@ -92,10 +106,21 @@ pub fn run(
     spawn_preheat_workers(preheat_rx, preheat_res_tx.clone());
 
     let auto_retry = if args.resume.is_some() && args.replay_fork_last {
-        fork_last_tab_for_retry(&mut tabs, &mut active_tab, &registry, &prompt_registry, &args)
+        fork_last_tab_for_retry(
+            &mut tabs,
+            &mut active_tab,
+            &registry,
+            &prompt_registry,
+            &args,
+        )
     } else {
         None
     };
+    if let Some(tab_state) = tabs.get(active_tab) {
+        if let Some(idx) = categories.iter().position(|c| c == &tab_state.category) {
+            active_category = idx;
+        }
+    }
 
     if let Some(questions) = question_set {
         for (i, question) in questions.iter().enumerate() {
@@ -165,6 +190,8 @@ pub fn run(
         &mut terminal,
         &mut tabs,
         &mut active_tab,
+        &mut categories,
+        &mut active_category,
         &mut session_location,
         &rx,
         &tx,
@@ -186,8 +213,20 @@ pub fn run(
     )?;
     terminal.show_cursor()?;
 
-    let snapshot = collect_session_tabs(&tabs);
-    if let Ok(loc) = save_session(&snapshot, active_tab, session_location.as_ref()) {
+    for tab in &tabs {
+        let _ = crate::conversation::save_conversation(
+            &crate::ui::runtime_helpers::tab_to_conversation(tab),
+        );
+    }
+    let open_conversations = collect_open_conversations(&tabs);
+    let active_conversation = tabs.get(active_tab).map(|t| t.conversation_id.clone());
+    if let Ok(loc) = save_session(
+        &categories,
+        &open_conversations,
+        active_conversation.as_deref(),
+        categories.get(active_category).map(|s| s.as_str()),
+        session_location.as_ref(),
+    ) {
         session_location = Some(loc);
     }
     let dialog_count = tabs.len();

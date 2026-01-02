@@ -4,26 +4,46 @@ pub const PADDING_X: u16 = 1;
 pub const PADDING_Y: u16 = 0;
 pub const SCROLLBAR_WIDTH: u16 = 2;
 
-pub fn layout_chunks(size: Rect, input_height: u16) -> (Rect, Rect, Rect, Rect, Rect) {
+pub fn layout_chunks(
+    size: Rect,
+    input_height: u16,
+    sidebar_width: u16,
+) -> (Rect, Rect, Rect, Rect, Rect, Rect) {
     let input_constraint = if input_height == 0 {
         Constraint::Length(0)
     } else {
         Constraint::Length(input_height)
     };
-    let layout = Layout::default()
+    let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
             [
                 Constraint::Length(1),
-                Constraint::Length(1),
                 Constraint::Min(3),
-                input_constraint,
                 Constraint::Length(1),
             ]
             .as_ref(),
         )
         .split(size);
-    (layout[0], layout[1], layout[2], layout[3], layout[4])
+    let body = vertical[1];
+    let horizontal = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(sidebar_width), Constraint::Min(10)].as_ref())
+        .split(body);
+    let sidebar_area = horizontal[0];
+    let main = horizontal[1];
+    let main_split = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(3), input_constraint].as_ref())
+        .split(main);
+    (
+        vertical[0],
+        sidebar_area,
+        main_split[0],
+        main_split[1],
+        main_split[2],
+        vertical[2],
+    )
 }
 
 pub fn inner_area(area: Rect, padding_x: u16, padding_y: u16) -> Rect {

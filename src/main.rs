@@ -1,12 +1,13 @@
 mod args;
 mod config;
+mod conversation;
+mod llm;
 mod model_registry;
 mod question_set;
 mod render;
 mod session;
 mod types;
 mod ui;
-mod llm;
 
 use args::Args;
 use clap::Parser;

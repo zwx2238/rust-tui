@@ -1,18 +1,19 @@
 use crate::args::Args;
 use crate::session::SessionLocation;
+use crate::types::Message;
+use crate::ui::net::UiEvent;
 use crate::ui::runtime_code_exec::{
-    handle_code_exec_approve, handle_code_exec_deny, handle_code_exec_exit,
-    handle_code_exec_stop,
+    handle_code_exec_approve, handle_code_exec_deny, handle_code_exec_exit, handle_code_exec_stop,
 };
 use crate::ui::runtime_file_patch::{handle_file_patch_apply, handle_file_patch_cancel};
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::net::UiEvent;
 use crate::ui::state::PendingCommand;
-use crate::types::Message;
 
 pub(crate) fn handle_pending_command(
     tabs: &mut Vec<TabState>,
     active_tab: usize,
+    categories: &[String],
+    active_category: usize,
     pending: PendingCommand,
     session_location: &mut Option<SessionLocation>,
     registry: &crate::model_registry::ModelRegistry,
@@ -21,10 +22,18 @@ pub(crate) fn handle_pending_command(
 ) {
     match pending {
         PendingCommand::SaveSession => {
-            let snapshot = crate::ui::runtime_helpers::collect_session_tabs(tabs);
+            for tab in &*tabs {
+                let _ = crate::conversation::save_conversation(
+                    &crate::ui::runtime_helpers::tab_to_conversation(tab),
+                );
+            }
+            let open_conversations = crate::ui::runtime_helpers::collect_open_conversations(tabs);
+            let active_conv = tabs.get(active_tab).map(|t| t.conversation_id.clone());
             let save_result = crate::session::save_session(
-                &snapshot,
-                active_tab,
+                categories,
+                &open_conversations,
+                active_conv.as_deref(),
+                categories.get(active_category).map(|s| s.as_str()),
                 session_location.as_ref(),
             );
             if let Some(tab_state) = tabs.get_mut(active_tab) {

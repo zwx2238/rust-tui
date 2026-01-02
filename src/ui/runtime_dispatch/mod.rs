@@ -2,9 +2,9 @@ use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::types::{ROLE_SYSTEM, ROLE_USER};
 use crate::ui::net::UiEvent;
+use crate::ui::notice::push_notice;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
-use crate::ui::notice::push_notice;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_tab_request;
 use crate::ui::state::Focus;
@@ -13,21 +13,25 @@ use std::sync::mpsc;
 
 mod key;
 mod mouse;
+mod mouse_overlay;
 mod nav;
 mod tabs;
 
-const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新开 tab。";
+const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新建对话。";
 
 pub(crate) use key::handle_key_event_loop;
 pub(crate) use mouse::handle_mouse_event_loop;
 pub(crate) use nav::handle_nav_key;
 pub(crate) use tabs::{
-    close_all_tabs, close_other_tabs, close_tab, new_tab, next_tab, prev_tab,
+    close_all_tabs, close_other_tabs, close_tab, new_tab, next_category, next_tab, prev_category,
+    prev_tab,
 };
 
 pub(crate) struct DispatchContext<'a> {
     pub(crate) tabs: &'a mut Vec<TabState>,
     pub(crate) active_tab: &'a mut usize,
+    pub(crate) categories: &'a mut Vec<String>,
+    pub(crate) active_category: &'a mut usize,
     pub(crate) msg_width: usize,
     pub(crate) theme: &'a RenderTheme,
     pub(crate) registry: &'a crate::model_registry::ModelRegistry,
@@ -41,6 +45,7 @@ pub(crate) struct LayoutContext {
     pub(crate) tabs_area: Rect,
     pub(crate) msg_area: Rect,
     pub(crate) input_area: Rect,
+    pub(crate) category_area: Rect,
     pub(crate) view_height: u16,
     pub(crate) total_lines: usize,
 }
@@ -138,7 +143,6 @@ fn overlay_counts(ctx: &DispatchContext<'_>) -> OverlayRowCounts {
     }
 }
 
-
 pub(crate) fn apply_model_selection(ctx: &mut DispatchContext<'_>, idx: usize) {
     with_active_tab(ctx, |tab_state| {
         if let Some(model) = ctx.registry.models.get(idx) {
@@ -165,7 +169,6 @@ pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
     push_notice(&mut tab_state.app, PROMPT_LOCKED_MSG);
 }
 
-
 pub(crate) fn fork_message_into_new_tab(
     ctx: &mut DispatchContext<'_>,
     jump_rows: &[crate::ui::jump::JumpRow],
@@ -178,10 +181,7 @@ pub(crate) fn fork_message_into_new_tab(
     fork_message_by_index(ctx, msg_idx)
 }
 
-pub(crate) fn fork_message_by_index(
-    ctx: &mut DispatchContext<'_>,
-    msg_idx: usize,
-) -> bool {
+pub(crate) fn fork_message_by_index(ctx: &mut DispatchContext<'_>, msg_idx: usize) -> bool {
     let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) else {
         return false;
     };
@@ -195,8 +195,7 @@ pub(crate) fn fork_message_by_index(
         return false;
     }
     let content = msg.content.clone();
-    let mut history: Vec<crate::types::Message> =
-        tab_state.app.messages[..msg_idx].to_vec();
+    let mut history: Vec<crate::types::Message> = tab_state.app.messages[..msg_idx].to_vec();
     let system_prompt = tab_state
         .app
         .messages
@@ -214,17 +213,21 @@ pub(crate) fn fork_message_by_index(
     } else {
         ctx.registry.default_key.clone()
     };
-    let prompt_key = if ctx
-        .prompt_registry
-        .get(&tab_state.app.prompt_key)
-        .is_some()
-    {
+    let prompt_key = if ctx.prompt_registry.get(&tab_state.app.prompt_key).is_some() {
         tab_state.app.prompt_key.clone()
     } else {
         ctx.prompt_registry.default_key.clone()
     };
-    let mut new_tab = TabState::new("", false, &model_key, &prompt_key);
-    new_tab.app.set_log_session_id(&tab_state.app.log_session_id);
+    let conv_id =
+        crate::conversation::new_conversation_id().unwrap_or_else(|_| ctx.tabs.len().to_string());
+    let category = tab_state.category.clone();
+    if !ctx.categories.contains(&category) {
+        ctx.categories.push(category.clone());
+    }
+    let mut new_tab = TabState::new(conv_id, category, "", false, &model_key, &prompt_key);
+    new_tab
+        .app
+        .set_log_session_id(&tab_state.app.log_session_id);
     if history.iter().all(|m| m.role != ROLE_SYSTEM) && !system_prompt.trim().is_empty() {
         history.insert(
             0,
@@ -248,6 +251,11 @@ pub(crate) fn fork_message_by_index(
     new_tab.app.focus = Focus::Input;
     ctx.tabs.push(new_tab);
     *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+    if let Some(tab) = ctx.tabs.get(*ctx.active_tab) {
+        if let Some(idx) = ctx.categories.iter().position(|c| c == &tab.category) {
+            *ctx.active_category = idx;
+        }
+    }
     true
 }
 

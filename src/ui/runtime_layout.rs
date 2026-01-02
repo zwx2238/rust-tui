@@ -2,9 +2,11 @@ use crate::ui::draw::{inner_height, inner_width, layout_chunks};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
 use ratatui::layout::Rect;
+use unicode_width::UnicodeWidthStr;
 
 pub(crate) struct LayoutInfo {
     pub(crate) header_area: Rect,
+    pub(crate) category_area: Rect,
     pub(crate) tabs_area: Rect,
     pub(crate) msg_area: Rect,
     pub(crate) input_area: Rect,
@@ -19,6 +21,7 @@ pub(crate) fn compute_layout(
     view: &ViewState,
     tabs: &[TabState],
     active_tab: usize,
+    categories: &[String],
 ) -> LayoutInfo {
     let input_height = if view.overlay.uses_simple_layout() {
         0
@@ -37,12 +40,14 @@ pub(crate) fn compute_layout(
             .min(max_inner_lines_available.max(1));
         (inner_lines as u16).saturating_add(2)
     };
-    let (header_area, tabs_area, msg_area, input_area, footer_area) =
-        layout_chunks(size, input_height);
+    let sidebar_width = compute_sidebar_width(categories, size.width);
+    let (header_area, category_area, tabs_area, msg_area, input_area, footer_area) =
+        layout_chunks(size, input_height, sidebar_width);
     let msg_width = inner_width(msg_area, 1);
     let view_height = inner_height(msg_area, 0) as u16;
     LayoutInfo {
         header_area,
+        category_area,
         tabs_area,
         msg_area,
         input_area,
@@ -51,4 +56,11 @@ pub(crate) fn compute_layout(
         view_height,
         input_height,
     }
+}
+
+pub(crate) fn compute_sidebar_width(categories: &[String], total_width: u16) -> u16 {
+    let max_label = categories.iter().map(|c| c.width()).max().unwrap_or(4);
+    let desired = (max_label as u16).saturating_add(2).clamp(8, 20);
+    let max_allowed = total_width.saturating_sub(20).max(8);
+    desired.min(max_allowed)
 }

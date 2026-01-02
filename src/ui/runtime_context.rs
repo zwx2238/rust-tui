@@ -5,6 +5,8 @@ use crate::ui::runtime_dispatch::{DispatchContext, LayoutContext};
 pub(crate) fn make_dispatch_context<'a>(
     tabs: &'a mut Vec<crate::ui::runtime_helpers::TabState>,
     active_tab: &'a mut usize,
+    categories: &'a mut Vec<String>,
+    active_category: &'a mut usize,
     msg_width: usize,
     theme: &'a RenderTheme,
     registry: &'a crate::model_registry::ModelRegistry,
@@ -14,6 +16,8 @@ pub(crate) fn make_dispatch_context<'a>(
     DispatchContext {
         tabs,
         active_tab,
+        categories,
+        active_category,
         msg_width,
         theme,
         registry,
@@ -27,6 +31,7 @@ pub(crate) fn make_layout_context(
     tabs_area: ratatui::layout::Rect,
     msg_area: ratatui::layout::Rect,
     input_area: ratatui::layout::Rect,
+    category_area: ratatui::layout::Rect,
     view_height: u16,
     total_lines: usize,
 ) -> LayoutContext {
@@ -35,6 +40,7 @@ pub(crate) fn make_layout_context(
         tabs_area,
         msg_area,
         input_area,
+        category_area,
         view_height,
         total_lines,
     }

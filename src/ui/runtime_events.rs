@@ -5,7 +5,9 @@ use crate::ui::draw::{inner_area, scrollbar_area};
 use crate::ui::input::handle_key;
 use crate::ui::input_click::click_to_cursor;
 use crate::ui::logic::{build_label_suffixes, point_in_rect, scroll_from_mouse, timer_text};
-use crate::ui::runtime_helpers::{TabState, tab_index_at};
+use crate::ui::runtime_helpers::{
+    TabState, tab_index_at, tab_labels_for_category, visible_tab_indices,
+};
 use crate::ui::scroll::SCROLL_STEP_U16;
 use crate::ui::selection::{Selection, chat_position_from_mouse, extract_selection};
 use crate::ui::state::Focus;
@@ -56,9 +58,12 @@ pub(crate) fn handle_mouse_event(
     m: MouseEvent,
     tabs: &mut Vec<TabState>,
     active_tab: &mut usize,
+    categories: &[String],
+    active_category: &mut usize,
     tabs_area: Rect,
     msg_area: Rect,
     input_area: Rect,
+    category_area: Rect,
     msg_width: usize,
     view_height: u16,
     total_lines: usize,
@@ -66,11 +71,32 @@ pub(crate) fn handle_mouse_event(
 ) -> Option<usize> {
     match m.kind {
         MouseEventKind::Down(_) => {
-            if point_in_rect(m.column, m.row, tabs_area) {
-                if let Some(idx) = tab_index_at(m.column, tabs_area, tabs.len()) {
-                    *active_tab = idx;
-                    return None;
+            if point_in_rect(m.column, m.row, category_area) {
+                let row = m.row.saturating_sub(category_area.y) as usize;
+                if row < categories.len() {
+                    *active_category = row;
+                    if let Some(category) = categories.get(*active_category) {
+                        let visible = visible_tab_indices(tabs, category);
+                        if let Some(tab_idx) = visible.first() {
+                            *active_tab = *tab_idx;
+                        }
+                    }
                 }
+                return None;
+            }
+            if point_in_rect(m.column, m.row, tabs_area) {
+                let category = categories
+                    .get(*active_category)
+                    .map(|s| s.as_str())
+                    .unwrap_or("默认");
+                let labels = tab_labels_for_category(tabs, category);
+                if let Some(pos) = tab_index_at(m.column, tabs_area, &labels) {
+                    let visible = visible_tab_indices(tabs, category);
+                    if let Some(idx) = visible.get(pos) {
+                        *active_tab = *idx;
+                    }
+                }
+                return None;
             }
             let scroll_area = scrollbar_area(msg_area);
             if point_in_rect(m.column, m.row, scroll_area) && total_lines > view_height as usize {

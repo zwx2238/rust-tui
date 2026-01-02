@@ -1,6 +1,5 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::style::base_fg;
-use crate::ui::logic::tab_label;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
@@ -10,16 +9,15 @@ use unicode_width::UnicodeWidthStr;
 pub(crate) fn draw_tabs(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
-    tabs_len: usize,
+    labels: &[String],
     active_tab: usize,
     theme: &RenderTheme,
     startup_text: Option<&str>,
 ) {
     let mut label = String::new();
-    for i in 0..tabs_len {
-        let tab = tab_label(i);
+    for (i, tab) in labels.iter().enumerate() {
         label.push_str(&tab);
-        if i + 1 < tabs_len {
+        if i + 1 < labels.len() {
             label.push('│');
         }
     }
@@ -33,7 +31,7 @@ pub(crate) fn draw_tabs(
         };
         spans.push(Span::styled(part.to_string(), style));
         cursor += part.width();
-        if i + 1 < tabs_len {
+        if i + 1 < labels.len() {
             spans.push(Span::styled("│", Style::default().fg(base_fg(theme))));
             cursor += 1;
         }

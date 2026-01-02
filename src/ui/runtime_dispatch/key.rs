@@ -1,5 +1,5 @@
-use crate::ui::overlay::OverlayKind;
 use crate::ui::logic::stop_stream;
+use crate::ui::overlay::OverlayKind;
 use crate::ui::runtime_events::handle_key_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_key};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -7,7 +7,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use super::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
     can_change_prompt, close_all_tabs, close_other_tabs, close_tab, cycle_model, handle_nav_key,
-    new_tab, next_tab, prev_tab, push_prompt_locked, sync_model_selection, sync_prompt_selection,
+    new_tab, next_category, next_tab, prev_category, prev_tab, push_prompt_locked,
+    sync_model_selection, sync_prompt_selection,
 };
 
 pub(crate) fn handle_key_event_loop(
@@ -17,7 +18,9 @@ pub(crate) fn handle_key_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+    if key
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
         && key.code == crossterm::event::KeyCode::Char('q')
     {
         return Ok(true);
@@ -92,7 +95,14 @@ pub(crate) fn handle_key_event_loop(
         apply_prompt_selection(ctx, idx);
         return Ok(false);
     }
-    if apply_view_action(action, jump_rows, ctx.tabs, ctx.active_tab) {
+    if apply_view_action(
+        action,
+        jump_rows,
+        ctx.tabs,
+        ctx.active_tab,
+        ctx.categories,
+        ctx.active_category,
+    ) {
         return Ok(false);
     }
     if key.code == crossterm::event::KeyCode::F(4) && view.overlay.is(OverlayKind::Model) {
@@ -102,13 +112,7 @@ pub(crate) fn handle_key_event_loop(
     if !view.is_chat() {
         return Ok(false);
     }
-    if handle_key_event(
-        key,
-        ctx.tabs,
-        *ctx.active_tab,
-        ctx.msg_width,
-        ctx.theme,
-    )? {
+    if handle_key_event(key, ctx.tabs, *ctx.active_tab, ctx.msg_width, ctx.theme)? {
         return Ok(true);
     }
     Ok(false)
@@ -137,9 +141,7 @@ fn handle_code_exec_reason_key(app: &mut crate::ui::state::App, key: KeyEvent) {
             app.code_exec_reason_input = tui_textarea::TextArea::default();
         }
         _ => {
-            if key.modifiers.contains(KeyModifiers::CONTROL)
-                && key.code == KeyCode::Char('u')
-            {
+            if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('u') {
                 app.code_exec_reason_input = tui_textarea::TextArea::default();
                 return;
             }
@@ -153,7 +155,20 @@ fn handle_global_shortcuts(ctx: &mut DispatchContext<'_>, key: KeyEvent) -> bool
         .modifiers
         .contains(crossterm::event::KeyModifiers::CONTROL)
     {
-        if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT)
+        match key.code {
+            crossterm::event::KeyCode::Up => {
+                prev_category(ctx);
+                return true;
+            }
+            crossterm::event::KeyCode::Down => {
+                next_category(ctx);
+                return true;
+            }
+            _ => {}
+        }
+        if key
+            .modifiers
+            .contains(crossterm::event::KeyModifiers::SHIFT)
             && key.code == crossterm::event::KeyCode::Char('w')
         {
             close_all_tabs(ctx);

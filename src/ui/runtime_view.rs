@@ -1,11 +1,11 @@
 use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 
 use crate::ui::overlay::{OverlayKind, OverlayState};
-use crate::ui::selection_state::SelectionState;
-use crate::ui::summary::SummarySort;
 use crate::ui::runtime_view_handlers::{
     handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key, handle_summary_key,
 };
+use crate::ui::selection_state::SelectionState;
+use crate::ui::summary::SummarySort;
 
 pub(crate) struct ViewState {
     pub(crate) overlay: OverlayState,
@@ -33,10 +33,20 @@ pub(crate) fn apply_view_action(
     jump_rows: &[crate::ui::jump::JumpRow],
     tabs: &mut Vec<crate::ui::runtime_helpers::TabState>,
     active_tab: &mut usize,
+    categories: &mut Vec<String>,
+    active_category: &mut usize,
 ) -> bool {
     match action {
         ViewAction::SwitchTab(idx) => {
             *active_tab = idx;
+            if let Some(tab) = tabs.get(*active_tab) {
+                if let Some(cat_idx) = categories.iter().position(|c| c == &tab.category) {
+                    *active_category = cat_idx;
+                } else {
+                    categories.push(tab.category.clone());
+                    *active_category = categories.len().saturating_sub(1);
+                }
+            }
             true
         }
         ViewAction::JumpTo(idx) => {

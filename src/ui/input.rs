@@ -117,10 +117,7 @@ pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::err
     Ok(false)
 }
 
-pub fn handle_command(
-    line: &str,
-    app: &mut App,
-) -> Result<bool, Box<dyn std::error::Error>> {
+pub fn handle_command(line: &str, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
     match line {
         "/exit" | "/quit" => return Ok(true),
         "/reset" | "/clear" => {
@@ -138,7 +135,7 @@ pub fn handle_command(
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
-                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新 tab），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
+                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新对话），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
                     .to_string(),
                 tool_call_id: None,
                 tool_calls: None,

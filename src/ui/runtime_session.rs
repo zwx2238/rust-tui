@@ -9,24 +9,53 @@ pub(crate) fn restore_tabs_from_session(
     registry: &crate::model_registry::ModelRegistry,
     prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
-) -> (Vec<TabState>, usize) {
+) -> Result<(Vec<TabState>, usize, Vec<String>, usize), Box<dyn std::error::Error>> {
     let mut tabs = Vec::new();
-    for tab in &session.tabs {
-        let model_key = tab
+    let mut categories = session.categories.clone();
+    if categories.is_empty() {
+        categories.push("默认".to_string());
+    }
+    let active_category_name = if session.active_category.trim().is_empty() {
+        categories[0].clone()
+    } else {
+        session.active_category.clone()
+    };
+    if !categories.contains(&active_category_name) {
+        categories.push(active_category_name.clone());
+    }
+    for conv_id in &session.open_conversations {
+        let conv = crate::conversation::load_conversation(conv_id)
+            .map_err(|e| format!("无法读取对话 {conv_id}: {e}"))?;
+        let model_key = conv
             .model_key
             .as_deref()
             .filter(|k| registry.get(k).is_some())
             .unwrap_or(&registry.default_key)
             .to_string();
-        let prompt_key = tab
+        let prompt_key = conv
             .prompt_key
             .as_deref()
             .filter(|k| prompt_registry.get(k).is_some())
             .unwrap_or(&prompt_registry.default_key)
             .to_string();
-        let mut state = TabState::new("", false, &model_key, &prompt_key);
-        state.app.messages = tab.messages.clone();
-        state.app.code_exec_container_id = tab.code_exec_container_id.clone();
+        let category = if conv.category.trim().is_empty() {
+            "默认".to_string()
+        } else {
+            conv.category.clone()
+        };
+        if !categories.contains(&category) {
+            categories.push(category.clone());
+        }
+        let mut state = TabState::new(
+            conv.id.clone(),
+            category.clone(),
+            "",
+            false,
+            &model_key,
+            &prompt_key,
+        );
+        state.app.messages = conv.messages.clone();
+        state.app.code_exec_container_id = conv.code_exec_container_id.clone();
         if state.app.messages.iter().all(|m| m.role != ROLE_SYSTEM) {
             let content = prompt_registry
                 .get(&prompt_key)
@@ -41,8 +70,15 @@ pub(crate) fn restore_tabs_from_session(
         state.app.dirty_indices = (0..state.app.messages.len()).collect();
         tabs.push(state);
     }
+    categories.retain(|c| tabs.iter().any(|t| t.category == *c));
+    if categories.is_empty() {
+        categories.push("默认".to_string());
+    }
     if tabs.is_empty() {
+        let conv_id = crate::conversation::new_conversation_id()?;
         tabs.push(TabState::new(
+            conv_id,
+            active_category_name.clone(),
             prompt_registry
                 .get(&prompt_registry.default_key)
                 .map(|p| p.content.as_str())
@@ -53,9 +89,20 @@ pub(crate) fn restore_tabs_from_session(
         ));
     }
     let active_tab = session
-        .active_tab
+        .active_conversation
+        .as_deref()
+        .and_then(|id| tabs.iter().position(|t| t.conversation_id == id))
+        .unwrap_or(0)
         .min(tabs.len().saturating_sub(1));
-    (tabs, active_tab)
+    let active_category = categories
+        .iter()
+        .position(|c| c == &active_category_name)
+        .or_else(|| {
+            tabs.get(active_tab)
+                .and_then(|t| categories.iter().position(|c| c == &t.category))
+        })
+        .unwrap_or(0);
+    Ok((tabs, active_tab, categories, active_category))
 }
 
 pub(crate) fn fork_last_tab_for_retry(
@@ -86,8 +133,7 @@ pub(crate) fn fork_last_tab_for_retry(
     if content.trim().is_empty() {
         return None;
     }
-    let mut history: Vec<crate::types::Message> =
-        source.app.messages[..msg_idx].to_vec();
+    let mut history: Vec<crate::types::Message> = source.app.messages[..msg_idx].to_vec();
     let system_prompt = source
         .app
         .messages
@@ -110,7 +156,15 @@ pub(crate) fn fork_last_tab_for_retry(
     } else {
         prompt_registry.default_key.clone()
     };
-    let mut new_tab = TabState::new("", false, &model_key, &prompt_key);
+    let conv_id = crate::conversation::new_conversation_id().ok()?;
+    let mut new_tab = TabState::new(
+        conv_id,
+        source.category.clone(),
+        "",
+        false,
+        &model_key,
+        &prompt_key,
+    );
     new_tab.app.set_log_session_id(&source.app.log_session_id);
     if history.iter().all(|m| m.role != ROLE_SYSTEM) && !system_prompt.trim().is_empty() {
         history.insert(

@@ -1,5 +1,5 @@
-use crate::types::{Message, ROLE_ASSISTANT};
 use crate::types::ToolCall;
+use crate::types::{Message, ROLE_ASSISTANT};
 use crate::ui::net::LlmEvent;
 use crate::ui::scroll::max_scroll_u16;
 use crate::ui::state::App;
@@ -80,8 +80,7 @@ pub fn stop_stream(app: &mut App) -> bool {
     handle.cancel();
     flush_remaining_buffer(app);
     if let Some(idx) = app.pending_assistant.take() {
-        app.assistant_stats
-            .insert(idx, "已终止".to_string());
+        app.assistant_stats.insert(idx, "已终止".to_string());
         app.dirty_indices.push(idx);
     }
     app.pending_reasoning = None;
@@ -151,14 +150,6 @@ pub fn scroll_from_mouse(
     let ratio = y.min(track) as f32 / track as f32;
     let scroll = (ratio * max_scroll as f32).round() as u16;
     scroll.min(max_scroll)
-}
-
-pub fn tab_label(idx: usize) -> String {
-    format!(" {} ", idx + 1)
-}
-
-pub fn tab_label_width(idx: usize) -> u16 {
-    tab_label(idx).len() as u16
 }
 
 pub fn drain_events() -> Result<(), Box<dyn std::error::Error>> {

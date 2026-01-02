@@ -44,27 +44,32 @@ pub(crate) fn all_shortcuts() -> &'static [Shortcut] {
         Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+T",
-            description: "新建 tab",
+            description: "新建对话",
         },
         Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+W",
-            description: "关闭当前 tab",
+            description: "关闭当前对话",
         },
         Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+Shift+W",
-            description: "关闭所有 tab（保留空 tab）",
+            description: "关闭所有对话（保留空对话）",
         },
         Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+O",
-            description: "关闭其他 tab",
+            description: "关闭其他对话",
         },
         Shortcut {
             scope: ShortcutScope::Global,
             keys: "F8 / F9",
-            description: "前一个 / 下一个 tab",
+            description: "前一个 / 下一个对话",
+        },
+        Shortcut {
+            scope: ShortcutScope::Global,
+            keys: "Ctrl+↑ / Ctrl+↓",
+            description: "切换分类",
         },
         Shortcut {
             scope: ShortcutScope::Chat,
@@ -124,12 +129,12 @@ pub(crate) fn all_shortcuts() -> &'static [Shortcut] {
         Shortcut {
             scope: ShortcutScope::Summary,
             keys: "↑/↓",
-            description: "选择 tab",
+            description: "选择对话",
         },
         Shortcut {
             scope: ShortcutScope::Summary,
             keys: "Enter",
-            description: "进入 tab",
+            description: "进入对话",
         },
         Shortcut {
             scope: ShortcutScope::Summary,

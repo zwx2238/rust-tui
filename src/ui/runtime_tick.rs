@@ -1,12 +1,16 @@
-use crate::render::{RenderTheme, messages_to_viewport_text_cached, messages_to_viewport_text_cached_with_layout};
+use crate::render::{
+    RenderTheme, messages_to_viewport_text_cached, messages_to_viewport_text_cached_with_layout,
+};
 use crate::ui::input_click::update_input_view_top;
-use crate::ui::logic::{StreamAction, build_label_suffixes, drain_events, handle_stream_event, timer_text};
+use crate::ui::logic::{
+    StreamAction, build_label_suffixes, drain_events, handle_stream_event, timer_text,
+};
 use crate::ui::net::UiEvent;
 use crate::ui::overlay::OverlayKind;
+use crate::ui::runtime_code_exec_output::build_code_exec_tool_output;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
-use crate::ui::runtime_code_exec_output::build_code_exec_tool_output;
 use crate::ui::state::PendingCommand;
 use ratatui::layout::Rect;
 use ratatui::text::Text;
@@ -70,7 +74,10 @@ pub fn collect_stream_events(
     (done_tabs, tool_queue)
 }
 
-pub fn finalize_done_tabs(tabs: &mut [TabState], done_tabs: &[usize]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn finalize_done_tabs(
+    tabs: &mut [TabState],
+    done_tabs: &[usize],
+) -> Result<(), Box<dyn std::error::Error>> {
     for &tab in done_tabs {
         if let Some(tab_state) = tabs.get_mut(tab) {
             tab_state.app.busy = false;
@@ -85,9 +92,7 @@ pub fn finalize_done_tabs(tabs: &mut [TabState], done_tabs: &[usize]) -> Result<
 
 pub fn update_code_exec_results(tabs: &mut [TabState]) {
     for tab_state in tabs.iter_mut() {
-        if tab_state.app.pending_code_exec.is_some()
-            && !tab_state.app.code_exec_result_ready
-        {
+        if tab_state.app.pending_code_exec.is_some() && !tab_state.app.code_exec_result_ready {
             let done = tab_state
                 .app
                 .code_exec_live
@@ -130,11 +135,7 @@ pub fn preheat_inactive_tabs(
     }
 }
 
-pub fn sync_code_exec_overlay(
-    tabs: &mut [TabState],
-    active_tab: usize,
-    view: &mut ViewState,
-) {
+pub fn sync_code_exec_overlay(tabs: &mut [TabState], active_tab: usize, view: &mut ViewState) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let has_pending = tab_state.app.pending_code_exec.is_some();
         if has_pending && view.overlay.is_chat() {
@@ -145,11 +146,7 @@ pub fn sync_code_exec_overlay(
     }
 }
 
-pub fn sync_file_patch_overlay(
-    tabs: &mut [TabState],
-    active_tab: usize,
-    view: &mut ViewState,
-) {
+pub fn sync_file_patch_overlay(tabs: &mut [TabState], active_tab: usize, view: &mut ViewState) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let has_pending = tab_state.app.pending_file_patch.is_some();
         if has_pending && view.overlay.is_chat() {
@@ -172,17 +169,16 @@ pub fn prepare_active_frame(
     let timer_text = timer_text(app);
     let label_suffixes = build_label_suffixes(&app, &timer_text);
     let prev_scroll = app.scroll;
-    let (mut text, computed_total_lines, layouts) =
-        messages_to_viewport_text_cached_with_layout(
-            &app.messages,
-            msg_width,
-            theme,
-            &label_suffixes,
-            app.pending_assistant,
-            app.scroll,
-            view_height,
-            &mut tab_state.render_cache,
-        );
+    let (mut text, computed_total_lines, layouts) = messages_to_viewport_text_cached_with_layout(
+        &app.messages,
+        msg_width,
+        theme,
+        &label_suffixes,
+        app.pending_assistant,
+        app.scroll,
+        view_height,
+        &mut tab_state.render_cache,
+    );
     app.message_layouts = layouts;
     let max_scroll = max_scroll_u16(computed_total_lines, view_height);
     if app.follow {
@@ -218,20 +214,26 @@ pub fn prepare_active_frame(
     }
 }
 
-pub fn build_exec_header_note(tabs: &[TabState]) -> Option<String> {
+pub fn build_exec_header_note(tabs: &[TabState], categories: &[String]) -> Option<String> {
     let mut pending_tabs = Vec::new();
     for (idx, tab) in tabs.iter().enumerate() {
         if tab.app.pending_code_exec.is_some() || tab.app.code_exec_live.is_some() {
-            pending_tabs.push(idx + 1);
+            let category = if !tab.category.trim().is_empty() {
+                tab.category.clone()
+            } else {
+                categories
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| "默认".to_string())
+            };
+            let pos = crate::ui::runtime_helpers::tab_position_in_category(tabs, &category, idx)
+                .unwrap_or(idx);
+            pending_tabs.push(format!("{category}/对话{}", pos + 1));
         }
     }
     if pending_tabs.is_empty() {
         return None;
     }
-    let list = pending_tabs
-        .iter()
-        .map(|t| format!("Tab {}", t))
-        .collect::<Vec<_>>()
-        .join(", ");
+    let list = pending_tabs.join(", ");
     Some(format!("执行中: {} ({})", pending_tabs.len(), list))
 }

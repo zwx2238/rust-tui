@@ -1,12 +1,14 @@
 use crate::render::{RenderCacheEntry, RenderTheme, insert_empty_cache_entry};
-use crate::session::SessionTab;
 use crate::types::{Message, ROLE_USER};
 use crate::ui::perf::seed_perf_messages;
 use crate::ui::state::{App, Focus};
 use std::collections::BTreeMap;
 use std::sync::mpsc;
+use unicode_width::UnicodeWidthStr;
 
 pub(crate) struct TabState {
+    pub(crate) conversation_id: String,
+    pub(crate) category: String,
     pub(crate) app: App,
     pub(crate) render_cache: Vec<RenderCacheEntry>,
     pub(crate) last_width: usize,
@@ -28,13 +30,22 @@ pub(crate) struct PreheatResult {
 }
 
 impl TabState {
-    pub(crate) fn new(system: &str, perf: bool, default_model: &str, default_prompt: &str) -> Self {
+    pub(crate) fn new(
+        conversation_id: String,
+        category: String,
+        system: &str,
+        perf: bool,
+        default_model: &str,
+        default_prompt: &str,
+    ) -> Self {
         let mut app = App::new(system, default_model, default_prompt);
         if perf {
             seed_perf_messages(&mut app);
             app.dirty_indices = (0..app.messages.len()).collect();
         }
         Self {
+            conversation_id,
+            category,
             app,
             render_cache: Vec::new(),
             last_width: 0,
@@ -78,32 +89,86 @@ pub(crate) fn enqueue_preheat_tasks(
     }
 }
 
+pub(crate) fn visible_tab_indices(tabs: &[TabState], category: &str) -> Vec<usize> {
+    tabs.iter()
+        .enumerate()
+        .filter(|(_, tab)| tab.category == category)
+        .map(|(idx, _)| idx)
+        .collect()
+}
 
-pub(crate) fn tab_index_at(x: u16, area: ratatui::layout::Rect, tabs_len: usize) -> Option<usize> {
-    let mut cursor = area.x;
-    for i in 0..tabs_len {
-        let w = crate::ui::logic::tab_label_width(i);
-        let next = cursor.saturating_add(w);
-        if x >= cursor && x < next {
-            return Some(i);
+pub(crate) fn tab_labels_for_category(tabs: &[TabState], category: &str) -> Vec<String> {
+    let visible = visible_tab_indices(tabs, category);
+    visible
+        .iter()
+        .enumerate()
+        .map(|(i, _)| format!(" 对话 {} ", i + 1))
+        .collect()
+}
+
+pub(crate) fn collect_open_conversations(tabs: &[TabState]) -> Vec<String> {
+    tabs.iter().map(|tab| tab.conversation_id.clone()).collect()
+}
+
+pub(crate) fn active_tab_position(tabs: &[TabState], category: &str, active_tab: usize) -> usize {
+    let mut pos = 0usize;
+    for (idx, tab) in tabs.iter().enumerate() {
+        if tab.category == category {
+            if idx == active_tab {
+                return pos;
+            }
+            pos += 1;
         }
-        cursor = next;
-        if i + 1 < tabs_len {
-            cursor = cursor.saturating_add(1);
+    }
+    0
+}
+
+pub(crate) fn tab_position_in_category(
+    tabs: &[TabState],
+    category: &str,
+    tab_index: usize,
+) -> Option<usize> {
+    let mut pos = 0usize;
+    for (idx, tab) in tabs.iter().enumerate() {
+        if tab.category == category {
+            if idx == tab_index {
+                return Some(pos);
+            }
+            pos += 1;
         }
     }
     None
 }
 
-pub(crate) fn collect_session_tabs(tabs: &[TabState]) -> Vec<SessionTab> {
-    tabs.iter()
-        .map(|tab| SessionTab {
-            messages: tab.app.messages.clone(),
-            model_key: Some(tab.app.model_key.clone()),
-            prompt_key: Some(tab.app.prompt_key.clone()),
-            code_exec_container_id: tab.app.code_exec_container_id.clone(),
-        })
-        .collect()
+pub(crate) fn tab_to_conversation(tab: &TabState) -> crate::conversation::ConversationData {
+    crate::conversation::ConversationData {
+        id: tab.conversation_id.clone(),
+        category: tab.category.clone(),
+        messages: tab.app.messages.clone(),
+        model_key: Some(tab.app.model_key.clone()),
+        prompt_key: Some(tab.app.prompt_key.clone()),
+        code_exec_container_id: tab.app.code_exec_container_id.clone(),
+    }
+}
+
+pub(crate) fn tab_index_at(
+    x: u16,
+    area: ratatui::layout::Rect,
+    labels: &[String],
+) -> Option<usize> {
+    let mut cursor = area.x;
+    for (i, label) in labels.iter().enumerate() {
+        let w = label.width() as u16;
+        let next = cursor.saturating_add(w);
+        if x >= cursor && x < next {
+            return Some(i);
+        }
+        cursor = next;
+        if i + 1 < labels.len() {
+            cursor = cursor.saturating_add(1);
+        }
+    }
+    None
 }
 
 pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {

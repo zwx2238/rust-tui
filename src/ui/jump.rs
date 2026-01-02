@@ -1,10 +1,8 @@
 use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::types::Message;
-use crate::ui::draw::{draw_footer, draw_header, draw_tabs};
-use crate::ui::overlay_table::{
-    OverlayTable, draw_overlay_table, header_style,
-};
+use crate::ui::draw::{draw_categories, draw_footer, draw_header, draw_tabs};
 use crate::ui::notice::draw_notice;
+use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use ratatui::Terminal;
@@ -58,19 +56,32 @@ pub fn redraw_jump(
     theme: &RenderTheme,
     tabs: &mut [TabState],
     active_tab: usize,
+    tab_labels: &[String],
+    active_tab_pos: usize,
+    categories: &[String],
+    active_category: usize,
     startup_text: Option<&str>,
     header_note: Option<&str>,
     rows: &[JumpRow],
     selected: usize,
     area: Rect,
     header_area: Rect,
+    category_area: Rect,
     tabs_area: Rect,
     footer_area: Rect,
     scroll: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal.draw(|f| {
         draw_header(f, header_area, theme, header_note);
-        draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
+        draw_categories(f, category_area, categories, active_category, theme);
+        draw_tabs(
+            f,
+            tabs_area,
+            tab_labels,
+            active_tab_pos,
+            theme,
+            startup_text,
+        );
         draw_jump_table(f, area, rows, selected, theme, scroll);
         draw_footer(f, footer_area, theme, false);
         if let Some(tab) = tabs.get_mut(active_tab) {
@@ -107,7 +118,7 @@ fn draw_jump_table(
         ])
     });
     let popup = OverlayTable {
-        title: Line::from("消息定位 · Enter/点击 跳转 · E 复制用户消息到新 tab · F2 退出"),
+        title: Line::from("消息定位 · Enter/点击 跳转 · E 复制用户消息到新对话 · F2 退出"),
         header,
         rows: body.collect(),
         widths: vec![
