@@ -23,7 +23,12 @@ pub(crate) fn render_code_block_lines(
     let mut highlighter = HighlightLines::new(syntax, syn_theme);
 
     let lines: Vec<&str> = text.lines().collect();
-    let max_digits = lines.len().max(1).to_string().len();
+    let show_line_numbers = lang != "math";
+    let max_digits = if show_line_numbers {
+        lines.len().max(1).to_string().len()
+    } else {
+        0
+    };
     let mut out = Vec::new();
     let code_fg = theme.fg.unwrap_or(Color::White);
     let code_bg = theme.bg;
@@ -35,12 +40,14 @@ pub(crate) fn render_code_block_lines(
         let ranges = highlighter
             .highlight_line(&line_with_nl, &ss)
             .unwrap_or_default();
-        let line_no = format!("{:>width$} | ", i + 1, width = max_digits);
         let mut spans = Vec::new();
-        spans.push(Span::styled(
-            line_no,
-            Style::default().fg(code_fg).bg(code_bg),
-        ));
+        if show_line_numbers {
+            let line_no = format!("{:>width$} | ", i + 1, width = max_digits);
+            spans.push(Span::styled(
+                line_no,
+                Style::default().fg(code_fg).bg(code_bg),
+            ));
+        }
         for (style, part) in ranges {
             let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
             let span_fg = if (color_luma(fg) as i16 - bg_luma as i16).abs() < 80 {

@@ -48,6 +48,6 @@ pub struct Args {
     pub perf: bool,
 
     /// 启动时批量创建 10 个 tab 并发起提问
-    #[arg(long, default_value_t = false)]
-    pub perf_batch: bool,
+    #[arg(long)]
+    pub question_set: Option<String>,
 }

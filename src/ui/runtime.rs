@@ -4,14 +4,13 @@ use crate::render::RenderTheme;
 use crate::session::{SessionLocation, load_session, save_session};
 use crate::system_prompts::load_prompts;
 use crate::ui::net::UiEvent;
-use crate::ui::runtime_helpers::{
-    PERF_QUESTIONS, PreheatResult, PreheatTask, TabState, collect_session_tabs,
-};
+use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, collect_session_tabs};
 use crate::ui::runtime_loop::run_loop;
 use crate::ui::runtime_requests::start_tab_request;
 use crate::ui::runtime_session::{
     fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
 };
+use crate::question_set::load_question_set;
 use crossterm::event::{
     DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
 };
@@ -35,6 +34,14 @@ pub fn run(
 
     let mut session_location: Option<SessionLocation> = None;
     let tavily_api_key = cfg.tavily_api_key.clone();
+    if args.resume.is_some() && args.question_set.is_some() {
+        return Err("resume 与 question-set 不能同时使用".into());
+    }
+    let question_set = if let Some(spec) = args.question_set.as_deref() {
+        Some(load_question_set(spec).map_err(|e| format!("问题集加载失败：{e}"))?)
+    } else {
+        None
+    };
     let (mut tabs, mut active_tab) = if let Some(resume) = args.resume.as_deref() {
         let loaded =
             load_session(resume).map_err(|_| format!("无法读取会话：{resume}"))?;
@@ -47,8 +54,8 @@ pub fn run(
         }
         (tabs, active)
     } else {
-        let initial_tabs = if args.perf_batch {
-            10
+        let initial_tabs = if let Some(ref questions) = question_set {
+            questions.len().max(1)
         } else if args.perf {
             3
         } else {
@@ -83,25 +90,26 @@ pub fn run(
         None
     };
 
-    if args.perf_batch && args.resume.is_none() {
-        for (i, tab_state) in tabs.iter_mut().enumerate() {
-            let question = PERF_QUESTIONS.get(i).unwrap_or(&"请简短说明 Rust 的优势。");
-            let model = registry
-                .get(&tab_state.app.model_key)
-                .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
-            start_tab_request(
-                tab_state,
-                question,
-                &model.base_url,
-                &model.api_key,
-                &model.model,
-                args.show_reasoning,
-                &tx,
-                i,
-                args.enable_web_search,
-                args.enable_code_exec,
-                args.log_requests.clone(),
-            );
+    if let Some(questions) = question_set {
+        for (i, question) in questions.iter().enumerate() {
+            if let Some(tab_state) = tabs.get_mut(i) {
+                let model = registry
+                    .get(&tab_state.app.model_key)
+                    .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
+                start_tab_request(
+                    tab_state,
+                    question,
+                    &model.base_url,
+                    &model.api_key,
+                    &model.model,
+                    args.show_reasoning,
+                    &tx,
+                    i,
+                    args.enable_web_search,
+                    args.enable_code_exec,
+                    args.log_requests.clone(),
+                );
+            }
         }
     }
     if let Some((tab_idx, question)) = auto_retry {

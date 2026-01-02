@@ -78,19 +78,6 @@ pub(crate) fn enqueue_preheat_tasks(
     }
 }
 
-pub(crate) const PERF_QUESTIONS: [&str; 10] = [
-    "用一句话解释什么是借用检查。",
-    "用三点说明 async/await 的优势。",
-    "写一个最小的 TCP echo 服务器示例。",
-    "解释什么是零成本抽象。",
-    "给出一个 Rust 中的错误处理最佳实践。",
-    "简述 trait 和泛型的关系。",
-    "解释生命周期标注的用途。",
-    "提供一个并发安全的计数器示例。",
-    "列出 3 个常用的性能分析工具。",
-    "Rust 在系统编程中的典型应用场景有哪些？",
-];
-
 
 pub(crate) fn tab_index_at(x: u16, area: ratatui::layout::Rect, tabs_len: usize) -> Option<usize> {
     let mut cursor = area.x;

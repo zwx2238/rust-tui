@@ -50,6 +50,9 @@ pub(crate) fn preprocess_math(text: &str) -> String {
             let (before, after) = line.split_at(pos);
             if !before.is_empty() {
                 out.push_str(before);
+                if !before.trim().is_empty() {
+                    ensure_blank_line(&mut out);
+                }
             }
             let after = &after[2..];
             if let Some(end_pos) = after.find("$$") {
@@ -57,7 +60,7 @@ pub(crate) fn preprocess_math(text: &str) -> String {
                 append_math_block(&mut out, expr);
                 let rest = &after[end_pos + 2..];
                 if !rest.trim().is_empty() {
-                    out.push('\n');
+                    ensure_blank_line(&mut out);
                     out.push_str(&render_inline_math(rest));
                 }
             } else {
@@ -82,10 +85,30 @@ pub(crate) fn preprocess_math(text: &str) -> String {
 
 fn append_math_block(out: &mut String, expr: &str) {
     let rendered = render_texicode(expr).unwrap_or_else(|| expr.trim().to_string());
-    if !out.ends_with('\n') && !out.is_empty() {
+    ensure_blank_line(out);
+    if rendered.lines().count() > 1 {
+        out.push_str("```math\n");
+        out.push_str(&rendered);
+        if !rendered.ends_with('\n') {
+            out.push('\n');
+        }
+        out.push_str("```");
+        ensure_blank_line(out);
+    } else {
+        out.push_str(&rendered);
+    }
+}
+
+fn ensure_blank_line(out: &mut String) {
+    if out.is_empty() {
+        return;
+    }
+    if !out.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&rendered);
+    if !out.ends_with("\n\n") {
+        out.push('\n');
+    }
 }
 
 fn render_inline_math(line: &str) -> String {
@@ -125,7 +148,20 @@ fn render_inline_math(line: &str) -> String {
                 }
                 let expr = &line[i + 1..end];
                 if let Some(rendered) = render_texicode(expr) {
-                    out.push_str(&rendered);
+                    if rendered.contains('\n') {
+                        if !out.ends_with('\n') && !out.is_empty() {
+                            out.push('\n');
+                        }
+                        out.push('\n');
+                        out.push_str("```math\n");
+                        out.push_str(&rendered);
+                        if !rendered.ends_with('\n') {
+                            out.push('\n');
+                        }
+                        out.push_str("```\n\n");
+                    } else {
+                        out.push_str(&rendered);
+                    }
                 } else {
                     out.push('$');
                     out.push_str(expr);
