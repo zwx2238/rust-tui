@@ -20,6 +20,7 @@ use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
 use crate::ui::overlay::OverlayKind;
+use crate::ui::notice::push_notice;
 use std::sync::mpsc;
 use crossterm::event::{self, Event};
 use ratatui::{Terminal, backend::CrosstermBackend};
@@ -146,6 +147,18 @@ pub(crate) fn run_loop(
                 view.overlay.open(OverlayKind::CodeExec);
             } else if !has_pending && view.overlay.is(OverlayKind::CodeExec) {
                 view.overlay.close();
+            }
+        }
+        let pending_tab = tabs
+            .iter()
+            .enumerate()
+            .find(|(i, t)| *i != *active_tab && t.app.pending_code_exec.is_some())
+            .map(|(i, _)| i);
+        if let Some(active) = tabs.get_mut(*active_tab) {
+            if active.app.pending_code_exec.is_none() && active.app.notice.is_none() {
+                if let Some(idx) = pending_tab {
+                    push_notice(&mut active.app, format!("Tab {} 有待执行请求", idx + 1));
+                }
             }
         }
         let (text, total_lines, _tabs_len, startup_text, mut pending_line, pending_command) = {

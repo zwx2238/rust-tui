@@ -3,10 +3,12 @@ use crate::ui::code_exec::run_python_in_docker_stream;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
+use crate::ui::runtime_code_exec_helpers::{filter_pip_output, inject_requirements};
 use crate::ui::state::{CodeExecLive, PendingCodeExec};
 use crate::ui::tools::parse_code_exec_args;
 use crate::types::Message;
 use std::sync::mpsc;
+use std::time::Instant;
 
 pub(crate) fn handle_code_exec_request(
     tab_state: &mut TabState,
@@ -20,6 +22,8 @@ pub(crate) fn handle_code_exec_request(
         call_id: call.id.clone(),
         language: request.language,
         code: request.code,
+        exec_code: None,
+        requested_at: Instant::now(),
     });
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
@@ -77,9 +81,10 @@ pub(crate) fn handle_code_exec_exit(
         args.show_reasoning,
         tx,
         tab_id,
-        args.enable_web_search,
-        args.enable_code_exec,
+        args.web_search_enabled(),
+        args.code_exec_enabled(),
         args.log_requests.clone(),
+        tab_state.app.log_session_id.clone(),
     );
 }
 
@@ -87,7 +92,8 @@ pub(crate) fn build_code_exec_tool_output(
     pending: &PendingCodeExec,
     live: &CodeExecLive,
 ) -> String {
-    let stdout_empty = live.stdout.trim().is_empty();
+    let stdout_filtered = filter_pip_output(&live.stdout, live.exit_code);
+    let stdout_empty = stdout_filtered.trim().is_empty();
     let stderr_empty = live.stderr.trim().is_empty();
     let mut text = String::new();
     text.push_str("[code_exec]\n");
@@ -113,8 +119,8 @@ pub(crate) fn build_code_exec_tool_output(
         text.push_str("(空)\n");
     } else {
         text.push_str("```text\n");
-        text.push_str(&live.stdout);
-        if !live.stdout.ends_with('\n') {
+        text.push_str(&stdout_filtered);
+        if !stdout_filtered.ends_with('\n') {
             text.push('\n');
         }
         text.push_str("```\n");
@@ -147,7 +153,7 @@ pub(crate) fn handle_code_exec_approve(
     _args: &Args,
     _tx: &mpsc::Sender<UiEvent>,
 ) {
-    let Some(pending) = tab_state.app.pending_code_exec.clone() else {
+    let Some(mut pending) = tab_state.app.pending_code_exec.clone() else {
         let idx = tab_state.app.messages.len();
         tab_state.app.messages.push(Message {
             role: crate::types::ROLE_ASSISTANT.to_string(),
@@ -178,9 +184,15 @@ pub(crate) fn handle_code_exec_approve(
     tab_state.app.code_exec_stderr_scroll = 0;
     let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     tab_state.app.code_exec_cancel = Some(cancel.clone());
+    let exec_code = inject_requirements(&pending.code);
+    pending.exec_code = Some(exec_code.clone());
+    if let Some(current) = tab_state.app.pending_code_exec.as_mut() {
+        current.exec_code = Some(exec_code);
+    }
     if pending.language == "python" {
         std::thread::spawn(move || {
-            if let Err(err) = run_python_in_docker_stream(&pending.code, live.clone(), cancel) {
+            let code = pending.exec_code.as_deref().unwrap_or(&pending.code);
+            if let Err(err) = run_python_in_docker_stream(code, live.clone(), cancel) {
                 if let Ok(mut live) = live.lock() {
                     live.stderr.push_str(&format!("{err}\n"));
                     live.exit_code = Some(-1);
@@ -242,8 +254,9 @@ pub(crate) fn handle_code_exec_deny(
         args.show_reasoning,
         tx,
         tab_id,
-        args.enable_web_search,
-        args.enable_code_exec,
+        args.web_search_enabled(),
+        args.code_exec_enabled(),
         args.log_requests.clone(),
+        tab_state.app.log_session_id.clone(),
     );
 }

@@ -68,6 +68,7 @@ pub struct App {
     pub nav_mode: bool,
     pub tavily_api_key: String,
     pub prompts_dir: String,
+    pub log_session_id: String,
     pub pending_code_exec: Option<PendingCodeExec>,
     pub code_exec_scroll: usize,
     pub code_exec_stdout_scroll: usize,
@@ -90,6 +91,8 @@ pub struct PendingCodeExec {
     pub call_id: String,
     pub language: String,
     pub code: String,
+    pub exec_code: Option<String>,
+    pub requested_at: Instant,
 }
 
 #[derive(Clone, Debug)]
@@ -148,6 +151,7 @@ impl App {
             nav_mode: false,
             tavily_api_key: String::new(),
             prompts_dir: String::new(),
+            log_session_id: String::new(),
             pending_code_exec: None,
             code_exec_scroll: 0,
             code_exec_stdout_scroll: 0,
@@ -184,5 +188,9 @@ impl App {
             );
             self.cache_shift = Some(0);
         }
+    }
+
+    pub fn set_log_session_id(&mut self, id: &str) {
+        self.log_session_id = id.to_string();
     }
 }

@@ -2,6 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 
 use crate::ui::overlay::{OverlayKind, OverlayState};
 use crate::ui::selection_state::SelectionState;
+use crate::ui::summary::SummarySort;
 use crate::ui::runtime_view_handlers::{
     handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key, handle_summary_key,
 };
@@ -9,6 +10,8 @@ use crate::ui::runtime_view_handlers::{
 pub(crate) struct ViewState {
     pub(crate) overlay: OverlayState,
     pub(crate) summary: SelectionState,
+    pub(crate) summary_sort: SummarySort,
+    pub(crate) summary_order: Vec<usize>,
     pub(crate) jump: SelectionState,
     pub(crate) model: SelectionState,
     pub(crate) prompt: SelectionState,
@@ -58,6 +61,8 @@ impl ViewState {
         Self {
             overlay: OverlayState::default(),
             summary: SelectionState::default(),
+            summary_sort: SummarySort::TabOrder,
+            summary_order: Vec::new(),
             jump: SelectionState::default(),
             model: SelectionState::default(),
             prompt: SelectionState::default(),

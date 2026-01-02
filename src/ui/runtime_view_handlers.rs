@@ -20,12 +20,25 @@ pub(crate) fn handle_summary_key(view: &mut ViewState, key: KeyEvent, tabs_len: 
         }
         KeyCode::Enter => {
             if view.summary.selected < tabs_len {
-                let idx = view.summary.selected;
+                let idx = view
+                    .summary_order
+                    .get(view.summary.selected)
+                    .copied()
+                    .unwrap_or(view.summary.selected);
                 view.overlay.close();
                 ViewAction::SwitchTab(idx)
             } else {
                 ViewAction::None
             }
+        }
+        KeyCode::Char('s') | KeyCode::Char('S') => {
+            view.summary_sort = match view.summary_sort {
+                crate::ui::summary::SummarySort::TabOrder => crate::ui::summary::SummarySort::ExecTime,
+                crate::ui::summary::SummarySort::ExecTime => crate::ui::summary::SummarySort::TabOrder,
+            };
+            view.summary.selected = 0;
+            view.summary.scroll = 0;
+            ViewAction::None
         }
         _ => ViewAction::None,
     }

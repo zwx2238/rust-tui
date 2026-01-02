@@ -45,7 +45,7 @@ pub(crate) fn render_summary_overlay(
     startup_text: Option<&str>,
     view: &mut ViewState,
 ) -> Result<(), Box<dyn Error>> {
-    redraw_summary(
+    let rows = redraw_summary(
         terminal,
         tabs,
         active_tab,
@@ -53,7 +53,9 @@ pub(crate) fn render_summary_overlay(
         startup_text,
         view.summary.selected,
         view.summary.scroll,
+        view.summary_sort,
     )?;
+    view.summary_order = rows.iter().map(|r| r.tab_index).collect();
     Ok(())
 }
 
