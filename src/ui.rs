@@ -18,6 +18,7 @@ mod overlay_table;
 mod overlay_table_state;
 mod perf;
 mod prompt_popup;
+mod render_context;
 mod shortcut_help;
 mod shortcuts;
 mod runtime_context;

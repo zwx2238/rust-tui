@@ -16,6 +16,7 @@ use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_p
 use crate::ui::runtime_layout::compute_layout;
 use crate::ui::runtime_code_exec::build_code_exec_tool_output;
 use crate::ui::runtime_loop_helpers::{apply_tool_calls, handle_pending_command};
+use crate::ui::render_context::RenderContext;
 use crate::ui::runtime_render::render_view;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::scroll::max_scroll_u16;
@@ -203,26 +204,26 @@ pub(crate) fn run_loop(
             )
         };
         let header_note = build_exec_header_note(tabs);
-        let jump_rows = render_view(
+        let mut render_ctx = RenderContext {
             terminal,
             tabs,
-            *active_tab,
+            active_tab: *active_tab,
             theme,
-            startup_text.as_deref(),
-            size,
+            startup_text: startup_text.as_deref(),
+            full_area: size,
             input_height,
             msg_area,
             tabs_area,
             header_area,
             footer_area,
             msg_width,
-            &text,
+            text: &text,
             total_lines,
-            header_note.as_deref(),
-            &mut view,
-            &registry.models,
-            &prompt_registry.prompts,
-        )?;
+            header_note: header_note.as_deref(),
+            models: &registry.models,
+            prompts: &prompt_registry.prompts,
+        };
+        let jump_rows = render_view(&mut render_ctx, &mut view)?;
         if startup_elapsed.is_none() {
             startup_elapsed = Some(start_time.elapsed());
         }

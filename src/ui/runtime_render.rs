@@ -1,4 +1,3 @@
-use crate::render::RenderTheme;
 use crate::ui::jump::JumpRow;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_render::{
@@ -7,44 +6,24 @@ use crate::ui::overlay_render::{
 };
 use crate::ui::shortcuts::all_shortcuts;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
-use crate::ui::runtime_helpers::TabState;
+use crate::ui::render_context::RenderContext;
 use crate::ui::runtime_view::ViewState;
-use ratatui::layout::Rect;
-use ratatui::text::Text;
-use ratatui::{Terminal, backend::CrosstermBackend};
 use std::error::Error;
-use std::io::Stdout;
 
 pub(crate) fn render_view(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    tabs: &mut Vec<TabState>,
-    active_tab: usize,
-    theme: &RenderTheme,
-    startup_text: Option<&str>,
-    full_area: Rect,
-    input_height: u16,
-    msg_area: Rect,
-    tabs_area: Rect,
-    header_area: Rect,
-    footer_area: Rect,
-    msg_width: usize,
-    text: &Text<'_>,
-    total_lines: usize,
-    header_note: Option<&str>,
+    ctx: &mut RenderContext<'_>,
     view: &mut ViewState,
-    models: &[crate::model_registry::ModelProfile],
-    prompts: &[crate::system_prompts::SystemPrompt],
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
-    let jump_rows = build_jump_overlay_rows(view, tabs, active_tab, msg_width, msg_area);
+    let jump_rows = build_jump_overlay_rows(view, ctx);
     let areas = OverlayAreas {
-        full: full_area,
-        msg: msg_area,
+        full: ctx.full_area,
+        msg: ctx.msg_area,
     };
     let counts = OverlayRowCounts {
-        tabs: tabs.len(),
+        tabs: ctx.tabs.len(),
         jump: jump_rows.len(),
-        models: models.len(),
-        prompts: prompts.len(),
+        models: ctx.models.len(),
+        prompts: ctx.prompts.len(),
         help: all_shortcuts().len(),
     };
     let _ = with_active_table_handle(view, areas, counts, |mut handle| {
@@ -52,101 +31,25 @@ pub(crate) fn render_view(
     });
     match view.overlay.active {
         Some(OverlayKind::Summary) => {
-            render_summary_overlay(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                startup_text,
-                header_note,
-                view,
-            )?;
+            render_summary_overlay(ctx, view)?;
         }
         Some(OverlayKind::Jump) => {
-            render_jump_overlay(
-                terminal,
-                theme,
-                tabs,
-                active_tab,
-                startup_text,
-                header_note,
-                view,
-                msg_area,
-                tabs_area,
-                header_area,
-                footer_area,
-                &jump_rows,
-            )?;
+            render_jump_overlay(ctx, view, &jump_rows)?;
         }
         None => {
-            render_chat_view(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                text,
-                total_lines,
-                startup_text,
-                input_height,
-                header_note,
-            )?;
+            render_chat_view(ctx)?;
         }
         Some(OverlayKind::Model) => {
-            render_model_overlay(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                text,
-                total_lines,
-                startup_text,
-                input_height,
-                header_note,
-                view,
-                models,
-            )?;
+            render_model_overlay(ctx, view)?;
         }
         Some(OverlayKind::Prompt) => {
-            render_prompt_overlay(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                text,
-                total_lines,
-                startup_text,
-                input_height,
-                header_note,
-                view,
-                prompts,
-            )?;
+            render_prompt_overlay(ctx, view)?;
         }
         Some(OverlayKind::CodeExec) => {
-            render_code_exec_overlay(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                text,
-                total_lines,
-                startup_text,
-                input_height,
-                header_note,
-            )?;
+            render_code_exec_overlay(ctx)?;
         }
         Some(OverlayKind::Help) => {
-            render_help_overlay(
-                terminal,
-                tabs,
-                active_tab,
-                theme,
-                text,
-                total_lines,
-                startup_text,
-                input_height,
-                header_note,
-                view,
-            )?;
+            render_help_overlay(ctx, view)?;
         }
     }
     Ok(jump_rows)
