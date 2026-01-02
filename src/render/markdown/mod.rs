@@ -1,5 +1,6 @@
 mod code;
 mod count;
+mod latex;
 mod list;
 mod render;
 mod shared;
@@ -7,6 +8,7 @@ mod table;
 mod text;
 
 pub(crate) use count::count_markdown_lines;
+pub(crate) use latex::preprocess_math;
 pub use render::render_markdown_lines;
 
 pub(crate) fn close_unbalanced_code_fence(input: &str) -> String {

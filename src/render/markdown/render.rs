@@ -5,6 +5,7 @@ use crate::render::markdown::shared::{
 };
 use crate::render::markdown::table::TableBuild;
 use crate::render::markdown::text::{render_heading_lines, render_paragraph_lines};
+use crate::render::markdown::preprocess_math;
 use crate::render::theme::RenderTheme;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Tag, TagEnd};
 use ratatui::text::Line;
@@ -15,7 +16,8 @@ pub fn render_markdown_lines(
     theme: &RenderTheme,
     streaming: bool,
 ) -> Vec<Line<'static>> {
-    let parser = markdown_parser(text);
+    let text = preprocess_math(text);
+    let parser = markdown_parser(&text);
     let mut buf = String::new();
     let mut in_code = false;
     let mut code_lang = String::new();
