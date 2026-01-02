@@ -1,4 +1,6 @@
 use crate::types::{Message, ROLE_SYSTEM};
+use crate::ui::commands::CommandSuggestion;
+use crate::ui::selection_state::SelectionState;
 use std::collections::BTreeMap;
 use std::sync::{
     Arc, Mutex,
@@ -102,6 +104,8 @@ pub struct App {
     pub dirty_indices: Vec<usize>,
     pub cache_shift: Option<usize>,
     pub notice: Option<Notice>,
+    pub command_suggestions: Vec<CommandSuggestion>,
+    pub command_select: SelectionState,
 }
 
 #[derive(Clone, Debug)]
@@ -211,6 +215,8 @@ impl App {
             dirty_indices: Vec::new(),
             cache_shift: None,
             notice: None,
+            command_suggestions: Vec::new(),
+            command_select: SelectionState::default(),
         }
     }
 

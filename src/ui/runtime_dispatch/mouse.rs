@@ -66,6 +66,17 @@ pub(crate) fn handle_mouse_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+        if crate::ui::command_suggestions::handle_command_suggestion_click(
+            &mut tab_state.app,
+            layout.msg_area,
+            layout.input_area,
+            m.column,
+            m.row,
+        ) {
+            return;
+        }
+    }
     if matches!(m.kind, MouseEventKind::Down(_)) {
         if handle_tab_category_click(
             m.column,

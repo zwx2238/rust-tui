@@ -1,10 +1,12 @@
-use crate::render::{RenderTheme, messages_to_plain_lines, messages_to_viewport_text_cached};
+use crate::render::{RenderTheme, messages_to_plain_lines};
 use crate::ui::clipboard;
+use crate::ui::command_suggestions::{clear_command_suggestions, refresh_command_suggestions};
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::draw::{inner_area, scrollbar_area};
 use crate::ui::input::handle_key;
 use crate::ui::input_click::click_to_cursor;
-use crate::ui::logic::{build_label_suffixes, point_in_rect, scroll_from_mouse, timer_text};
+use crate::ui::logic::{point_in_rect, scroll_from_mouse};
+use crate::ui::runtime_events_helpers::{hit_test_edit_button, selection_view_text};
 use crate::ui::runtime_helpers::{
     TabState, tab_index_at, tab_labels_for_category, visible_tab_indices,
 };
@@ -14,7 +16,6 @@ use crate::ui::state::Focus;
 use crossterm::event::{KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
 use tui_textarea::CursorMove;
-
 pub(crate) fn handle_key_event(
     key: KeyEvent,
     tabs: &mut Vec<TabState>,
@@ -53,7 +54,6 @@ pub(crate) fn handle_key_event(
     }
     Ok(false)
 }
-
 pub(crate) fn handle_mouse_event(
     m: MouseEvent,
     tabs: &mut Vec<TabState>,
@@ -106,6 +106,7 @@ pub(crate) fn handle_mouse_event(
                     app.input.cancel_selection();
                     app.input
                         .move_cursor(CursorMove::Jump(row as u16, col as u16));
+                    refresh_command_suggestions(app);
                 } else if point_in_rect(m.column, m.row, msg_area) {
                     if let Some(msg_idx) = hit_test_edit_button(
                         tab_state,
@@ -129,6 +130,7 @@ pub(crate) fn handle_mouse_event(
                     app.focus = Focus::Chat;
                     app.follow = false;
                     app.input_selecting = false;
+                    clear_command_suggestions(app);
                     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
                     let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
                     app.chat_selecting = true;
@@ -205,17 +207,16 @@ pub(crate) fn handle_mouse_event(
     }
     None
 }
-
 pub(crate) fn handle_paste_event(paste: &str, tabs: &mut Vec<TabState>, active_tab: usize) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let app = &mut tab_state.app;
         if app.focus == Focus::Input && !app.busy {
             let text = paste.replace("\r\n", "\n").replace('\r', "\n");
             app.input.insert_str(text);
+            refresh_command_suggestions(app);
         }
     }
 }
-
 pub(crate) fn handle_tab_category_click(
     mouse_x: u16,
     mouse_y: u16,
@@ -254,61 +255,4 @@ pub(crate) fn handle_tab_category_click(
         return true;
     }
     false
-}
-
-fn selection_view_text(
-    tab_state: &mut TabState,
-    msg_width: usize,
-    theme: &RenderTheme,
-    view_height: u16,
-) -> ratatui::text::Text<'static> {
-    let app = &tab_state.app;
-    let label_suffixes = build_label_suffixes(app, &timer_text(app));
-    let (text, _) = messages_to_viewport_text_cached(
-        &app.messages,
-        msg_width,
-        theme,
-        &label_suffixes,
-        app.pending_assistant,
-        app.scroll,
-        view_height,
-        &mut tab_state.render_cache,
-    );
-    text
-}
-
-fn hit_test_edit_button(
-    tab_state: &mut TabState,
-    msg_area: Rect,
-    msg_width: usize,
-    theme: &RenderTheme,
-    view_height: u16,
-    mouse_x: u16,
-    mouse_y: u16,
-) -> Option<usize> {
-    if tab_state.app.message_layouts.is_empty() {
-        return None;
-    }
-    let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
-    if mouse_x < inner.x
-        || mouse_x >= inner.x + inner.width
-        || mouse_y < inner.y
-        || mouse_y >= inner.y + inner.height
-    {
-        return None;
-    }
-    let text = selection_view_text(tab_state, msg_width, theme, view_height);
-    let app = &tab_state.app;
-    let (row, col) = chat_position_from_mouse(&text, app.scroll, inner, mouse_x, mouse_y);
-    for layout in &app.message_layouts {
-        if layout.label_line == row {
-            if let Some((start, end)) = layout.button_range {
-                if col >= start && col < end {
-                    return Some(layout.index);
-                }
-            }
-            break;
-        }
-    }
-    None
 }

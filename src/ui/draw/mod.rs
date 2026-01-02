@@ -1,4 +1,5 @@
 use crate::render::RenderTheme;
+use crate::ui::command_suggestions::draw_command_suggestions;
 use crate::ui::notice::draw_notice;
 use crate::ui::state::{App, Focus};
 use ratatui::layout::Rect;
@@ -165,5 +166,6 @@ fn draw_base(
         &app.model_key,
         &app.prompt_key,
     );
+    draw_command_suggestions(f, msg_area, input_area, app, theme);
     header_footer::draw_footer(f, footer_area, theme, app.nav_mode);
 }

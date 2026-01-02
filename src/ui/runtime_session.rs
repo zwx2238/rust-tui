@@ -70,7 +70,6 @@ pub(crate) fn restore_tabs_from_session(
         state.app.dirty_indices = (0..state.app.messages.len()).collect();
         tabs.push(state);
     }
-    categories.retain(|c| tabs.iter().any(|t| t.category == *c));
     if categories.is_empty() {
         categories.push("默认".to_string());
     }
