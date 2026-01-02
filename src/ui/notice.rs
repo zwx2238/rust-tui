@@ -3,8 +3,8 @@ use crate::ui::state::{App, Notice};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
-use std::time::{Duration, Instant};
 use stakpak_popup_widget::{PopupConfig, PopupPosition, PopupWidget, TextContent};
+use std::time::{Duration, Instant};
 use textwrap::wrap;
 use unicode_width::UnicodeWidthStr;
 
@@ -55,7 +55,9 @@ pub(crate) fn draw_notice(f: &mut Frame<'_>, area: Rect, app: &mut App, theme: &
         height: popup_height,
     };
     config.border_style = Style::default().fg(Color::Yellow);
-    config.background_style = Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White));
+    config.background_style = Style::default()
+        .bg(theme.bg)
+        .fg(theme.fg.unwrap_or(Color::White));
     config.popup_background_style = Style::default().bg(theme.bg);
 
     let mut popup = PopupWidget::with_content(config, TextContent::new(notice.text.clone()));

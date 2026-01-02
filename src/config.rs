@@ -53,23 +53,15 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.default_model.trim().is_empty() {
         return Err("配置文件错误：default_model 不能为空".into());
     }
-    if cfg
-        .models
-        .iter()
-        .any(|m| m.key.trim().is_empty()
+    if cfg.models.iter().any(|m| {
+        m.key.trim().is_empty()
             || m.base_url.trim().is_empty()
             || m.api_key.trim().is_empty()
-            || m.model.trim().is_empty())
-    {
-        return Err(
-            "配置文件错误：models 中每个条目必须包含 key/base_url/api_key/model".into(),
-        );
+            || m.model.trim().is_empty()
+    }) {
+        return Err("配置文件错误：models 中每个条目必须包含 key/base_url/api_key/model".into());
     }
-    if cfg
-        .models
-        .iter()
-        .all(|m| m.key != cfg.default_model)
-    {
+    if cfg.models.iter().all(|m| m.key != cfg.default_model) {
         return Err("配置文件错误：default_model 必须在 models 中存在".into());
     }
     Ok(())

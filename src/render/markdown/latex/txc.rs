@@ -22,14 +22,18 @@ pub(crate) fn render_texicode(expr: &str) -> Result<String, String> {
         .output()
         .map_err(|e| format!("无法执行 txc：{e}"))?;
     if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr).trim_end().to_string();
+        let err = String::from_utf8_lossy(&output.stderr)
+            .trim_end()
+            .to_string();
         return Err(if err.is_empty() {
             "txc 执行失败".to_string()
         } else {
             err
         });
     }
-    let text = String::from_utf8_lossy(&output.stdout).trim_end().to_string();
+    let text = String::from_utf8_lossy(&output.stdout)
+        .trim_end()
+        .to_string();
     if text.is_empty() {
         return Err("txc 输出为空".to_string());
     }

@@ -1,5 +1,5 @@
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
-use crate::ui::runtime_events::handle_mouse_event;
+use crate::ui::runtime_events::{handle_mouse_event, handle_tab_category_click};
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
 use crate::ui::scroll::SCROLL_STEP_I32;
 use crossterm::event::{MouseEvent, MouseEventKind};
@@ -66,6 +66,20 @@ pub(crate) fn handle_mouse_event_loop(
     view: &mut ViewState,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) {
+    if matches!(m.kind, MouseEventKind::Down(_)) {
+        if handle_tab_category_click(
+            m.column,
+            m.row,
+            ctx.tabs,
+            ctx.active_tab,
+            ctx.categories,
+            ctx.active_category,
+            layout.tabs_area,
+            layout.category_area,
+        ) {
+            return;
+        }
+    }
     if view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec) {
         if handle_code_exec_overlay_mouse(m, ctx, layout, view) {
             return;

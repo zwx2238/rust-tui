@@ -118,6 +118,9 @@ pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::err
 }
 
 pub fn handle_command(line: &str, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut parts = line.splitn(2, ' ');
+    let cmd = parts.next().unwrap_or("");
+    let arg = parts.next().unwrap_or("").trim();
     match line {
         "/exit" | "/quit" => return Ok(true),
         "/reset" | "/clear" => {
@@ -135,11 +138,66 @@ pub fn handle_command(line: &str, app: &mut App) -> Result<bool, Box<dyn std::er
         "/help" => {
             app.messages.push(Message {
                 role: ROLE_ASSISTANT.to_string(),
-                content: "命令：/help /save /reset /clear /exit /quit；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新对话），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
+                content: "命令：/help /save /reset /clear /exit /quit /category [name] /open <id> /list-conv；快捷键：F6 终止生成，Shift+F6 终止并编辑上一问，F2 消息定位（E 复制用户消息到新对话），g 进入语义导航（j/k 或 n/p 上下消息，Esc 退出）"
                     .to_string(),
                 tool_call_id: None,
                 tool_calls: None,
             });
+        }
+        _ if cmd == "/category" => {
+            app.pending_category_name = if arg.is_empty() {
+                None
+            } else {
+                Some(arg.to_string())
+            };
+            app.pending_command = Some(PendingCommand::NewCategory);
+        }
+        _ if cmd == "/open" => {
+            if arg.is_empty() {
+                app.messages.push(Message {
+                    role: ROLE_ASSISTANT.to_string(),
+                    content: "用法：/open <conversation_id>".to_string(),
+                    tool_call_id: None,
+                    tool_calls: None,
+                });
+            } else {
+                app.pending_open_conversation = Some(arg.to_string());
+                app.pending_command = Some(PendingCommand::OpenConversation);
+            }
+        }
+        _ if cmd == "/list-conv" => {
+            match crate::conversation::conversations_dir()
+                .and_then(|dir| std::fs::read_dir(dir).map_err(|e| e.into()))
+            {
+                Ok(entries) => {
+                    let mut ids = Vec::new();
+                    for entry in entries.flatten() {
+                        if let Some(stem) = entry.path().file_stem() {
+                            ids.push(stem.to_string_lossy().to_string());
+                        }
+                    }
+                    ids.sort();
+                    let content = if ids.is_empty() {
+                        "暂无对话文件。".to_string()
+                    } else {
+                        format!("可用对话：\n{}", ids.join("\n"))
+                    };
+                    app.messages.push(Message {
+                        role: ROLE_ASSISTANT.to_string(),
+                        content,
+                        tool_call_id: None,
+                        tool_calls: None,
+                    });
+                }
+                Err(e) => {
+                    app.messages.push(Message {
+                        role: ROLE_ASSISTANT.to_string(),
+                        content: format!("读取对话目录失败：{e}"),
+                        tool_call_id: None,
+                        tool_calls: None,
+                    });
+                }
+            }
         }
         _ => {
             app.messages.push(Message {

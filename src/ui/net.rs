@@ -1,5 +1,7 @@
 use crate::llm::rig::{RigOutcome, prepare_rig_context, rig_complete};
 use crate::types::{Message, ToolCall, ToolFunctionCall, Usage};
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::{
     Arc,
@@ -7,14 +9,17 @@ use std::sync::{
 };
 use std::time::Duration;
 use tokio::runtime::Runtime;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 pub enum LlmEvent {
     Chunk(String),
     Error(String),
-    Done { usage: Option<Usage> },
-    ToolCalls { calls: Vec<ToolCall>, usage: Option<Usage> },
+    Done {
+        usage: Option<Usage>,
+    },
+    ToolCalls {
+        calls: Vec<ToolCall>,
+        usage: Option<Usage>,
+    },
 }
 
 pub struct UiEvent {
@@ -87,13 +92,7 @@ pub fn request_llm_stream(
                 return;
             }
             if let Some(dir) = log_dir.as_deref() {
-                let _ = write_response_log(
-                    dir,
-                    &log_session_id,
-                    tab,
-                    message_index,
-                    &content,
-                );
+                let _ = write_response_log(dir, &log_session_id, tab, message_index, &content);
             }
             stream_chunks(&content, &cancel, &tx, tab, request_id);
             let _ = tx.send(UiEvent {
@@ -111,13 +110,7 @@ pub fn request_llm_stream(
                     "tool_call: {name}\nargs: {}",
                     serde_json::to_string_pretty(&args).unwrap_or_default()
                 );
-                let _ = write_response_log(
-                    dir,
-                    &log_session_id,
-                    tab,
-                    message_index,
-                    &payload,
-                );
+                let _ = write_response_log(dir, &log_session_id, tab, message_index, &payload);
             }
             let _ = tx.send(UiEvent {
                 tab,
@@ -135,19 +128,16 @@ pub fn request_llm_stream(
             let _ = tx.send(UiEvent {
                 tab,
                 request_id,
-                event: LlmEvent::ToolCalls { calls: vec![call], usage },
+                event: LlmEvent::ToolCalls {
+                    calls: vec![call],
+                    usage,
+                },
             });
         }
         Err(e) => {
             if let Some(dir) = log_dir.as_deref() {
                 let payload = format!("error: {e}");
-                let _ = write_response_log(
-                    dir,
-                    &log_session_id,
-                    tab,
-                    message_index,
-                    &payload,
-                );
+                let _ = write_response_log(dir, &log_session_id, tab, message_index, &payload);
             }
             let _ = tx.send(UiEvent {
                 tab,

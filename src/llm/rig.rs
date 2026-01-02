@@ -6,8 +6,15 @@ use rig::providers::openai;
 
 #[derive(Debug)]
 pub enum RigOutcome {
-    Message { content: String, usage: Option<Usage> },
-    ToolCall { name: String, args: serde_json::Value, usage: Option<Usage> },
+    Message {
+        content: String,
+        usage: Option<Usage>,
+    },
+    ToolCall {
+        name: String,
+        args: serde_json::Value,
+        usage: Option<Usage>,
+    },
 }
 
 pub struct RigRequestContext {
@@ -71,7 +78,10 @@ pub async fn rig_complete(
         .map_err(|e| format!("请求失败：{e}"))?;
     let usage = extract_usage(&response.raw_response);
     match response.choice {
-        ModelChoice::Message(msg) => Ok(RigOutcome::Message { content: msg, usage }),
+        ModelChoice::Message(msg) => Ok(RigOutcome::Message {
+            content: msg,
+            usage,
+        }),
         ModelChoice::ToolCall(name, args) => Ok(RigOutcome::ToolCall { name, args, usage }),
     }
 }

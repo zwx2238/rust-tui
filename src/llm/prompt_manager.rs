@@ -70,11 +70,8 @@ pub fn build_history_and_prompt(
                 continue;
             }
             if msg.role == crate::types::ROLE_TOOL {
-                let wrapped = templates.render_tool_result(
-                    "tool",
-                    &serde_json::Value::Null,
-                    &msg.content,
-                )?;
+                let wrapped =
+                    templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
                 history.push(Message {
                     role: "user".to_string(),
                     content: wrapped,
@@ -93,11 +90,8 @@ pub fn build_history_and_prompt(
                 continue;
             }
             if msg.role == crate::types::ROLE_TOOL {
-                let wrapped = templates.render_tool_result(
-                    "tool",
-                    &serde_json::Value::Null,
-                    &msg.content,
-                )?;
+                let wrapped =
+                    templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
                 history.push(Message {
                     role: "user".to_string(),
                     content: wrapped,

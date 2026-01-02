@@ -2,9 +2,9 @@ use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::net::{UiEvent, request_llm_stream};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::RequestHandle;
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
 

@@ -21,9 +21,10 @@ impl RigTemplates {
         }
         let mut env = Environment::new();
         env.set_loader(minijinja::path_loader(root.clone()));
-        env.add_filter("tojson", |value: Value| -> Result<String, minijinja::Error> {
-            Ok(value.to_string())
-        });
+        env.add_filter(
+            "tojson",
+            |value: Value| -> Result<String, minijinja::Error> { Ok(value.to_string()) },
+        );
         Ok(Self { env, root })
     }
 
@@ -34,7 +35,11 @@ impl RigTemplates {
         serde_json::from_str(&text).map_err(|e| format!("解析工具定义失败：{e}"))
     }
 
-    pub fn render_preamble(&self, base_system: &str, tools: &[ToolSchema]) -> Result<String, String> {
+    pub fn render_preamble(
+        &self,
+        base_system: &str,
+        tools: &[ToolSchema],
+    ) -> Result<String, String> {
         let tmpl = self
             .env
             .get_template("tool_preamble.jinja")

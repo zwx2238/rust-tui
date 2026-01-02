@@ -35,7 +35,12 @@ pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecP
         .min(safe.height.saturating_sub(2).max(MIN_POPUP_HEIGHT));
     let x = safe.x + (safe.width.saturating_sub(width)) / 2;
     let y = safe.y + (safe.height.saturating_sub(height)) / 2;
-    let popup = Rect { x, y, width, height };
+    let popup = Rect {
+        x,
+        y,
+        width,
+        height,
+    };
     let inner = Rect {
         x: popup.x.saturating_add(1),
         y: popup.y.saturating_add(1),
@@ -64,8 +69,8 @@ pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecP
         }
     };
     let actions_area = if with_reason { chunks[2] } else { chunks[1] };
-    let body_cols = Layout::horizontal([Constraint::Percentage(55), Constraint::Percentage(45)])
-        .split(body);
+    let body_cols =
+        Layout::horizontal([Constraint::Percentage(55), Constraint::Percentage(45)]).split(body);
     let code_text_area = Rect {
         x: body_cols[0].x,
         y: body_cols[0].y,
@@ -73,7 +78,9 @@ pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecP
         height: body_cols[0].height,
     };
     let code_scrollbar_area = Rect {
-        x: body_cols[0].x.saturating_add(body_cols[0].width.saturating_sub(1)),
+        x: body_cols[0]
+            .x
+            .saturating_add(body_cols[0].width.saturating_sub(1)),
         y: body_cols[0].y,
         width: 1,
         height: body_cols[0].height,
@@ -87,7 +94,9 @@ pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecP
         height: out_chunks[0].height,
     };
     let stdout_scrollbar_area = Rect {
-        x: out_chunks[0].x.saturating_add(out_chunks[0].width.saturating_sub(1)),
+        x: out_chunks[0]
+            .x
+            .saturating_add(out_chunks[0].width.saturating_sub(1)),
         y: out_chunks[0].y,
         width: 1,
         height: out_chunks[0].height,
@@ -99,7 +108,9 @@ pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecP
         height: out_chunks[1].height,
     };
     let stderr_scrollbar_area = Rect {
-        x: out_chunks[1].x.saturating_add(out_chunks[1].width.saturating_sub(1)),
+        x: out_chunks[1]
+            .x
+            .saturating_add(out_chunks[1].width.saturating_sub(1)),
         y: out_chunks[1].y,
         width: 1,
         height: out_chunks[1].height,

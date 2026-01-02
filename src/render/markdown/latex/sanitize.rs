@@ -61,7 +61,12 @@ fn is_mathish_line(input: &str) -> bool {
 fn strip_cjk_punct(input: &str) -> String {
     input
         .chars()
-        .filter(|ch| !matches!(ch, '、' | '，' | '。' | '；' | '：' | '（' | '）' | '【' | '】' | '「' | '」'))
+        .filter(|ch| {
+            !matches!(
+                ch,
+                '、' | '，' | '。' | '；' | '：' | '（' | '）' | '【' | '】' | '「' | '」'
+            )
+        })
         .collect()
 }
 

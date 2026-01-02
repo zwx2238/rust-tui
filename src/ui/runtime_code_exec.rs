@@ -1,16 +1,16 @@
 use crate::args::Args;
+use crate::types::Message;
 use crate::ui::code_exec_container::{ensure_container, run_python_in_container_stream};
 use crate::ui::net::UiEvent;
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::runtime_code_exec_helpers::inject_requirements;
 use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
+use crate::ui::runtime_helpers::TabState;
+use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 use crate::ui::tools::parse_code_exec_args;
-use crate::types::Message;
 use std::sync::mpsc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::time::Instant;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) fn handle_code_exec_request(
     tab_state: &mut TabState,
@@ -174,13 +174,9 @@ pub(crate) fn handle_code_exec_approve(
     if pending.language == "python" {
         std::thread::spawn(move || {
             let code = pending.exec_code.as_deref().unwrap_or(&pending.code);
-            if let Err(err) = run_python_in_container_stream(
-                &container_id,
-                &run_id,
-                code,
-                live.clone(),
-                cancel,
-            ) {
+            if let Err(err) =
+                run_python_in_container_stream(&container_id, &run_id, code, live.clone(), cancel)
+            {
                 if let Ok(mut live) = live.lock() {
                     live.stderr.push_str(&format!("{err}\n"));
                     live.exit_code = Some(-1);
@@ -228,7 +224,10 @@ pub(crate) fn handle_code_exec_deny(
     let idx = tab_state.app.messages.len();
     tab_state.app.messages.push(Message {
         role: crate::types::ROLE_TOOL.to_string(),
-        content: format!(r#"{{"error":"用户拒绝执行","reason":"{}"}}"#, escape_json_string(&reason)),
+        content: format!(
+            r#"{{"error":"用户拒绝执行","reason":"{}"}}"#,
+            escape_json_string(&reason)
+        ),
         tool_call_id: Some(pending.call_id),
         tool_calls: None,
     });

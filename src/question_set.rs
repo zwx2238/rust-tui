@@ -30,8 +30,7 @@ fn question_sets_dir() -> Result<PathBuf, String> {
 
 fn resolve_question_set_path(spec: &str) -> Result<(PathBuf, bool), String> {
     let path = PathBuf::from(spec);
-    let is_path =
-        path.is_absolute() || path.components().count() > 1 || path.extension().is_some();
+    let is_path = path.is_absolute() || path.components().count() > 1 || path.extension().is_some();
     if is_path {
         return Ok((path, true));
     }

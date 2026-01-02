@@ -1,13 +1,13 @@
 use crate::ui::state::CodeExecLive;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ui::code_exec_container_env::{
-    code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url,
-    pip_target_dir, prepare_pip_cache_dir, site_tmpfs_mb,
+    code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url, pip_target_dir,
+    prepare_pip_cache_dir, site_tmpfs_mb,
 };
 
 pub(crate) fn ensure_container(container_id: &mut Option<String>) -> Result<String, String> {
@@ -42,8 +42,14 @@ pub(crate) fn run_python_in_container_stream(
         .stderr(Stdio::piped());
 
     let mut child = cmd.spawn().map_err(|e| format!("Docker 执行失败：{e}"))?;
-    let mut stdout = child.stdout.take().ok_or_else(|| "无法读取 stdout".to_string())?;
-    let mut stderr = child.stderr.take().ok_or_else(|| "无法读取 stderr".to_string())?;
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "无法读取 stdout".to_string())?;
+    let mut stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "无法读取 stderr".to_string())?;
 
     let live_out = Arc::clone(&live);
     let t_out = std::thread::spawn(move || {
@@ -153,7 +159,10 @@ fn start_container() -> Result<String, String> {
         .arg("--tmpfs")
         .arg("/tmp:rw,noexec,nosuid,size=64m")
         .arg("--tmpfs")
-        .arg(format!("/opt/deepchat:rw,exec,nosuid,size={}m", site_tmpfs_mb()))
+        .arg(format!(
+            "/opt/deepchat:rw,exec,nosuid,size={}m",
+            site_tmpfs_mb()
+        ))
         .arg("-e")
         .arg("TMPDIR=/opt/deepchat/tmp")
         .arg("-e")
@@ -169,11 +178,9 @@ fn start_container() -> Result<String, String> {
         .arg("--label")
         .arg(format!("deepchat-container={run_id}"));
     let cache_dir = pip_cache_dir();
-    cmd.arg("-v")
-        .arg(format!("{cache_dir}:/root/.cache/pip"));
+    cmd.arg("-v").arg(format!("{cache_dir}:/root/.cache/pip"));
     if let Some(index_url) = pip_index_url() {
-        cmd.arg("-e")
-            .arg(format!("PIP_INDEX_URL={index_url}"));
+        cmd.arg("-e").arg(format!("PIP_INDEX_URL={index_url}"));
     }
     if let Some(extra_url) = pip_extra_index_url() {
         cmd.arg("-e")
@@ -252,9 +259,7 @@ fn write_code_file(container_id: &str, run_id: &str, code: &str) -> Result<(), S
             .write_all(payload.as_bytes())
             .map_err(|e| format!("写入容器失败：{e}"))?;
     }
-    let status = child
-        .wait()
-        .map_err(|e| format!("写入容器失败：{e}"))?;
+    let status = child.wait().map_err(|e| format!("写入容器失败：{e}"))?;
     if !status.success() {
         return Err("写入容器失败".to_string());
     }

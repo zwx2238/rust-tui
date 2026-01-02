@@ -15,20 +15,11 @@ pub struct ToolService<'a> {
 }
 
 impl<'a> ToolService<'a> {
-    pub fn new(
-        registry: &'a ModelRegistry,
-        args: &'a Args,
-        tx: &'a mpsc::Sender<UiEvent>,
-    ) -> Self {
+    pub fn new(registry: &'a ModelRegistry, args: &'a Args, tx: &'a mpsc::Sender<UiEvent>) -> Self {
         Self { registry, args, tx }
     }
 
-    pub fn apply_tool_calls(
-        &self,
-        tab_state: &mut TabState,
-        tab_id: usize,
-        calls: &[ToolCall],
-    ) {
+    pub fn apply_tool_calls(&self, tab_state: &mut TabState, tab_id: usize, calls: &[ToolCall]) {
         let mut any_results = false;
         let mut needs_approval = false;
         let api_key = tab_state.app.tavily_api_key.clone();
@@ -173,7 +164,11 @@ impl<'a> ToolService<'a> {
         let model = self
             .registry
             .get(&tab_state.app.model_key)
-            .unwrap_or_else(|| self.registry.get(&self.registry.default_key).expect("model"));
+            .unwrap_or_else(|| {
+                self.registry
+                    .get(&self.registry.default_key)
+                    .expect("model")
+            });
         start_followup_request(
             tab_state,
             &model.base_url,

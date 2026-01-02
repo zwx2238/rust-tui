@@ -158,6 +158,11 @@ pub(crate) fn handle_code_exec_overlay_mouse(
         }
     }
     if matches!(m.kind, MouseEventKind::Down(_)) {
+        if point_in_rect(m.column, m.row, layout.tabs_area)
+            || point_in_rect(m.column, m.row, layout.category_area)
+        {
+            return false;
+        }
         view.overlay.close();
     }
     if matches!(m.kind, MouseEventKind::Moved) {
@@ -229,6 +234,11 @@ pub(crate) fn handle_file_patch_overlay_mouse(
         }
     }
     if matches!(m.kind, MouseEventKind::Down(_)) {
+        if point_in_rect(m.column, m.row, layout.tabs_area)
+            || point_in_rect(m.column, m.row, layout.category_area)
+        {
+            return false;
+        }
         view.overlay.close();
     }
     if matches!(m.kind, MouseEventKind::Moved) {

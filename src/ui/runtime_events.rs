@@ -71,31 +71,16 @@ pub(crate) fn handle_mouse_event(
 ) -> Option<usize> {
     match m.kind {
         MouseEventKind::Down(_) => {
-            if point_in_rect(m.column, m.row, category_area) {
-                let row = m.row.saturating_sub(category_area.y) as usize;
-                if row < categories.len() {
-                    *active_category = row;
-                    if let Some(category) = categories.get(*active_category) {
-                        let visible = visible_tab_indices(tabs, category);
-                        if let Some(tab_idx) = visible.first() {
-                            *active_tab = *tab_idx;
-                        }
-                    }
-                }
-                return None;
-            }
-            if point_in_rect(m.column, m.row, tabs_area) {
-                let category = categories
-                    .get(*active_category)
-                    .map(|s| s.as_str())
-                    .unwrap_or("默认");
-                let labels = tab_labels_for_category(tabs, category);
-                if let Some(pos) = tab_index_at(m.column, tabs_area, &labels) {
-                    let visible = visible_tab_indices(tabs, category);
-                    if let Some(idx) = visible.get(pos) {
-                        *active_tab = *idx;
-                    }
-                }
+            if handle_tab_category_click(
+                m.column,
+                m.row,
+                tabs,
+                active_tab,
+                categories,
+                active_category,
+                tabs_area,
+                category_area,
+            ) {
                 return None;
             }
             let scroll_area = scrollbar_area(msg_area);
@@ -229,6 +214,46 @@ pub(crate) fn handle_paste_event(paste: &str, tabs: &mut Vec<TabState>, active_t
             app.input.insert_str(text);
         }
     }
+}
+
+pub(crate) fn handle_tab_category_click(
+    mouse_x: u16,
+    mouse_y: u16,
+    tabs: &mut Vec<TabState>,
+    active_tab: &mut usize,
+    categories: &[String],
+    active_category: &mut usize,
+    tabs_area: Rect,
+    category_area: Rect,
+) -> bool {
+    if point_in_rect(mouse_x, mouse_y, category_area) {
+        let row = mouse_y.saturating_sub(category_area.y) as usize;
+        if row < categories.len() {
+            *active_category = row;
+            if let Some(category) = categories.get(*active_category) {
+                let visible = visible_tab_indices(tabs, category);
+                if let Some(tab_idx) = visible.first() {
+                    *active_tab = *tab_idx;
+                }
+            }
+        }
+        return true;
+    }
+    if point_in_rect(mouse_x, mouse_y, tabs_area) {
+        let category = categories
+            .get(*active_category)
+            .map(|s| s.as_str())
+            .unwrap_or("默认");
+        let labels = tab_labels_for_category(tabs, category);
+        if let Some(pos) = tab_index_at(mouse_x, tabs_area, &labels) {
+            let visible = visible_tab_indices(tabs, category);
+            if let Some(idx) = visible.get(pos) {
+                *active_tab = *idx;
+            }
+        }
+        return true;
+    }
+    false
 }
 
 fn selection_view_text(

@@ -28,7 +28,12 @@ pub(crate) fn file_patch_popup_layout(area: Rect) -> FilePatchPopupLayout {
         .min(safe.height.saturating_sub(2).max(MIN_POPUP_HEIGHT));
     let x = safe.x + (safe.width.saturating_sub(width)) / 2;
     let y = safe.y + (safe.height.saturating_sub(height)) / 2;
-    let popup = Rect { x, y, width, height };
+    let popup = Rect {
+        x,
+        y,
+        width,
+        height,
+    };
     let inner = Rect {
         x: popup.x.saturating_add(1),
         y: popup.y.saturating_add(1),

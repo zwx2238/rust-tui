@@ -1,11 +1,11 @@
 use crate::render::markdown::code::render_code_block_lines;
 use crate::render::markdown::list::render_list_item_lines;
+use crate::render::markdown::preprocess_math;
 use crate::render::markdown::shared::{
     ItemContext, ListState, append_text, list_indent, list_prefix, markdown_parser,
 };
 use crate::render::markdown::table::TableBuild;
 use crate::render::markdown::text::{render_heading_lines, render_paragraph_lines};
-use crate::render::markdown::preprocess_math;
 use crate::render::theme::RenderTheme;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Tag, TagEnd};
 use ratatui::text::Line;

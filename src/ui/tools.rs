@@ -188,7 +188,10 @@ fn run_read_file(args_json: &str, with_line_numbers: bool) -> ToolResult {
         "[read_file]\n"
     });
     out.push_str(&format!("path: {}\n", path));
-    out.push_str(&format!("lines: {}-{} (total {})\n", start, end, total_lines));
+    out.push_str(&format!(
+        "lines: {}-{} (total {})\n",
+        start, end, total_lines
+    ));
     out.push_str("content:\n");
     out.push_str("```text\n");
     if with_line_numbers {

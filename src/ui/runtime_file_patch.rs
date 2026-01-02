@@ -1,9 +1,9 @@
 use crate::args::Args;
+use crate::types::Message;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::state::PendingFilePatch;
-use crate::types::Message;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
@@ -21,8 +21,8 @@ pub(crate) fn handle_file_patch_request(
     if tab_state.app.pending_file_patch.is_some() {
         return Err("已有待审批的文件修改请求".to_string());
     }
-    let args: PatchArgs =
-        serde_json::from_str(&call.function.arguments).map_err(|e| format!("modify_file 参数解析失败：{e}"))?;
+    let args: PatchArgs = serde_json::from_str(&call.function.arguments)
+        .map_err(|e| format!("modify_file 参数解析失败：{e}"))?;
     let diff = args.diff.trim().to_string();
     if diff.is_empty() {
         return Err("modify_file 参数 diff 不能为空".to_string());
@@ -179,12 +179,18 @@ fn apply_patch(diff: &str) -> Result<(), String> {
             .write_all(diff.as_bytes())
             .map_err(|e| format!("应用补丁失败：{e}"))?;
     }
-    let output = child.wait_with_output().map_err(|e| format!("应用补丁失败：{e}"))?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("应用补丁失败：{e}"))?;
     if output.status.success() {
         Ok(())
     } else {
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(if err.is_empty() { "应用补丁失败".to_string() } else { err })
+        Err(if err.is_empty() {
+            "应用补丁失败".to_string()
+        } else {
+            err
+        })
     }
 }
 

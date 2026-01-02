@@ -1,6 +1,6 @@
 use crate::ui::runtime_code_exec_helpers::filter_pip_output;
-use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 use crate::ui::runtime_helpers::TabState;
+use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 
 pub(crate) fn build_code_exec_tool_output(
     pending: &PendingCodeExec,
@@ -50,11 +50,7 @@ pub(crate) fn build_code_exec_tool_output(
         }
         text.push_str("```\n");
     }
-    if live.done
-        && live.exit_code == Some(0)
-        && stdout_empty
-        && stderr_empty
-    {
+    if live.done && live.exit_code == Some(0) && stdout_empty && stderr_empty {
         text.push_str("note: 程序正常执行但没有输出。\n");
     }
     if let Some(reason) = pending.stop_reason.as_ref() {

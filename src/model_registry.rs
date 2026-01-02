@@ -24,9 +24,7 @@ impl ModelRegistry {
     }
 }
 
-pub fn build_model_registry(
-    cfg: &Config,
-) -> ModelRegistry {
+pub fn build_model_registry(cfg: &Config) -> ModelRegistry {
     let models = cfg
         .models
         .iter()

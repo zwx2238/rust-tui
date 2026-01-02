@@ -4,7 +4,11 @@ use crate::ui::runtime_view::{ViewAction, ViewState};
 
 const PAGE_STEP: usize = 5;
 
-pub(crate) fn handle_summary_key(view: &mut ViewState, key: KeyEvent, tabs_len: usize) -> ViewAction {
+pub(crate) fn handle_summary_key(
+    view: &mut ViewState,
+    key: KeyEvent,
+    tabs_len: usize,
+) -> ViewAction {
     match key.code {
         KeyCode::Esc => {
             view.overlay.close();
@@ -33,8 +37,12 @@ pub(crate) fn handle_summary_key(view: &mut ViewState, key: KeyEvent, tabs_len: 
         }
         KeyCode::Char('s') | KeyCode::Char('S') => {
             view.summary_sort = match view.summary_sort {
-                crate::ui::summary::SummarySort::TabOrder => crate::ui::summary::SummarySort::ExecTime,
-                crate::ui::summary::SummarySort::ExecTime => crate::ui::summary::SummarySort::TabOrder,
+                crate::ui::summary::SummarySort::TabOrder => {
+                    crate::ui::summary::SummarySort::ExecTime
+                }
+                crate::ui::summary::SummarySort::ExecTime => {
+                    crate::ui::summary::SummarySort::TabOrder
+                }
             };
             view.summary.selected = 0;
             view.summary.scroll = 0;

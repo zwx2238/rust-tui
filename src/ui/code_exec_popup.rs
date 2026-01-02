@@ -1,6 +1,6 @@
 use crate::render::RenderTheme;
 use crate::ui::code_exec_popup_layout::{OUTER_MARGIN, code_exec_popup_layout};
-use crate::ui::code_exec_popup_text::{build_code_text, build_stdout_text, build_stderr_text};
+use crate::ui::code_exec_popup_text::{build_code_text, build_stderr_text, build_stdout_text};
 use crate::ui::draw::style::{base_fg, base_style, selection_bg};
 use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCodeExec};
 use ratatui::layout::Rect;
@@ -10,7 +10,6 @@ use ratatui::widgets::{
     Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
 };
 use tui_textarea::TextArea;
-
 
 pub(crate) fn draw_code_exec_popup(
     f: &mut ratatui::Frame<'_>,
@@ -55,9 +54,12 @@ pub(crate) fn draw_code_exec_popup(
     let title = build_title(live);
     let block = Block::default()
         .borders(Borders::ALL)
-        .title_top(Line::from(vec![
-            Span::styled(title, Style::default().fg(base_fg(theme)).add_modifier(Modifier::BOLD)),
-        ]))
+        .title_top(Line::from(vec![Span::styled(
+            title,
+            Style::default()
+                .fg(base_fg(theme))
+                .add_modifier(Modifier::BOLD),
+        )]))
         .style(base_style(theme))
         .border_style(Style::default().fg(base_fg(theme)));
     f.render_widget(block, layout.popup);
@@ -135,19 +137,14 @@ pub(crate) fn draw_code_exec_popup(
     }
 
     if let Some(target) = reason_target {
-        draw_reason_input(
-            f,
-            layout.reason_input_area,
-            reason_input,
-            target,
-            theme,
-        );
+        draw_reason_input(f, layout.reason_input_area, reason_input, target, theme);
     }
 
     let button_style = |target: CodeExecHover| match hover {
-        Some(h) if h == target => {
-            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
-        }
+        Some(h) if h == target => Style::default()
+            .bg(selection_bg(theme.bg))
+            .fg(base_fg(theme))
+            .add_modifier(Modifier::BOLD),
         _ => base_style(theme),
     };
     let approve_style = button_style(CodeExecHover::Approve);
@@ -230,9 +227,7 @@ fn build_title(live: Option<&crate::ui::state::CodeExecLive>) -> String {
             let finished = live.done || live.exit_code.is_some();
             if finished {
                 let finished_at = live.finished_at.unwrap_or_else(std::time::Instant::now);
-                let exec = finished_at
-                    .duration_since(live.started_at)
-                    .as_secs_f32();
+                let exec = finished_at.duration_since(live.started_at).as_secs_f32();
                 let wait = finished_at.elapsed().as_secs_f32();
                 format!("代码执行确认 · 已完成 {:.1}s | 等待 {:.1}s", exec, wait)
             } else {

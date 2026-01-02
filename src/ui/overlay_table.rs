@@ -54,13 +54,7 @@ pub fn centered_area(area: Rect, percent_x: u16, rows: usize, max_height: u16) -
     }
 }
 
-pub fn row_at(
-    area: Rect,
-    rows: usize,
-    scroll: usize,
-    mouse_x: u16,
-    mouse_y: u16,
-) -> Option<usize> {
+pub fn row_at(area: Rect, rows: usize, scroll: usize, mouse_x: u16, mouse_y: u16) -> Option<usize> {
     if mouse_x < area.x || mouse_x >= area.x + area.width {
         return None;
     }

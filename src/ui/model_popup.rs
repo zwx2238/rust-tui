@@ -1,8 +1,6 @@
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
-use crate::ui::overlay_table::{
-    OverlayTable, centered_area, draw_overlay_table, header_style,
-};
+use crate::ui::overlay_table::{OverlayTable, centered_area, draw_overlay_table, header_style};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Cell, Row};

@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
+use crate::ui::draw::style::{base_fg, base_style, selection_bg};
 use crate::ui::file_patch_popup_layout::{OUTER_MARGIN, file_patch_popup_layout};
 use crate::ui::file_patch_popup_text::{build_patch_text, patch_max_scroll};
-use crate::ui::draw::style::{base_fg, base_style, selection_bg};
 use crate::ui::state::{FilePatchHover, PendingFilePatch};
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -48,9 +48,12 @@ pub(crate) fn draw_file_patch_popup(
     let title = "文件修改预览 · 仅预览，需确认后应用";
     let block = Block::default()
         .borders(Borders::ALL)
-        .title_top(Line::from(vec![
-            Span::styled(title, Style::default().fg(base_fg(theme)).add_modifier(Modifier::BOLD)),
-        ]))
+        .title_top(Line::from(vec![Span::styled(
+            title,
+            Style::default()
+                .fg(base_fg(theme))
+                .add_modifier(Modifier::BOLD),
+        )]))
         .style(base_style(theme))
         .border_style(Style::default().fg(base_fg(theme)));
     f.render_widget(block, layout.popup);
@@ -85,9 +88,10 @@ pub(crate) fn draw_file_patch_popup(
     }
 
     let button_style = |target: FilePatchHover| match hover {
-        Some(h) if h == target => {
-            Style::default().bg(selection_bg(theme.bg)).fg(base_fg(theme)).add_modifier(Modifier::BOLD)
-        }
+        Some(h) if h == target => Style::default()
+            .bg(selection_bg(theme.bg))
+            .fg(base_fg(theme))
+            .add_modifier(Modifier::BOLD),
         _ => base_style(theme),
     };
     let apply_style = button_style(FilePatchHover::Apply);

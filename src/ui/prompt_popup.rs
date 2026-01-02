@@ -1,8 +1,6 @@
-use crate::render::RenderTheme;
 use crate::llm::prompts::SystemPrompt;
-use crate::ui::overlay_table::{
-    OverlayTable, centered_area, draw_overlay_table, header_style,
-};
+use crate::render::RenderTheme;
+use crate::ui::overlay_table::{OverlayTable, centered_area, draw_overlay_table, header_style};
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;

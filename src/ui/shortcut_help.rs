@@ -33,7 +33,11 @@ pub(crate) fn draw_shortcut_help(
         title: Line::from("快捷键 · F10/Esc 退出"),
         header,
         rows: body.collect(),
-        widths: vec![Constraint::Length(6), Constraint::Length(16), Constraint::Min(10)],
+        widths: vec![
+            Constraint::Length(6),
+            Constraint::Length(16),
+            Constraint::Min(10),
+        ],
         selected,
         scroll,
         theme,

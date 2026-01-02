@@ -3,9 +3,9 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table::{row_at, visible_rows};
 use crate::ui::prompt_popup::prompt_popup_area;
 use crate::ui::runtime_view::ViewState;
-use crate::ui::shortcut_help::help_popup_area;
 use crate::ui::scroll::max_scroll;
 use crate::ui::selection_state::SelectionState;
+use crate::ui::shortcut_help::help_popup_area;
 use ratatui::layout::Rect;
 
 #[derive(Copy, Clone)]

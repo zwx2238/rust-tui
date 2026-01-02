@@ -1,8 +1,7 @@
 use crate::types::{Message, ROLE_SYSTEM};
 use std::collections::BTreeMap;
 use std::sync::{
-    Arc,
-    Mutex,
+    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
 use std::time::Instant;
@@ -23,6 +22,8 @@ pub enum PendingCommand {
     StopCodeExec,
     ApplyFilePatch,
     CancelFilePatch,
+    NewCategory,
+    OpenConversation,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -93,6 +94,8 @@ pub struct App {
     pub pending_file_patch: Option<PendingFilePatch>,
     pub file_patch_scroll: usize,
     pub file_patch_hover: Option<FilePatchHover>,
+    pub pending_category_name: Option<String>,
+    pub pending_open_conversation: Option<String>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
     pub total_tokens: u64,
@@ -200,6 +203,8 @@ impl App {
             pending_file_patch: None,
             file_patch_scroll: 0,
             file_patch_hover: None,
+            pending_category_name: None,
+            pending_open_conversation: None,
             total_prompt_tokens: 0,
             total_completion_tokens: 0,
             total_tokens: 0,

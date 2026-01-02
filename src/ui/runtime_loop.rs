@@ -142,12 +142,13 @@ pub(crate) fn run_loop(
         if let Some(cmd) = pending_command {
             handle_pending_command(
                 tabs,
-                *active_tab,
+                active_tab,
                 categories,
-                *active_category,
+                active_category,
                 cmd,
                 session_location,
                 registry,
+                prompt_registry,
                 args,
                 tx,
             );

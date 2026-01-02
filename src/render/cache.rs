@@ -1,14 +1,14 @@
+use crate::render::MessageLayout;
+use crate::render::label_line_layout;
+use crate::render::label_line_with_button;
 use crate::render::markdown::{
     close_unbalanced_code_fence, count_markdown_lines, render_markdown_lines,
 };
 use crate::render::theme::{RenderTheme, theme_cache_key};
-use crate::render::label_line_layout;
-use crate::render::label_line_with_button;
 use crate::render::util::{hash_message, label_for_role, ranges_overlap, suffix_for_index};
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use ratatui::text::{Line, Text};
 use std::borrow::Cow;
-use crate::render::MessageLayout;
 #[derive(Clone)]
 pub struct RenderCacheEntry {
     pub(crate) role: String,
@@ -157,8 +157,7 @@ pub fn messages_to_viewport_text_cached_with_layout(
             entry.line_count = count_message_lines(msg, width, streaming);
         }
         if let Some(label) = label_for_role(&msg.role, suffix) {
-            let (button_range, label_line) =
-                label_line_layout(&msg.role, &label, line_cursor);
+            let (button_range, label_line) = label_line_layout(&msg.role, &label, line_cursor);
             layouts.push(MessageLayout {
                 index: idx,
                 label_line,

@@ -1,8 +1,8 @@
 use crate::render::markdown::list::count_list_item_lines;
+use crate::render::markdown::preprocess_math;
 use crate::render::markdown::shared::{
     ItemContext, ListState, append_text, list_indent, list_prefix, markdown_parser,
 };
-use crate::render::markdown::preprocess_math;
 use crate::render::markdown::table::TableBuild;
 use pulldown_cmark::{Event, Tag, TagEnd};
 

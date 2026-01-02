@@ -36,9 +36,7 @@ pub(crate) fn draw_footer(
     } else {
         time
     };
-    let style = Style::default()
-        .bg(theme.bg)
-        .fg(base_fg(theme));
+    let style = Style::default().bg(theme.bg).fg(base_fg(theme));
     let line = Line::from(Span::styled(text, style));
     let paragraph = Paragraph::new(line);
     f.render_widget(paragraph, area);
