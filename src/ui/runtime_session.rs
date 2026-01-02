@@ -26,6 +26,7 @@ pub(crate) fn restore_tabs_from_session(
             .to_string();
         let mut state = TabState::new("", false, &model_key, &prompt_key);
         state.app.messages = tab.messages.clone();
+        state.app.code_exec_container_id = tab.code_exec_container_id.clone();
         if state.app.messages.iter().all(|m| m.role != ROLE_SYSTEM) {
             let content = prompt_registry
                 .get(&prompt_key)

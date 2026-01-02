@@ -29,6 +29,8 @@ pub struct SessionTab {
     pub model_key: Option<String>,
     #[serde(default)]
     pub prompt_key: Option<String>,
+    #[serde(default)]
+    pub code_exec_container_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

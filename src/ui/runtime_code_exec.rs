@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::ui::code_exec::run_python_in_docker_stream;
+use crate::ui::code_exec_container::{ensure_container, run_python_in_container_stream};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
@@ -9,6 +9,7 @@ use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 use crate::ui::tools::parse_code_exec_args;
 use crate::types::Message;
 use std::sync::mpsc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::time::Instant;
 
 pub(crate) fn handle_code_exec_request(
@@ -30,6 +31,7 @@ pub(crate) fn handle_code_exec_request(
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
     tab_state.app.code_exec_stderr_scroll = 0;
+    tab_state.app.code_exec_run_id = None;
     tab_state.app.code_exec_result_ready = false;
     tab_state.app.code_exec_finished_output = None;
     tab_state.app.code_exec_cancel = None;
@@ -81,6 +83,7 @@ pub(crate) fn handle_code_exec_exit(
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
     tab_state.app.code_exec_stderr_scroll = 0;
+    tab_state.app.code_exec_run_id = None;
     let model = registry
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
@@ -137,17 +140,44 @@ pub(crate) fn handle_code_exec_approve(
     tab_state.app.code_exec_scroll = 0;
     tab_state.app.code_exec_stdout_scroll = 0;
     tab_state.app.code_exec_stderr_scroll = 0;
+    tab_state.app.code_exec_run_id = None;
     let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     tab_state.app.code_exec_cancel = Some(cancel.clone());
+    let run_id = format!(
+        "run-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    );
+    tab_state.app.code_exec_run_id = Some(run_id.clone());
     let exec_code = inject_requirements(&pending.code);
     pending.exec_code = Some(exec_code.clone());
     if let Some(current) = tab_state.app.pending_code_exec.as_mut() {
         current.exec_code = Some(exec_code);
     }
+    let container_id = match ensure_container(&mut tab_state.app.code_exec_container_id) {
+        Ok(id) => id,
+        Err(err) => {
+            if let Ok(mut live) = live.lock() {
+                live.stderr = err;
+                live.exit_code = Some(-1);
+                live.done = true;
+                live.finished_at = Some(std::time::Instant::now());
+            }
+            return;
+        }
+    };
     if pending.language == "python" {
         std::thread::spawn(move || {
             let code = pending.exec_code.as_deref().unwrap_or(&pending.code);
-            if let Err(err) = run_python_in_docker_stream(code, live.clone(), cancel) {
+            if let Err(err) = run_python_in_container_stream(
+                &container_id,
+                &run_id,
+                code,
+                live.clone(),
+                cancel,
+            ) {
                 if let Ok(mut live) = live.lock() {
                     live.stderr.push_str(&format!("{err}\n"));
                     live.exit_code = Some(-1);

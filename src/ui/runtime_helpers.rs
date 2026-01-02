@@ -101,6 +101,7 @@ pub(crate) fn collect_session_tabs(tabs: &[TabState]) -> Vec<SessionTab> {
             messages: tab.app.messages.clone(),
             model_key: Some(tab.app.model_key.clone()),
             prompt_key: Some(tab.app.prompt_key.clone()),
+            code_exec_container_id: tab.app.code_exec_container_id.clone(),
         })
         .collect()
 }
