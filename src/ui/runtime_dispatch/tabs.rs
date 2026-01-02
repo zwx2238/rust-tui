@@ -14,6 +14,7 @@ pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
     if let Some(active) = ctx.tabs.get(*ctx.active_tab) {
         tab.app.prompts_dir = active.app.prompts_dir.clone();
         tab.app.tavily_api_key = active.app.tavily_api_key.clone();
+        tab.app.set_log_session_id(&active.app.log_session_id);
     }
     ctx.tabs.push(tab);
     *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
@@ -42,11 +43,17 @@ pub(crate) fn close_other_tabs(ctx: &mut DispatchContext<'_>) {
 }
 
 pub(crate) fn close_all_tabs(ctx: &mut DispatchContext<'_>) {
-    let (prompts_dir, tavily_api_key) = ctx
+    let (prompts_dir, tavily_api_key, log_session_id) = ctx
         .tabs
         .get(*ctx.active_tab)
-        .map(|tab| (tab.app.prompts_dir.clone(), tab.app.tavily_api_key.clone()))
-        .unwrap_or_else(|| (String::new(), String::new()));
+        .map(|tab| {
+            (
+                tab.app.prompts_dir.clone(),
+                tab.app.tavily_api_key.clone(),
+                tab.app.log_session_id.clone(),
+            )
+        })
+        .unwrap_or_else(|| (String::new(), String::new(), String::new()));
     ctx.tabs.clear();
     let mut tab = TabState::new(
         ctx.prompt_registry
@@ -59,6 +66,9 @@ pub(crate) fn close_all_tabs(ctx: &mut DispatchContext<'_>) {
     );
     tab.app.prompts_dir = prompts_dir;
     tab.app.tavily_api_key = tavily_api_key;
+    if !log_session_id.is_empty() {
+        tab.app.set_log_session_id(&log_session_id);
+    }
     ctx.tabs.push(tab);
     *ctx.active_tab = 0;
 }

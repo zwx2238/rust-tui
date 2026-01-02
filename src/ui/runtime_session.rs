@@ -110,6 +110,7 @@ pub(crate) fn fork_last_tab_for_retry(
         prompt_registry.default_key.clone()
     };
     let mut new_tab = TabState::new("", false, &model_key, &prompt_key);
+    new_tab.app.set_log_session_id(&source.app.log_session_id);
     if history.iter().all(|m| m.role != ROLE_SYSTEM) && !system_prompt.trim().is_empty() {
         history.insert(
             0,

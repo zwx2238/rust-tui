@@ -30,6 +30,7 @@ pub(crate) fn render_view(
     msg_width: usize,
     text: &Text<'_>,
     total_lines: usize,
+    header_note: Option<&str>,
     view: &mut ViewState,
     models: &[crate::model_registry::ModelProfile],
     prompts: &[crate::system_prompts::SystemPrompt],
@@ -51,7 +52,15 @@ pub(crate) fn render_view(
     });
     match view.overlay.active {
         Some(OverlayKind::Summary) => {
-            render_summary_overlay(terminal, tabs, active_tab, theme, startup_text, view)?;
+            render_summary_overlay(
+                terminal,
+                tabs,
+                active_tab,
+                theme,
+                startup_text,
+                header_note,
+                view,
+            )?;
         }
         Some(OverlayKind::Jump) => {
             render_jump_overlay(
@@ -60,6 +69,7 @@ pub(crate) fn render_view(
                 tabs,
                 active_tab,
                 startup_text,
+                header_note,
                 view,
                 msg_area,
                 tabs_area,
@@ -78,6 +88,7 @@ pub(crate) fn render_view(
                 total_lines,
                 startup_text,
                 input_height,
+                header_note,
             )?;
         }
         Some(OverlayKind::Model) => {
@@ -90,6 +101,7 @@ pub(crate) fn render_view(
                 total_lines,
                 startup_text,
                 input_height,
+                header_note,
                 view,
                 models,
             )?;
@@ -104,6 +116,7 @@ pub(crate) fn render_view(
                 total_lines,
                 startup_text,
                 input_height,
+                header_note,
                 view,
                 prompts,
             )?;
@@ -118,6 +131,7 @@ pub(crate) fn render_view(
                 total_lines,
                 startup_text,
                 input_height,
+                header_note,
             )?;
         }
         Some(OverlayKind::Help) => {
@@ -130,6 +144,7 @@ pub(crate) fn render_view(
                 total_lines,
                 startup_text,
                 input_height,
+                header_note,
                 view,
             )?;
         }

@@ -62,9 +62,10 @@ pub(crate) fn start_pending_request(
         args.show_reasoning,
         tx,
         active_tab,
-        args.enable_web_search,
-        args.enable_code_exec,
+        args.web_search_enabled(),
+        args.code_exec_enabled(),
         args.log_requests.clone(),
+        tab_state.app.log_session_id.clone(),
     );
 }
 
@@ -220,6 +221,7 @@ pub(crate) fn fork_message_by_index(
         ctx.prompt_registry.default_key.clone()
     };
     let mut new_tab = TabState::new("", false, &model_key, &prompt_key);
+    new_tab.app.set_log_session_id(&tab_state.app.log_session_id);
     if history.iter().all(|m| m.role != ROLE_SYSTEM) && !system_prompt.trim().is_empty() {
         history.insert(
             0,

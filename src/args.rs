@@ -31,15 +31,11 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub replay_fork_last: bool,
 
-    /// 启用网页搜索工具
-    #[arg(long, default_value_t = false)]
-    pub enable_web_search: bool,
+    /// 工具开关表达式（逗号分隔，前缀 - 表示禁用）
+    #[arg(long, allow_hyphen_values = true)]
+    pub enable: Option<String>,
 
-    /// 启用代码执行工具
-    #[arg(long, default_value_t = false)]
-    pub enable_code_exec: bool,
-
-    /// 记录发送给模型的请求内容到文件
+    /// 记录发送给模型的请求与输出到目录（每条消息单独文件）
     #[arg(long)]
     pub log_requests: Option<String>,
 
@@ -50,4 +46,39 @@ pub struct Args {
     /// 启动时批量创建 10 个 tab 并发起提问
     #[arg(long)]
     pub question_set: Option<String>,
+}
+
+impl Args {
+    pub fn web_search_enabled(&self) -> bool {
+        self.resolve_enabled().0
+    }
+
+    pub fn code_exec_enabled(&self) -> bool {
+        self.resolve_enabled().1
+    }
+
+    fn resolve_enabled(&self) -> (bool, bool) {
+        let mut web_search = false;
+        let mut code_exec = true;
+        let Some(expr) = self.enable.as_deref() else {
+            return (web_search, code_exec);
+        };
+        for raw in expr.split(',') {
+            let item = raw.trim();
+            if item.is_empty() {
+                continue;
+            }
+            let (name, enable) = if let Some(rest) = item.strip_prefix('-') {
+                (rest.trim(), false)
+            } else {
+                (item, true)
+            };
+            match name {
+                "web_search" => web_search = enable,
+                "code_exec" => code_exec = enable,
+                _ => {}
+            }
+        }
+        (web_search, code_exec)
+    }
 }

@@ -25,7 +25,7 @@ pub(crate) fn apply_tool_calls(
     let api_key = tab_state.app.tavily_api_key.clone();
     for call in calls {
         if call.function.name == "web_search" {
-            if !args.enable_web_search {
+            if !args.web_search_enabled() {
                 let idx = tab_state.app.messages.len();
                 tab_state.app.messages.push(Message {
                     role: crate::types::ROLE_TOOL.to_string(),
@@ -55,7 +55,7 @@ pub(crate) fn apply_tool_calls(
             continue;
         }
         if call.function.name == "code_exec" {
-            if !args.enable_code_exec {
+            if !args.code_exec_enabled() {
                 let idx = tab_state.app.messages.len();
                 tab_state.app.messages.push(Message {
                     role: crate::types::ROLE_TOOL.to_string(),
@@ -111,9 +111,10 @@ pub(crate) fn apply_tool_calls(
         args.show_reasoning,
         tx,
         tab_id,
-        args.enable_web_search,
-        args.enable_code_exec,
+        args.web_search_enabled(),
+        args.code_exec_enabled(),
         args.log_requests.clone(),
+        tab_state.app.log_session_id.clone(),
     );
 }
 

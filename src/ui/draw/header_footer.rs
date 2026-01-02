@@ -5,11 +5,21 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-pub(crate) fn draw_header(f: &mut ratatui::Frame<'_>, area: Rect, theme: &RenderTheme) {
+pub(crate) fn draw_header(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    theme: &RenderTheme,
+    note: Option<&str>,
+) {
     let style = Style::default()
         .bg(theme.bg)
         .fg(theme.heading_fg.or(theme.fg).unwrap_or(Color::White));
-    let line = Line::from(Span::styled("deepchat", style));
+    let text = if let Some(note) = note {
+        format!("deepchat  ·  {note}")
+    } else {
+        "deepchat".to_string()
+    };
+    let line = Line::from(Span::styled(text, style));
     let paragraph = Paragraph::new(line).alignment(Alignment::Center);
     f.render_widget(paragraph, area);
 }

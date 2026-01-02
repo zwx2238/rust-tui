@@ -59,6 +59,7 @@ pub fn redraw_jump(
     tabs: &mut [TabState],
     active_tab: usize,
     startup_text: Option<&str>,
+    header_note: Option<&str>,
     rows: &[JumpRow],
     selected: usize,
     area: Rect,
@@ -68,7 +69,7 @@ pub fn redraw_jump(
     scroll: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal.draw(|f| {
-        draw_header(f, header_area, theme);
+        draw_header(f, header_area, theme, header_note);
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_jump_table(f, area, rows, selected, theme, scroll);
         draw_footer(f, footer_area, theme, false);

@@ -22,7 +22,7 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::io::{self};
 use std::sync::mpsc;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 pub fn run(
     args: Args,
@@ -42,18 +42,19 @@ pub fn run(
     } else {
         None
     };
-    let (mut tabs, mut active_tab) = if let Some(resume) = args.resume.as_deref() {
+    let (mut tabs, mut active_tab, log_session_id) = if let Some(resume) = args.resume.as_deref() {
         let loaded =
             load_session(resume).map_err(|_| format!("无法读取会话：{resume}"))?;
         session_location = Some(loaded.location.clone());
-        let (mut tabs, active) =
+        let (tabs, active) =
             restore_tabs_from_session(&loaded.data, &registry, &prompt_registry, &args);
-        for tab in &mut tabs {
-            tab.app.tavily_api_key = tavily_api_key.clone();
-            tab.app.prompts_dir = cfg.prompts_dir.clone();
-        }
-        (tabs, active)
+        (tabs, active, loaded.data.id.clone())
     } else {
+        let log_session_id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| "系统时间异常")?
+            .as_secs()
+            .to_string();
         let initial_tabs = if let Some(ref questions) = question_set {
             questions.len().max(1)
         } else if args.perf {
@@ -74,11 +75,17 @@ pub fn run(
                 );
                 tab.app.tavily_api_key = tavily_api_key.clone();
                 tab.app.prompts_dir = cfg.prompts_dir.clone();
+                tab.app.set_log_session_id(&log_session_id);
                 tab
             })
             .collect::<Vec<_>>();
-        (tabs, 0)
+        (tabs, 0, log_session_id)
     };
+    for tab in &mut tabs {
+        tab.app.tavily_api_key = tavily_api_key.clone();
+        tab.app.prompts_dir = cfg.prompts_dir.clone();
+        tab.app.set_log_session_id(&log_session_id);
+    }
     let (tx, rx) = mpsc::channel::<UiEvent>();
     let (preheat_tx, preheat_rx) = mpsc::channel::<PreheatTask>();
     let (preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
@@ -105,9 +112,10 @@ pub fn run(
                     args.show_reasoning,
                     &tx,
                     i,
-                    args.enable_web_search,
-                    args.enable_code_exec,
+                    args.web_search_enabled(),
+                    args.code_exec_enabled(),
                     args.log_requests.clone(),
+                    tab_state.app.log_session_id.clone(),
                 );
             }
         }
@@ -126,9 +134,10 @@ pub fn run(
                 args.show_reasoning,
                 &tx,
                 tab_idx,
-                args.enable_web_search,
-                args.enable_code_exec,
+                args.web_search_enabled(),
+                args.code_exec_enabled(),
                 args.log_requests.clone(),
+                tab_state.app.log_session_id.clone(),
             );
         }
     }

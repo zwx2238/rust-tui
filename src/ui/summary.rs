@@ -72,6 +72,7 @@ pub fn redraw_summary(
     active_tab: usize,
     theme: &RenderTheme,
     startup_text: Option<&str>,
+    header_note: Option<&str>,
     selected_row: usize,
     scroll: usize,
     sort: SummarySort,
@@ -84,7 +85,7 @@ pub fn redraw_summary(
     let mut rows = build_summary_rows(tabs, max_latest_width.max(10));
     sort_summary_rows(&mut rows, sort);
     terminal.draw(|f| {
-        draw_header(f, header_area, theme);
+        draw_header(f, header_area, theme, header_note);
         draw_tabs(f, tabs_area, tabs.len(), active_tab, theme, startup_text);
         draw_summary_table(f, body_area, &rows, selected_row, scroll, theme, sort);
         draw_footer(f, footer_area, theme, false);

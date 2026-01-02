@@ -20,6 +20,7 @@ pub(crate) fn start_tab_request(
     enable_web_search: bool,
     enable_code_exec: bool,
     log_requests: Option<String>,
+    log_session_id: String,
 ) {
     let app = &mut tab_state.app;
     if let Some(handle) = &app.active_request {
@@ -90,6 +91,8 @@ pub(crate) fn start_tab_request(
             enable_web_search,
             enable_code_exec,
             log_requests,
+            log_session_id,
+            idx,
             cancel,
             tx,
             tab_id,
@@ -109,6 +112,7 @@ pub(crate) fn start_followup_request(
     enable_web_search: bool,
     enable_code_exec: bool,
     log_requests: Option<String>,
+    log_session_id: String,
 ) {
     let app = &mut tab_state.app;
     if let Some(handle) = &app.active_request {
@@ -162,6 +166,8 @@ pub(crate) fn start_followup_request(
             enable_web_search,
             enable_code_exec,
             log_requests,
+            log_session_id,
+            idx,
             cancel,
             tx,
             tab_id,

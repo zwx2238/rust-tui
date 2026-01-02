@@ -27,6 +27,7 @@ pub fn redraw(
     active_tab: usize,
     startup_text: Option<&str>,
     input_height: u16,
+    header_note: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let size = terminal.size()?;
     let size = Rect::new(0, 0, size.width, size.height);
@@ -47,6 +48,7 @@ pub fn redraw(
             tabs_len,
             active_tab,
             startup_text,
+            header_note,
         );
         draw_notice(f, size, app, theme);
     })?;
@@ -64,6 +66,7 @@ pub fn redraw_with_overlay<F>(
     startup_text: Option<&str>,
     input_height: u16,
     overlay: F,
+    header_note: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     F: FnOnce(&mut ratatui::Frame<'_>),
@@ -87,6 +90,7 @@ where
             tabs_len,
             active_tab,
             startup_text,
+            header_note,
         );
         overlay(f);
         draw_notice(f, size, app, theme);
@@ -110,8 +114,9 @@ fn draw_base(
     tabs_len: usize,
     active_tab: usize,
     startup_text: Option<&str>,
+    header_note: Option<&str>,
 ) {
-    header_footer::draw_header(f, header_area, theme);
+    header_footer::draw_header(f, header_area, theme, header_note);
     tabs::draw_tabs(f, tabs_area, tabs_len, active_tab, theme, startup_text);
     messages::draw_messages(
         f,

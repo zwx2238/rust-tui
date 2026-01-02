@@ -1,4 +1,3 @@
-use crate::prompt_pack::{ensure_prompt_pack, ensure_rig_templates};
 use std::fs;
 use std::path::PathBuf;
 
@@ -27,8 +26,12 @@ pub fn load_prompts(
 ) -> Result<PromptRegistry, Box<dyn std::error::Error>> {
     let mut prompts = Vec::new();
     let dir_path = PathBuf::from(dir);
-    ensure_prompt_pack(&dir_path)?;
-    ensure_rig_templates(&dir_path)?;
+    if !dir_path.exists() {
+        return Err(format!("提示词目录不存在：{}", dir_path.display()).into());
+    }
+    if !dir_path.is_dir() {
+        return Err(format!("提示词路径不是目录：{}", dir_path.display()).into());
+    }
     let entries = fs::read_dir(&dir_path)?;
     for entry in entries.flatten() {
         let path = entry.path();

@@ -1,7 +1,6 @@
 mod args;
 mod config;
 mod model_registry;
-mod prompt_pack;
 mod question_set;
 mod render;
 mod session;

@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::fs;
 
 pub(crate) fn run_python_in_docker_stream(
     code: &str,
@@ -19,6 +20,7 @@ fn run_docker_stream(
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
     let finished = Arc::new(AtomicBool::new(false));
+    prepare_pip_cache_dir();
     let run_id = format!(
         "deepchat-{}-{}",
         std::process::id(),
@@ -28,11 +30,10 @@ fn run_docker_stream(
             .as_nanos()
     );
     let cidfile = std::env::temp_dir().join(format!("{run_id}.cid"));
-    let mut child = Command::new("docker")
-        .arg("run")
+    let mut cmd = Command::new("docker");
+    cmd.arg("run")
         .arg("--rm")
         .arg("-i")
-        .arg("--network=none")
         .arg("--cpus=1")
         .arg("--memory=512m")
         .arg("--pids-limit=128")
@@ -41,10 +42,45 @@ fn run_docker_stream(
         .arg("--security-opt=no-new-privileges")
         .arg("--tmpfs")
         .arg("/tmp:rw,noexec,nosuid,size=64m")
+        .arg("--tmpfs")
+        .arg(format!("/opt/deepchat:rw,exec,nosuid,size={}m", site_tmpfs_mb()))
+        .arg("-e")
+        .arg("TMPDIR=/opt/deepchat/tmp")
+        .arg("-e")
+        .arg("TMP=/opt/deepchat/tmp")
+        .arg("-e")
+        .arg("TEMP=/opt/deepchat/tmp")
+        .arg("-e")
+        .arg(format!("PIP_TARGET={}", pip_target_dir()))
+        .arg("-e")
+        .arg(format!("PYTHONPATH={}", pip_target_dir()))
+        .arg("-e")
+        .arg("PIP_DISABLE_PIP_VERSION_CHECK=1")
         .arg("--cidfile")
         .arg(&cidfile)
         .arg("--label")
-        .arg(format!("deepchat-run={run_id}"))
+        .arg(format!("deepchat-run={run_id}"));
+    let cache_dir = pip_cache_dir();
+    cmd.arg("-v")
+        .arg(format!("{cache_dir}:/root/.cache/pip"));
+    if let Some(index_url) = pip_index_url() {
+        cmd.arg("-e")
+            .arg(format!("PIP_INDEX_URL={index_url}"));
+    }
+    if let Some(extra_url) = pip_extra_index_url() {
+        cmd.arg("-e")
+            .arg(format!("PIP_EXTRA_INDEX_URL={extra_url}"));
+    }
+    match code_exec_network_mode() {
+        CodeExecNetwork::None => {
+            cmd.arg("--network=none");
+        }
+        CodeExecNetwork::Host => {
+            cmd.arg("--network=host");
+        }
+        CodeExecNetwork::Bridge => {}
+    }
+    let mut child = cmd
         .arg("python:3.11-slim")
         .arg("python")
         .arg("-u")
@@ -264,4 +300,86 @@ fn wait_container_stop(cid: &str, rounds: usize) -> bool {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
     false
+}
+
+enum CodeExecNetwork {
+    None,
+    Host,
+    Bridge,
+}
+
+fn code_exec_network_mode() -> CodeExecNetwork {
+    match std::env::var("DEEPCHAT_CODE_EXEC_NETWORK") {
+        Ok(value) => {
+            let v = value.trim().to_ascii_lowercase();
+            if v.is_empty() {
+                CodeExecNetwork::Host
+            } else if v == "0" || v == "false" || v == "off" || v == "no" || v == "none" {
+                CodeExecNetwork::None
+            } else if v == "bridge" {
+                CodeExecNetwork::Bridge
+            } else {
+                CodeExecNetwork::Host
+            }
+        }
+        Err(_) => CodeExecNetwork::Host,
+    }
+}
+
+fn pip_target_dir() -> &'static str {
+    "/tmp/deepchat/site-packages"
+}
+
+fn pip_cache_dir() -> String {
+    match std::env::var("DEEPCHAT_CODE_EXEC_PIP_CACHE_DIR") {
+        Ok(value) => {
+            let v = value.trim();
+            if v.is_empty() {
+                std::env::temp_dir()
+                    .join("deepchat")
+                    .join("pip-cache")
+                    .to_string_lossy()
+                    .to_string()
+            } else {
+                v.to_string()
+            }
+        }
+        Err(_) => std::env::temp_dir()
+            .join("deepchat")
+            .join("pip-cache")
+            .to_string_lossy()
+            .to_string(),
+    }
+}
+
+fn prepare_pip_cache_dir() {
+    let dir = pip_cache_dir();
+    let _ = fs::create_dir_all(dir);
+}
+
+fn site_tmpfs_mb() -> u32 {
+    match std::env::var("DEEPCHAT_CODE_EXEC_SITE_SIZE_MB") {
+        Ok(value) => value.trim().parse::<u32>().unwrap_or(2048),
+        Err(_) => 2048,
+    }
+}
+
+fn pip_index_url() -> Option<String> {
+    match std::env::var("DEEPCHAT_CODE_EXEC_PIP_INDEX_URL") {
+        Ok(value) => {
+            let v = value.trim();
+            if v.is_empty() { None } else { Some(v.to_string()) }
+        }
+        Err(_) => None,
+    }
+}
+
+fn pip_extra_index_url() -> Option<String> {
+    match std::env::var("DEEPCHAT_CODE_EXEC_PIP_EXTRA_INDEX_URL") {
+        Ok(value) => {
+            let v = value.trim();
+            if v.is_empty() { None } else { Some(v.to_string()) }
+        }
+        Err(_) => None,
+    }
 }

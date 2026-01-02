@@ -43,6 +43,7 @@ pub(crate) fn render_summary_overlay(
     active_tab: usize,
     theme: &RenderTheme,
     startup_text: Option<&str>,
+    header_note: Option<&str>,
     view: &mut ViewState,
 ) -> Result<(), Box<dyn Error>> {
     let rows = redraw_summary(
@@ -51,6 +52,7 @@ pub(crate) fn render_summary_overlay(
         active_tab,
         theme,
         startup_text,
+        header_note,
         view.summary.selected,
         view.summary.scroll,
         view.summary_sort,
@@ -65,6 +67,7 @@ pub(crate) fn render_jump_overlay(
     tabs: &mut Vec<TabState>,
     active_tab: usize,
     startup_text: Option<&str>,
+    header_note: Option<&str>,
     view: &mut ViewState,
     msg_area: Rect,
     tabs_area: Rect,
@@ -78,6 +81,7 @@ pub(crate) fn render_jump_overlay(
         tabs,
         active_tab,
         startup_text,
+        header_note,
         jump_rows,
         view.jump.selected,
         msg_area,
@@ -98,6 +102,7 @@ pub(crate) fn render_chat_view(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
+    header_note: Option<&str>,
 ) -> Result<(), Box<dyn Error>> {
     let tabs_len = tabs.len();
     if let Some(tab_state) = tabs.get_mut(active_tab) {
@@ -111,6 +116,7 @@ pub(crate) fn render_chat_view(
             active_tab,
             startup_text,
             input_height,
+            header_note,
         )?;
     }
     Ok(())
@@ -125,6 +131,7 @@ pub(crate) fn render_model_overlay(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
+    header_note: Option<&str>,
     view: &mut ViewState,
     models: &[crate::model_registry::ModelProfile],
 ) -> Result<(), Box<dyn Error>> {
@@ -150,6 +157,7 @@ pub(crate) fn render_model_overlay(
                     theme,
                 );
             },
+            header_note,
         )?;
     }
     Ok(())
@@ -164,6 +172,7 @@ pub(crate) fn render_prompt_overlay(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
+    header_note: Option<&str>,
     view: &mut ViewState,
     prompts: &[crate::system_prompts::SystemPrompt],
 ) -> Result<(), Box<dyn Error>> {
@@ -189,6 +198,7 @@ pub(crate) fn render_prompt_overlay(
                     theme,
                 );
             },
+            header_note,
         )?;
     }
     Ok(())
@@ -203,6 +213,7 @@ pub(crate) fn render_help_overlay(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
+    header_note: Option<&str>,
     view: &mut ViewState,
 ) -> Result<(), Box<dyn Error>> {
     let tabs_len = tabs.len();
@@ -226,6 +237,7 @@ pub(crate) fn render_help_overlay(
                     theme,
                 );
             },
+            header_note,
         )?;
     }
     Ok(())
@@ -240,6 +252,7 @@ pub(crate) fn render_code_exec_overlay(
     total_lines: usize,
     startup_text: Option<&str>,
     input_height: u16,
+    header_note: Option<&str>,
 ) -> Result<(), Box<dyn Error>> {
     let size = terminal.size()?;
     let full = Rect::new(0, 0, size.width, size.height);
@@ -320,6 +333,7 @@ pub(crate) fn render_code_exec_overlay(
                         theme,
                     );
                 },
+                header_note,
             )?;
         } else {
             render_chat_view(
@@ -331,6 +345,7 @@ pub(crate) fn render_code_exec_overlay(
                 total_lines,
                 startup_text,
                 input_height,
+                header_note,
             )?;
         }
     }
