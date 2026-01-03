@@ -8,8 +8,8 @@ mod tests {
         handle_code_exec_request, handle_code_exec_stop,
     };
     use crate::ui::runtime_helpers::TabState;
-    use std::sync::{Arc, atomic::AtomicBool};
     use std::sync::mpsc;
+    use std::sync::{Arc, atomic::AtomicBool};
 
     fn registry() -> ModelRegistry {
         ModelRegistry {
@@ -128,7 +128,12 @@ mod tests {
             stop_reason: None,
         });
         handle_code_exec_deny(&mut tab, 0, &registry, &args, &tx);
-        assert!(tab.app.messages.iter().any(|m| m.content.contains("用户拒绝执行")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("用户拒绝执行"))
+        );
     }
 
     #[test]
@@ -138,10 +143,11 @@ mod tests {
         let (tx, _rx) = mpsc::channel();
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         handle_code_exec_approve(&mut tab, 0, &registry, &args, &tx);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("没有待审批")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("没有待审批"))
+        );
     }
 }

@@ -32,13 +32,15 @@ pub(crate) enum ViewAction {
 pub(crate) fn apply_view_action(
     action: ViewAction,
     jump_rows: &[crate::ui::jump::JumpRow],
-    tabs: &mut Vec<crate::ui::runtime_helpers::TabState>,
+    tabs: &mut [crate::ui::runtime_helpers::TabState],
     active_tab: &mut usize,
     categories: &mut Vec<String>,
     active_category: &mut usize,
 ) -> bool {
     match action {
-        ViewAction::SwitchTab(idx) => apply_switch_tab(idx, tabs, active_tab, categories, active_category),
+        ViewAction::SwitchTab(idx) => {
+            apply_switch_tab(idx, tabs, active_tab, categories, active_category)
+        }
         ViewAction::JumpTo(idx) => apply_jump_to(idx, jump_rows, tabs, *active_tab),
         ViewAction::ForkMessage(_) => false,
         ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
@@ -113,7 +115,9 @@ pub(crate) fn handle_view_mouse(
     jump_len: usize,
     kind: MouseEventKind,
 ) -> ViewAction {
-    let Some(row) = row else { return ViewAction::None; };
+    let Some(row) = row else {
+        return ViewAction::None;
+    };
     match view.overlay.active {
         Some(OverlayKind::Summary) => handle_summary_mouse(view, row, tabs_len, kind),
         Some(OverlayKind::Jump) => handle_jump_mouse(view, row, jump_len, kind),
@@ -185,7 +189,7 @@ fn toggle_prompt(view: &mut ViewState) -> ViewAction {
 
 fn apply_switch_tab(
     idx: usize,
-    tabs: &mut Vec<crate::ui::runtime_helpers::TabState>,
+    tabs: &mut [crate::ui::runtime_helpers::TabState],
     active_tab: &mut usize,
     categories: &mut Vec<String>,
     active_category: &mut usize,
@@ -205,21 +209,26 @@ fn apply_switch_tab(
 fn apply_jump_to(
     idx: usize,
     jump_rows: &[crate::ui::jump::JumpRow],
-    tabs: &mut Vec<crate::ui::runtime_helpers::TabState>,
+    tabs: &mut [crate::ui::runtime_helpers::TabState],
     active_tab: usize,
 ) -> bool {
-    if let Some(row) = jump_rows.get(idx) {
-        if let Some(tab_state) = tabs.get_mut(active_tab) {
-            let app = &mut tab_state.app;
-            app.scroll = row.scroll;
-            app.follow = false;
-            app.focus = crate::ui::state::Focus::Chat;
-        }
+    if let Some(row) = jump_rows.get(idx)
+        && let Some(tab_state) = tabs.get_mut(active_tab)
+    {
+        let app = &mut tab_state.app;
+        app.scroll = row.scroll;
+        app.follow = false;
+        app.focus = crate::ui::state::Focus::Chat;
     }
     true
 }
 
-fn handle_summary_mouse(view: &mut ViewState, row: usize, tabs_len: usize, kind: MouseEventKind) -> ViewAction {
+fn handle_summary_mouse(
+    view: &mut ViewState,
+    row: usize,
+    tabs_len: usize,
+    kind: MouseEventKind,
+) -> ViewAction {
     view.summary.select(row.min(tabs_len.saturating_sub(1)));
     if matches!(kind, MouseEventKind::Down(_)) && row < tabs_len {
         view.overlay.close();
@@ -228,7 +237,12 @@ fn handle_summary_mouse(view: &mut ViewState, row: usize, tabs_len: usize, kind:
     ViewAction::None
 }
 
-fn handle_jump_mouse(view: &mut ViewState, row: usize, jump_len: usize, kind: MouseEventKind) -> ViewAction {
+fn handle_jump_mouse(
+    view: &mut ViewState,
+    row: usize,
+    jump_len: usize,
+    kind: MouseEventKind,
+) -> ViewAction {
     view.jump.select(row.min(jump_len.saturating_sub(1)));
     view.jump.ensure_visible(1);
     if matches!(kind, MouseEventKind::Down(_)) && row < jump_len {
@@ -259,6 +273,8 @@ fn handle_prompt_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -
 fn handle_help_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
     view.help.select(row);
     view.help.ensure_visible(1);
-    if matches!(kind, MouseEventKind::Down(_)) { view.overlay.close(); }
+    if matches!(kind, MouseEventKind::Down(_)) {
+        view.overlay.close();
+    }
     ViewAction::None
 }

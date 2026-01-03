@@ -38,7 +38,8 @@ pub(crate) fn tab_labels_and_pos(
     active_tab: usize,
     active_category_name: &str,
 ) -> (Vec<String>, usize) {
-    let tab_labels = crate::ui::runtime_helpers::tab_labels_for_category(tabs, active_category_name);
+    let tab_labels =
+        crate::ui::runtime_helpers::tab_labels_for_category(tabs, active_category_name);
     let active_tab_pos =
         crate::ui::runtime_helpers::active_tab_position(tabs, active_category_name, active_tab);
     (tab_labels, active_tab_pos)
@@ -62,9 +63,9 @@ fn sync_active_category_with_tab(
     categories: &[String],
     active_category: &mut usize,
 ) {
-    if let Some(tab_state) = tabs.get(active_tab) {
-        if let Some(idx) = categories.iter().position(|c| c == &tab_state.category) {
-            *active_category = idx;
-        }
+    if let Some(tab_state) = tabs.get(active_tab)
+        && let Some(idx) = categories.iter().position(|c| c == &tab_state.category)
+    {
+        *active_category = idx;
     }
 }

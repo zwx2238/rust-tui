@@ -59,6 +59,37 @@ struct SummaryDrawArgs<'a> {
     active_tab: Option<&'a mut TabState>,
 }
 
+pub(crate) struct RedrawSummaryParams<'a> {
+    pub terminal: &'a mut Terminal<CrosstermBackend<Stdout>>,
+    pub tabs: &'a mut [TabState],
+    pub active_tab: usize,
+    pub tab_labels: &'a [String],
+    pub active_tab_pos: usize,
+    pub categories: &'a [String],
+    pub active_category: usize,
+    pub theme: &'a RenderTheme,
+    pub startup_text: Option<&'a str>,
+    pub header_note: Option<&'a str>,
+    pub selected_row: usize,
+    pub scroll: usize,
+    pub sort: SummarySort,
+}
+
+struct DrawSummaryLayoutParams<'a, 'b> {
+    f: &'a mut ratatui::Frame<'b>,
+    theme: &'a RenderTheme,
+    tab_labels: &'a [String],
+    active_tab_pos: usize,
+    categories: &'a [String],
+    active_category: usize,
+    header_note: Option<&'a str>,
+    startup_text: Option<&'a str>,
+    header_area: Rect,
+    category_area: Rect,
+    tabs_area: Rect,
+    footer_area: Rect,
+}
+
 pub fn build_summary_rows(tabs: &[TabState], max_latest_width: usize) -> Vec<SummaryRow> {
     tabs.iter()
         .enumerate()
@@ -102,30 +133,28 @@ fn exec_time_sort_key(row: &SummaryRow) -> (u8, u64, u64) {
 }
 
 pub fn redraw_summary(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>, tabs: &mut [TabState], active_tab: usize,
-    tab_labels: &[String], active_tab_pos: usize, categories: &[String],
-    active_category: usize, theme: &RenderTheme, startup_text: Option<&str>,
-    header_note: Option<&str>, selected_row: usize, scroll: usize, sort: SummarySort,
+    params: RedrawSummaryParams<'_>,
 ) -> Result<Vec<SummaryRow>, Box<dyn std::error::Error>> {
-    let layout = build_summary_layout(terminal.size()?, categories); let mut rows = build_summary_rows(tabs, layout.max_latest_width.max(10));
-    sort_summary_rows(&mut rows, sort);
-    terminal.draw(|f| {
+    let layout = build_summary_layout(params.terminal.size()?, params.categories);
+    let mut rows = build_summary_rows(params.tabs, layout.max_latest_width.max(10));
+    sort_summary_rows(&mut rows, params.sort);
+    params.terminal.draw(|f| {
         draw_summary_frame(
             f,
             SummaryDrawArgs {
-                theme,
-                tab_labels,
-                active_tab_pos,
-                categories,
-                active_category,
-                header_note,
-                startup_text,
+                theme: params.theme,
+                tab_labels: params.tab_labels,
+                active_tab_pos: params.active_tab_pos,
+                categories: params.categories,
+                active_category: params.active_category,
+                header_note: params.header_note,
+                startup_text: params.startup_text,
                 layout: &layout,
                 rows: &rows,
-                selected_row,
-                scroll,
-                sort,
-                active_tab: tabs.get_mut(active_tab),
+                selected_row: params.selected_row,
+                scroll: params.scroll,
+                sort: params.sort,
+                active_tab: params.tabs.get_mut(params.active_tab),
             },
         );
     })?;
@@ -152,55 +181,58 @@ fn max_latest_question_width(body_area: Rect) -> usize {
     inner_area(body_area, 1, 1).width.saturating_sub(40) as usize
 }
 
-fn draw_summary_frame(
-    f: &mut ratatui::Frame<'_>,
-    args: SummaryDrawArgs<'_>,
-) {
-    draw_summary_layout(
+fn draw_summary_frame(f: &mut ratatui::Frame<'_>, args: SummaryDrawArgs<'_>) {
+    draw_summary_layout(DrawSummaryLayoutParams {
         f,
+        theme: args.theme,
+        tab_labels: args.tab_labels,
+        active_tab_pos: args.active_tab_pos,
+        categories: args.categories,
+        active_category: args.active_category,
+        header_note: args.header_note,
+        startup_text: args.startup_text,
+        header_area: args.layout.header_area,
+        category_area: args.layout.category_area,
+        tabs_area: args.layout.tabs_area,
+        footer_area: args.layout.footer_area,
+    });
+    draw_summary_table(
+        f,
+        args.layout.body_area,
+        args.rows,
+        args.selected_row,
+        args.scroll,
         args.theme,
-        args.tab_labels,
-        args.active_tab_pos,
-        args.categories,
-        args.active_category,
-        args.header_note,
-        args.startup_text,
-        args.layout.header_area,
-        args.layout.category_area,
-        args.layout.tabs_area,
-        args.layout.footer_area,
+        args.sort,
     );
-    draw_summary_table(f, args.layout.body_area, args.rows, args.selected_row, args.scroll, args.theme, args.sort);
     if let Some(tab) = args.active_tab {
         draw_notice(f, args.layout.size, &mut tab.app, args.theme);
     }
 }
 
-fn draw_summary_layout(
-    f: &mut ratatui::Frame<'_>,
-    theme: &RenderTheme,
-    tab_labels: &[String],
-    active_tab_pos: usize,
-    categories: &[String],
-    active_category: usize,
-    header_note: Option<&str>,
-    startup_text: Option<&str>,
-    header_area: Rect,
-    category_area: Rect,
-    tabs_area: Rect,
-    footer_area: Rect,
-) {
-    draw_header(f, header_area, theme, header_note);
-    draw_categories(f, category_area, categories, active_category, theme);
-    draw_tabs(
-        f,
-        tabs_area,
-        tab_labels,
-        active_tab_pos,
-        theme,
-        startup_text,
+fn draw_summary_layout<'a, 'b>(params: DrawSummaryLayoutParams<'a, 'b>) {
+    draw_header(
+        params.f,
+        params.header_area,
+        params.theme,
+        params.header_note,
     );
-    draw_footer(f, footer_area, theme, false);
+    draw_categories(
+        params.f,
+        params.category_area,
+        params.categories,
+        params.active_category,
+        params.theme,
+    );
+    draw_tabs(
+        params.f,
+        params.tabs_area,
+        params.tab_labels,
+        params.active_tab_pos,
+        params.theme,
+        params.startup_text,
+    );
+    draw_footer(params.f, params.footer_area, params.theme, false);
 }
 
 fn draw_summary_table(

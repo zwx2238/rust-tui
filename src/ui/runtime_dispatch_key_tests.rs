@@ -78,7 +78,14 @@ mod tests {
 
     fn base_state() -> KeyDispatchState {
         KeyDispatchState {
-            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["默认".to_string()],
             active_category: 0,
@@ -116,7 +123,7 @@ mod tests {
             args,
             view,
         } = state;
-        let ctx = ctx(
+        let ctx = ctx(CtxParams {
             tabs,
             active_tab,
             categories,
@@ -125,11 +132,11 @@ mod tests {
             registry,
             prompt_registry,
             args,
-        );
+        });
         (ctx, view)
     }
 
-    fn ctx<'a>(
+    struct CtxParams<'a> {
         tabs: &'a mut Vec<TabState>,
         active_tab: &'a mut usize,
         categories: &'a mut Vec<String>,
@@ -138,28 +145,32 @@ mod tests {
         registry: &'a ModelRegistry,
         prompt_registry: &'a PromptRegistry,
         args: &'a Args,
-    ) -> DispatchContext<'a> {
+    }
+
+    fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
         DispatchContext {
-            tabs,
-            active_tab,
-            categories,
-            active_category,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
             msg_width: 40,
-            theme,
-            registry,
-            prompt_registry,
-            args,
+            theme: params.theme,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
         }
     }
 
     #[test]
     fn ctrl_q_exits() {
         let mut state = base_state();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::Summary);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
-        let should_exit =
-            handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
+        let should_exit = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(should_exit);
     }
 
@@ -171,7 +182,10 @@ mod tests {
             TabState::new("id2".into(), "分类 2".into(), "", false, "m1", "p1"),
         ];
         state.categories = vec!["默认".to_string(), "分类 2".to_string()];
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::Summary);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
@@ -184,7 +198,10 @@ mod tests {
     #[test]
     fn ctrl_t_creates_new_tab() {
         let mut state = base_state();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::Summary);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
@@ -195,7 +212,10 @@ mod tests {
     fn f6_stops_active_request() {
         let mut state = base_state();
         let cancel = Arc::new(AtomicBool::new(false));
-        state.tabs[0].app.active_request = Some(RequestHandle { id: 1, cancel: cancel.clone() });
+        state.tabs[0].app.active_request = Some(RequestHandle {
+            id: 1,
+            cancel: cancel.clone(),
+        });
         state.tabs[0].app.busy = true;
         state.tabs[0].app.pending_assistant = Some(0);
         let (mut ctx, view) = ctx_and_view(&mut state);
@@ -235,11 +255,21 @@ mod tests {
             Some(crate::ui::state::CodeExecReasonTarget::Deny);
         state.tabs[0].app.code_exec_reason_input = tui_textarea::TextArea::default();
         state.tabs[0].app.code_exec_reason_input.insert_str("why");
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::CodeExec);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(ctx.tabs[0].app.code_exec_reason_target.is_none());
-        assert!(ctx.tabs[0].app.code_exec_reason_input.lines().join("").is_empty());
+        assert!(
+            ctx.tabs[0]
+                .app
+                .code_exec_reason_input
+                .lines()
+                .join("")
+                .is_empty()
+        );
     }
 }

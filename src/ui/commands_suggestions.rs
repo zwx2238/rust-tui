@@ -48,10 +48,7 @@ fn arg_pattern_at_cursor(line: &str, cursor: usize, cmd_end_char: usize) -> &str
 
 fn build_command_name_suggestions(pattern: &str) -> Vec<CommandSuggestion> {
     if pattern.is_empty() {
-        return all_commands()
-            .iter()
-            .map(command_to_suggestion)
-            .collect();
+        return all_commands().iter().map(command_to_suggestion).collect();
     }
     let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
     let pattern_lower = pattern.to_ascii_lowercase();

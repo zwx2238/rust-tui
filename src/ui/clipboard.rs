@@ -33,21 +33,19 @@ pub fn set(text: &str) {
 }
 
 pub fn get() -> Option<String> {
-    if let Ok(mut clipboard) = Clipboard::new() {
-        if let Ok(text) = clipboard.get_text() {
-            return Some(normalize(text));
-        }
+    if let Ok(mut clipboard) = Clipboard::new()
+        && let Ok(text) = clipboard.get_text()
+    {
+        return Some(normalize(text));
     }
-    if is_wsl() {
-        if let Ok(output) = Command::new("powershell.exe")
+    if is_wsl()
+        && let Ok(output) = Command::new("powershell.exe")
             .args(["-NoProfile", "-Command", "Get-Clipboard -Raw"])
             .output()
-        {
-            if output.status.success() {
-                let text = String::from_utf8_lossy(&output.stdout).to_string();
-                return Some(normalize(text));
-            }
-        }
+        && output.status.success()
+    {
+        let text = String::from_utf8_lossy(&output.stdout).to_string();
+        return Some(normalize(text));
     }
     None
 }

@@ -47,8 +47,15 @@ impl CountState {
             Event::Start(tag) => self.handle_start(tag, width),
             Event::End(tag) => self.handle_end(tag, width),
             Event::Text(t) => self.handle_text(t),
-            Event::Code(t) | Event::Html(t) => append_text(&mut self.buf, &mut self.item_stack, &mut self.table, &t),
-            Event::FootnoteReference(name) => append_text(&mut self.buf, &mut self.item_stack, &mut self.table, &format!("[^{name}]")),
+            Event::Code(t) | Event::Html(t) => {
+                append_text(&mut self.buf, &mut self.item_stack, &mut self.table, &t)
+            }
+            Event::FootnoteReference(name) => append_text(
+                &mut self.buf,
+                &mut self.item_stack,
+                &mut self.table,
+                &format!("[^{name}]"),
+            ),
             Event::TaskListMarker(checked) => self.handle_task_marker(checked),
             Event::SoftBreak | Event::HardBreak => self.handle_break(),
             _ => {}
@@ -73,7 +80,9 @@ impl CountState {
 
     fn handle_end(&mut self, tag: TagEnd, width: usize) {
         match tag {
-            TagEnd::List(_) => { self.list_stack.pop(); }
+            TagEnd::List(_) => {
+                self.list_stack.pop();
+            }
             TagEnd::Item => self.end_item(width),
             TagEnd::Paragraph | TagEnd::Heading(_) => self.flush_paragraph(width),
             TagEnd::Table => self.count += self.table.finish_count(width),
@@ -94,8 +103,11 @@ impl CountState {
     }
 
     fn handle_text(&mut self, text: pulldown_cmark::CowStr<'_>) {
-        if self.in_code { self.code_buf.push_str(&text); }
-        else { append_text(&mut self.buf, &mut self.item_stack, &mut self.table, &text); }
+        if self.in_code {
+            self.code_buf.push_str(&text);
+        } else {
+            append_text(&mut self.buf, &mut self.item_stack, &mut self.table, &text);
+        }
     }
 
     fn handle_task_marker(&mut self, checked: bool) {
@@ -116,32 +128,43 @@ impl CountState {
     }
 
     fn start_list(&mut self, start: Option<u64>, width: usize) {
-        if let Some(item) = self.item_stack.last_mut() {
-            if !item.buf.trim().is_empty() {
-                let prefix = list_prefix(item.ordered, item.index);
-                let indent = list_indent(item.depth);
-                self.count += count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
-                item.buf.clear();
-            }
+        if let Some(item) = self.item_stack.last_mut()
+            && !item.buf.trim().is_empty()
+        {
+            let prefix = list_prefix(item.ordered, item.index);
+            let indent = list_indent(item.depth);
+            self.count += count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
+            item.buf.clear();
         }
-        self.list_stack.push(ListState { ordered: start.is_some(), index: start.unwrap_or(1) });
+        self.list_stack.push(ListState {
+            ordered: start.is_some(),
+            index: start.unwrap_or(1),
+        });
     }
 
     fn start_item(&mut self) {
         if let Some(state) = self.list_stack.last_mut() {
-            let ordered = state.ordered; let index = state.index;
-            if ordered { state.index = state.index.saturating_add(1); }
-            self.item_stack.push(ItemContext { buf: String::new(), depth: self.list_stack.len(), ordered, index });
+            let ordered = state.ordered;
+            let index = state.index;
+            if ordered {
+                state.index = state.index.saturating_add(1);
+            }
+            self.item_stack.push(ItemContext {
+                buf: String::new(),
+                depth: self.list_stack.len(),
+                ordered,
+                index,
+            });
         }
     }
 
     fn end_item(&mut self, width: usize) {
-        if let Some(item) = self.item_stack.pop() {
-            if !item.buf.trim().is_empty() {
-                let prefix = list_prefix(item.ordered, item.index);
-                let indent = list_indent(item.depth);
-                self.count += count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
-            }
+        if let Some(item) = self.item_stack.pop()
+            && !item.buf.trim().is_empty()
+        {
+            let prefix = list_prefix(item.ordered, item.index);
+            let indent = list_indent(item.depth);
+            self.count += count_list_item_lines(item.buf.trim(), &prefix, &indent, width);
         }
     }
 

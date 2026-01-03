@@ -74,7 +74,7 @@ mod tests {
         }
     }
 
-    fn ctx<'a>(
+    struct CtxParams<'a> {
         tabs: &'a mut Vec<TabState>,
         active_tab: &'a mut usize,
         categories: &'a mut Vec<String>,
@@ -83,23 +83,32 @@ mod tests {
         registry: &'a ModelRegistry,
         prompt_registry: &'a PromptRegistry,
         args: &'a Args,
-    ) -> DispatchContext<'a> {
+    }
+
+    fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
         DispatchContext {
-            tabs,
-            active_tab,
-            categories,
-            active_category,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
             msg_width: 40,
-            theme,
-            registry,
-            prompt_registry,
-            args,
+            theme: params.theme,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
         }
     }
 
     #[test]
     fn mouse_scroll_in_overlay_does_not_panic() {
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "默认".into(),
+            "",
+            false,
+            "m1",
+            "p1",
+        )];
         let mut active_tab = 0usize;
         let mut categories = vec!["默认".to_string()];
         let mut active_category = 0usize;
@@ -109,16 +118,16 @@ mod tests {
         let args = args();
         let mut view = ViewState::new();
         view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx(CtxParams {
+            tabs: &mut tabs,
+            active_tab: &mut active_tab,
+            categories: &mut categories,
+            active_category: &mut active_category,
+            theme: &theme,
+            registry: &registry,
+            prompt_registry: &prompt_registry,
+            args: &args,
+        });
         let mouse = MouseEvent {
             kind: MouseEventKind::ScrollDown,
             column: 5,

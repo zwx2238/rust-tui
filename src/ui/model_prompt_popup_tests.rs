@@ -5,10 +5,10 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::model_popup::draw_model_popup;
     use crate::ui::prompt_popup::draw_prompt_popup;
+    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::Rect;
     use ratatui::style::Color;
-    use ratatui::Terminal;
 
     fn theme() -> RenderTheme {
         RenderTheme {

@@ -3,14 +3,14 @@ use crate::llm::prompts::load_prompts;
 use crate::model_registry::build_model_registry;
 use crate::render::RenderTheme;
 use crate::ui::runtime_loop::run_loop;
+use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 use runtime_state::{
     Channels, RunState, finalize_session, init_and_spawn_preheat, init_run_state,
     load_question_set_option, maybe_fork_retry, run_initial_requests, sync_active_category,
     validate_args,
 };
 use runtime_terminal::{ensure_tty_ready, setup_terminal, teardown_terminal};
-use ratatui::Terminal;
-use ratatui::backend::CrosstermBackend;
 use std::time::Instant;
 
 mod runtime_state;
@@ -37,7 +37,6 @@ pub fn run(
     )
 }
 
-
 fn run_with_context(
     args: &Args,
     cfg: &crate::config::Config,
@@ -58,12 +57,25 @@ fn run_with_context(
     let channels = init_and_spawn_preheat();
     let auto_retry = maybe_fork_retry(args, &mut state, registry, prompt_registry);
     sync_active_category(&mut state);
-    run_initial_requests(question_set, auto_retry, &mut state, registry, args, &channels.tx);
-    run_ui_loop(&mut state, &channels, registry, prompt_registry, args, theme)?;
+    run_initial_requests(
+        question_set,
+        auto_retry,
+        &mut state,
+        registry,
+        args,
+        &channels.tx,
+    );
+    run_ui_loop(
+        &mut state,
+        &channels,
+        registry,
+        prompt_registry,
+        args,
+        theme,
+    )?;
     finalize_session(&mut state)?;
     Ok(())
 }
-
 
 fn run_ui_loop(
     state: &mut RunState,
@@ -98,21 +110,21 @@ fn run_loop_with_terminal(
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
-    run_loop(
+    run_loop(crate::ui::runtime_loop::RunLoopParams {
         terminal,
-        &mut state.tabs,
-        &mut state.active_tab,
-        &mut state.categories,
-        &mut state.active_category,
-        &mut state.session_location,
-        &channels.rx,
-        &channels.tx,
-        &channels.preheat_tx,
-        &channels.preheat_res_rx,
+        tabs: &mut state.tabs,
+        active_tab: &mut state.active_tab,
+        categories: &mut state.categories,
+        active_category: &mut state.active_category,
+        session_location: &mut state.session_location,
+        rx: &channels.rx,
+        tx: &channels.tx,
+        preheat_tx: &channels.preheat_tx,
+        preheat_res_rx: &channels.preheat_res_rx,
         registry,
         prompt_registry,
         args,
         theme,
         start_time,
-    )
+    })
 }

@@ -7,7 +7,9 @@ mod tests {
     use crate::session::SessionData;
     use crate::test_support::{env_lock, restore_env, set_env};
     use crate::ui::runtime_helpers::TabState;
-    use crate::ui::runtime_session::{fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers};
+    use crate::ui::runtime_session::{
+        fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
+    };
     use std::fs;
     use std::sync::mpsc;
 
@@ -86,7 +88,14 @@ mod tests {
 
     #[test]
     fn fork_last_tab_for_retry_creates_new_tab() {
-        let mut tabs = vec![TabState::new("c1".into(), "默认".into(), "", false, "m1", "p1")];
+        let mut tabs = vec![TabState::new(
+            "c1".into(),
+            "默认".into(),
+            "",
+            false,
+            "m1",
+            "p1",
+        )];
         tabs[0].app.messages.push(crate::types::Message {
             role: crate::types::ROLE_USER.to_string(),
             content: "hi".to_string(),

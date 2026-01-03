@@ -189,7 +189,11 @@ mod tests {
         ];
         let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
         assert_eq!(prompt, "FOLLOWUP");
-        assert!(history.iter().any(|m| message_text(m).contains("TOOL=tool output")));
+        assert!(
+            history
+                .iter()
+                .any(|m| message_text(m).contains("TOOL=tool output"))
+        );
     }
 
     fn message_text(msg: &Message) -> String {

@@ -77,7 +77,14 @@ mod tests {
 
     fn base_state() -> TabsState {
         TabsState {
-            tabs: vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id1".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["默认".to_string()],
             active_category: 0,
@@ -88,7 +95,7 @@ mod tests {
         }
     }
 
-    fn ctx<'a>(
+    struct CtxParams<'a> {
         tabs: &'a mut Vec<TabState>,
         active_tab: &'a mut usize,
         categories: &'a mut Vec<String>,
@@ -97,31 +104,33 @@ mod tests {
         registry: &'a ModelRegistry,
         prompt_registry: &'a PromptRegistry,
         args: &'a Args,
-    ) -> DispatchContext<'a> {
+    }
+
+    fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
         DispatchContext {
-            tabs,
-            active_tab,
-            categories,
-            active_category,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
             msg_width: 40,
-            theme,
-            registry,
-            prompt_registry,
-            args,
+            theme: params.theme,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
         }
     }
 
     fn ctx_from_state<'a>(state: &'a mut TabsState) -> DispatchContext<'a> {
-        ctx(
-            &mut state.tabs,
-            &mut state.active_tab,
-            &mut state.categories,
-            &mut state.active_category,
-            &state.theme,
-            &state.registry,
-            &state.prompt_registry,
-            &state.args,
-        )
+        ctx(CtxParams {
+            tabs: &mut state.tabs,
+            active_tab: &mut state.active_tab,
+            categories: &mut state.categories,
+            active_category: &mut state.active_category,
+            theme: &state.theme,
+            registry: &state.registry,
+            prompt_registry: &state.prompt_registry,
+            args: &state.args,
+        })
     }
 
     fn set_home(temp: &std::path::Path) -> Option<String> {

@@ -55,13 +55,8 @@ mod tests {
 
     #[test]
     fn renders_wrapped_list_items() {
-        let lines = render_list_item_lines(
-            "这是一个很长的列表项，需要换行",
-            "1. ",
-            "  ",
-            10,
-            &theme(),
-        );
+        let lines =
+            render_list_item_lines("这是一个很长的列表项，需要换行", "1. ", "  ", 10, &theme());
         assert!(lines.len() >= 2);
         assert!(lines[0].to_string().contains("1."));
     }

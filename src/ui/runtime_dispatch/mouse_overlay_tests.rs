@@ -75,7 +75,7 @@ fn layout() -> LayoutContext {
     }
 }
 
-fn ctx<'a>(
+struct CtxParams<'a> {
     tabs: &'a mut Vec<TabState>,
     active_tab: &'a mut usize,
     categories: &'a mut Vec<String>,
@@ -84,17 +84,19 @@ fn ctx<'a>(
     registry: &'a ModelRegistry,
     prompt_registry: &'a PromptRegistry,
     args: &'a Args,
-) -> DispatchContext<'a> {
+}
+
+fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
     DispatchContext {
-        tabs,
-        active_tab,
-        categories,
-        active_category,
+        tabs: params.tabs,
+        active_tab: params.active_tab,
+        categories: params.categories,
+        active_category: params.active_category,
         msg_width: 60,
-        theme,
-        registry,
-        prompt_registry,
-        args,
+        theme: params.theme,
+        registry: params.registry,
+        prompt_registry: params.prompt_registry,
+        args: params.args,
     }
 }
 
@@ -130,9 +132,7 @@ fn base_state(tab: TabState, overlay: crate::ui::overlay::OverlayKind) -> Overla
     }
 }
 
-fn ctx_and_view<'a>(
-    state: &'a mut OverlayTestState,
-) -> (DispatchContext<'a>, &'a mut ViewState) {
+fn ctx_and_view<'a>(state: &'a mut OverlayTestState) -> (DispatchContext<'a>, &'a mut ViewState) {
     let OverlayTestState {
         tabs,
         active_tab,
@@ -144,7 +144,7 @@ fn ctx_and_view<'a>(
         args,
         view,
     } = state;
-    let ctx = ctx(
+    let ctx = ctx(CtxParams {
         tabs,
         active_tab,
         categories,
@@ -153,7 +153,7 @@ fn ctx_and_view<'a>(
         registry,
         prompt_registry,
         args,
-    );
+    });
     (ctx, view)
 }
 
@@ -229,13 +229,17 @@ fn code_exec_overlay_hover_and_click() {
     let layout = layout();
     let popup = code_exec_popup_layout(layout.size, false);
     let hover = mouse_move_at(popup.approve_btn.x, popup.approve_btn.y);
-    assert!(handle_code_exec_overlay_mouse(hover, &mut ctx, layout, view));
+    assert!(handle_code_exec_overlay_mouse(
+        hover, &mut ctx, layout, view
+    ));
     assert_eq!(
         ctx.tabs[0].app.code_exec_hover,
         Some(crate::ui::state::CodeExecHover::Approve)
     );
     let click = mouse_click_at(popup.approve_btn.x, popup.approve_btn.y);
-    assert!(handle_code_exec_overlay_mouse(click, &mut ctx, layout, view));
+    assert!(handle_code_exec_overlay_mouse(
+        click, &mut ctx, layout, view
+    ));
     assert_eq!(
         ctx.tabs[0].app.pending_command,
         Some(crate::ui::state::PendingCommand::ApproveCodeExec)
@@ -251,7 +255,9 @@ fn file_patch_overlay_click_apply() {
     let layout = layout();
     let popup = file_patch_popup_layout(layout.size);
     let click = mouse_click_at(popup.apply_btn.x, popup.apply_btn.y);
-    assert!(handle_file_patch_overlay_mouse(click, &mut ctx, layout, view));
+    assert!(handle_file_patch_overlay_mouse(
+        click, &mut ctx, layout, view
+    ));
     assert_eq!(
         ctx.tabs[0].app.pending_command,
         Some(crate::ui::state::PendingCommand::ApplyFilePatch)

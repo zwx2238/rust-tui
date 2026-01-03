@@ -1,10 +1,10 @@
 use crate::llm::prompt_manager::{augment_system, build_history_and_prompt, extract_system};
 use crate::llm::templates::RigTemplates;
 use crate::types::Message as UiMessage;
+use reqwest12::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use rig::completion::{CompletionModel, CompletionRequestBuilder, Message, ToolDefinition};
 use rig::prelude::CompletionClient;
 use rig::providers::openai;
-use reqwest12::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 
 pub struct RigRequestContext {
     pub preamble: String,
@@ -122,9 +122,18 @@ mod tests {
 
     #[test]
     fn normalize_base_url_appends_v1() {
-        assert_eq!(normalize_base_url("https://api.example.com"), "https://api.example.com/v1");
-        assert_eq!(normalize_base_url("https://api.example.com/"), "https://api.example.com/v1");
-        assert_eq!(normalize_base_url("https://api.example.com/v1"), "https://api.example.com/v1");
+        assert_eq!(
+            normalize_base_url("https://api.example.com"),
+            "https://api.example.com/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://api.example.com/"),
+            "https://api.example.com/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://api.example.com/v1"),
+            "https://api.example.com/v1"
+        );
     }
 
     #[test]

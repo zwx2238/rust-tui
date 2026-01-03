@@ -3,10 +3,10 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::code_exec_popup::draw_code_exec_popup;
     use crate::ui::state::{CodeExecHover, CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
+    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::Rect;
     use ratatui::style::Color;
-    use ratatui::Terminal;
     use std::time::Instant;
 
     fn theme() -> RenderTheme {
@@ -39,16 +39,18 @@ mod tests {
             .draw(|f| {
                 draw_code_exec_popup(
                     f,
-                    Rect::new(0, 0, 120, 40),
-                    &pending(),
-                    0,
-                    0,
-                    0,
-                    Some(CodeExecHover::Approve),
-                    Some(CodeExecReasonTarget::Deny),
-                    &mut input,
-                    None,
-                    &theme(),
+                    crate::ui::code_exec_popup::CodeExecPopupParams {
+                        area: Rect::new(0, 0, 120, 40),
+                        pending: &pending(),
+                        scroll: 0,
+                        stdout_scroll: 0,
+                        stderr_scroll: 0,
+                        hover: Some(CodeExecHover::Approve),
+                        reason_target: Some(CodeExecReasonTarget::Deny),
+                        reason_input: &mut input,
+                        live: None,
+                        theme: &theme(),
+                    },
                 );
             })
             .unwrap();
@@ -71,16 +73,18 @@ mod tests {
             .draw(|f| {
                 draw_code_exec_popup(
                     f,
-                    Rect::new(0, 0, 120, 40),
-                    &pending(),
-                    0,
-                    0,
-                    0,
-                    Some(CodeExecHover::Exit),
-                    None,
-                    &mut input,
-                    Some(&live),
-                    &theme(),
+                    crate::ui::code_exec_popup::CodeExecPopupParams {
+                        area: Rect::new(0, 0, 120, 40),
+                        pending: &pending(),
+                        scroll: 0,
+                        stdout_scroll: 0,
+                        stderr_scroll: 0,
+                        hover: Some(CodeExecHover::Exit),
+                        reason_target: None,
+                        reason_input: &mut input,
+                        live: Some(&live),
+                        theme: &theme(),
+                    },
                 );
             })
             .unwrap();

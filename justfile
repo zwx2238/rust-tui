@@ -34,3 +34,12 @@ doc-open-all:
 # 示例: just count-functions 30  # 只显示超过30行的函数
 count-functions min_lines='0':
 	@python3 scripts/count_functions.py {{min_lines}}
+
+# 检查模块结构规范
+# 检测同时存在 foo.rs 和 foo/ 目录但缺少 foo/mod.rs 的情况
+check-modules:
+	@bash scripts/check_module_structure.sh
+
+# 完整的代码质量检查（包括模块结构、clippy、编译）
+check-all:
+	@bash scripts/check_all.sh

@@ -42,10 +42,10 @@ fn run_read_file(args_json: &str, with_line_numbers: bool, root: Option<&Path>) 
         Ok(val) => val,
         Err(err) => return err,
     };
-    if let Some(root) = root {
-        if let Err(err) = enforce_root(&args.path, root) {
-            return tool_err(format!("read_file 读取失败：{err}"));
-        }
+    if let Some(root) = root
+        && let Err(err) = enforce_root(&args.path, root)
+    {
+        return tool_err(format!("read_file 读取失败：{err}"));
     }
     let content = match read_file_content(&args.path, args.max_bytes) {
         Ok(val) => val,
@@ -98,10 +98,12 @@ fn parse_read_file_args(args_json: &str) -> Result<ReadFileArgs, ToolResult> {
 }
 
 fn read_file_content(path: &str, max_bytes: usize) -> Result<String, ToolResult> {
-    let meta = std::fs::metadata(path)
-        .map_err(|e| tool_err(format!("read_file 读取失败：{e}")))?;
+    let meta = std::fs::metadata(path).map_err(|e| tool_err(format!("read_file 读取失败：{e}")))?;
     if meta.is_file() && meta.len() as usize > max_bytes {
-        return Err(tool_err(format!("read_file 文件过大：{} bytes", meta.len())));
+        return Err(tool_err(format!(
+            "read_file 文件过大：{} bytes",
+            meta.len()
+        )));
     }
     std::fs::read_to_string(path).map_err(|e| tool_err(format!("read_file 读取失败：{e}")))
 }
@@ -131,9 +133,16 @@ fn format_read_file_output(
     slice: &[&str],
 ) -> String {
     let mut out = String::new();
-    out.push_str(if with_line_numbers { "[read_code]\n" } else { "[read_file]\n" });
+    out.push_str(if with_line_numbers {
+        "[read_code]\n"
+    } else {
+        "[read_file]\n"
+    });
     out.push_str(&format!("path: {}\n", path));
-    out.push_str(&format!("lines: {}-{} (total {})\n", start, end, total_lines));
+    out.push_str(&format!(
+        "lines: {}-{} (total {})\n",
+        start, end, total_lines
+    ));
     out.push_str("content:\n");
     out.push_str("```text\n");
     if with_line_numbers {

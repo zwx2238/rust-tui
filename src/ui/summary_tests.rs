@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::ui::summary::{SummarySort, build_summary_rows, sort_summary_rows};
     use crate::ui::runtime_helpers::TabState;
+    use crate::ui::summary::{SummarySort, build_summary_rows, sort_summary_rows};
 
     #[test]
     fn build_summary_rows_includes_latest_user() {

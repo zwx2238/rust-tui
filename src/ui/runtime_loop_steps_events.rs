@@ -51,17 +51,17 @@ pub(crate) fn poll_and_dispatch_event(
 fn build_dispatch_context<'a>(
     params: &'a mut DispatchContextParams<'_>,
 ) -> crate::ui::runtime_dispatch::DispatchContext<'a> {
-    make_dispatch_context(
-        params.tabs,
-        params.active_tab,
-        params.categories,
-        params.active_category,
-        params.msg_width,
-        params.theme,
-        params.registry,
-        params.prompt_registry,
-        params.args,
-    )
+    make_dispatch_context(crate::ui::runtime_context::DispatchContextParams {
+        tabs: params.tabs,
+        active_tab: params.active_tab,
+        categories: params.categories,
+        active_category: params.active_category,
+        msg_width: params.msg_width,
+        theme: params.theme,
+        registry: params.registry,
+        prompt_registry: params.prompt_registry,
+        args: params.args,
+    })
 }
 
 fn build_layout_context(params: LayoutContextParams) -> crate::ui::runtime_dispatch::LayoutContext {

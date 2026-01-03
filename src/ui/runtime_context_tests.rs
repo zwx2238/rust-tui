@@ -62,7 +62,14 @@ mod tests {
 
     #[test]
     fn make_dispatch_context_wires_fields() {
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "默认".into(),
+            "",
+            false,
+            "m1",
+            "p1",
+        )];
         let mut active_tab = 0usize;
         let mut categories = vec!["默认".to_string()];
         let mut active_category = 0usize;
@@ -70,17 +77,17 @@ mod tests {
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
-        let ctx = make_dispatch_context(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            40,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let ctx = make_dispatch_context(crate::ui::runtime_context::DispatchContextParams {
+            tabs: &mut tabs,
+            active_tab: &mut active_tab,
+            categories: &mut categories,
+            active_category: &mut active_category,
+            msg_width: 40,
+            theme: &theme,
+            registry: &registry,
+            prompt_registry: &prompt_registry,
+            args: &args,
+        });
         assert_eq!(ctx.msg_width, 40);
         assert_eq!(ctx.tabs.len(), 1);
     }

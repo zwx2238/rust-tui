@@ -52,7 +52,9 @@ fn render_code_exec_popup(
         header_note,
         ..
     } = ctx;
-    let Some(tab_state) = tabs.get_mut(*active_tab) else { return Ok(()); };
+    let Some(tab_state) = tabs.get_mut(*active_tab) else {
+        return Ok(());
+    };
     let size = terminal.size()?;
     let full = Rect::new(0, 0, size.width, size.height);
     let layout = crate::ui::code_exec_popup_layout::code_exec_popup_layout(
@@ -65,39 +67,45 @@ fn render_code_exec_popup(
     let ui_state = read_code_exec_ui(tab_state);
     let mut reason_input = take_reason_input(tab_state);
     redraw_with_overlay(
-        terminal,
-        &mut tab_state.app,
-        theme,
-        text,
-        *total_lines,
-        tab_labels,
-        *active_tab_pos,
-        categories,
-        *active_category,
-        *startup_text,
-        *input_height,
+        crate::ui::draw::RedrawWithOverlayParams {
+            terminal,
+            app: &mut tab_state.app,
+            theme,
+            text,
+            total_lines: *total_lines,
+            tab_labels,
+            active_tab_pos: *active_tab_pos,
+            categories,
+            active_category: *active_category,
+            startup_text: *startup_text,
+            input_height: *input_height,
+            header_note: *header_note,
+        },
         |f| {
             draw_code_exec_popup(
                 f,
-                f.area(),
-                &pending,
-                ui_state.0,
-                ui_state.1,
-                ui_state.2,
-                ui_state.3,
-                ui_state.4,
-                &mut reason_input,
-                live_snapshot.as_ref(),
-                theme,
+                crate::ui::code_exec_popup::CodeExecPopupParams {
+                    area: f.area(),
+                    pending: &pending,
+                    scroll: ui_state.0,
+                    stdout_scroll: ui_state.1,
+                    stderr_scroll: ui_state.2,
+                    hover: ui_state.3,
+                    reason_target: ui_state.4,
+                    reason_input: &mut reason_input,
+                    live: live_snapshot.as_ref(),
+                    theme,
+                },
             );
         },
-        *header_note,
     )?;
     tab_state.app.code_exec_reason_input = reason_input;
     Ok(())
 }
 
-fn take_reason_input(tab_state: &mut crate::ui::runtime_helpers::TabState) -> tui_textarea::TextArea<'static> {
+fn take_reason_input(
+    tab_state: &mut crate::ui::runtime_helpers::TabState,
+) -> tui_textarea::TextArea<'static> {
     std::mem::take(&mut tab_state.app.code_exec_reason_input)
 }
 
@@ -121,7 +129,9 @@ fn render_file_patch_popup(
         header_note,
         ..
     } = ctx;
-    let Some(tab_state) = tabs.get_mut(*active_tab) else { return Ok(()); };
+    let Some(tab_state) = tabs.get_mut(*active_tab) else {
+        return Ok(());
+    };
     let size = terminal.size()?;
     let full = Rect::new(0, 0, size.width, size.height);
     let layout = crate::ui::file_patch_popup_layout::file_patch_popup_layout(full);
@@ -129,19 +139,21 @@ fn render_file_patch_popup(
     let scroll = tab_state.app.file_patch_scroll;
     let hover = tab_state.app.file_patch_hover;
     crate::ui::draw::redraw_with_overlay(
-        terminal,
-        &mut tab_state.app,
-        theme,
-        text,
-        *total_lines,
-        tab_labels,
-        *active_tab_pos,
-        categories,
-        *active_category,
-        *startup_text,
-        *input_height,
+        crate::ui::draw::RedrawWithOverlayParams {
+            terminal,
+            app: &mut tab_state.app,
+            theme,
+            text,
+            total_lines: *total_lines,
+            tab_labels,
+            active_tab_pos: *active_tab_pos,
+            categories,
+            active_category: *active_category,
+            startup_text: *startup_text,
+            input_height: *input_height,
+            header_note: *header_note,
+        },
         |f| draw_file_patch_popup(f, f.area(), &pending, scroll, hover, theme),
-        *header_note,
     )?;
     Ok(())
 }

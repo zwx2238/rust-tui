@@ -3,8 +3,8 @@ mod tests {
     use crate::ui::runtime_code_exec_output::{
         build_code_exec_tool_output, escape_json_string, take_code_exec_reason,
     };
-    use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
     use crate::ui::runtime_helpers::TabState;
+    use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
     use std::time::Instant;
 
     #[test]
@@ -38,13 +38,14 @@ mod tests {
         let reason = take_code_exec_reason(&mut tab, CodeExecReasonTarget::Stop);
         assert_eq!(reason.as_deref(), Some("原因"));
         assert_eq!(tab.app.code_exec_reason_input.lines().len(), 1);
-        assert!(tab
-            .app
-            .code_exec_reason_input
-            .lines()
-            .first()
-            .map(|l| l.is_empty())
-            .unwrap_or(true));
+        assert!(
+            tab.app
+                .code_exec_reason_input
+                .lines()
+                .first()
+                .map(|l| l.is_empty())
+                .unwrap_or(true)
+        );
     }
 
     #[test]

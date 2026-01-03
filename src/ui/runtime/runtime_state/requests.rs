@@ -57,26 +57,30 @@ fn start_tab_request_for_question(
         return;
     };
     let model = model_for_tab(tab_state, registry);
-    start_tab_request(
+    let log_session_id = tab_state.app.log_session_id.clone();
+    start_tab_request(crate::ui::runtime_requests::StartTabRequestParams {
         tab_state,
         question,
-        &model.base_url,
-        &model.api_key,
-        &model.model,
-        args.show_reasoning,
+        base_url: &model.base_url,
+        api_key: &model.api_key,
+        model: &model.model,
+        _show_reasoning: args.show_reasoning,
         tx,
-        tab_idx,
-        args.web_search_enabled(),
-        args.code_exec_enabled(),
-        args.read_file_enabled(),
-        args.read_code_enabled(),
-        args.modify_file_enabled(),
-        args.log_requests.clone(),
-        tab_state.app.log_session_id.clone(),
-    );
+        tab_id: tab_idx,
+        enable_web_search: args.web_search_enabled(),
+        enable_code_exec: args.code_exec_enabled(),
+        enable_read_file: args.read_file_enabled(),
+        enable_read_code: args.read_code_enabled(),
+        enable_modify_file: args.modify_file_enabled(),
+        log_requests: args.log_requests.clone(),
+        log_session_id,
+    });
 }
 
-fn model_for_tab<'a>(tab_state: &TabState, registry: &'a ModelRegistry) -> &'a crate::model_registry::ModelProfile {
+fn model_for_tab<'a>(
+    tab_state: &TabState,
+    registry: &'a ModelRegistry,
+) -> &'a crate::model_registry::ModelProfile {
     registry
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"))

@@ -21,11 +21,19 @@ pub(crate) fn draw_tabs(
     f.render_widget(paragraph, area);
 }
 
-fn build_tab_spans(labels: &[String], active_tab: usize, theme: &RenderTheme) -> Vec<Span<'static>> {
+fn build_tab_spans(
+    labels: &[String],
+    active_tab: usize,
+    theme: &RenderTheme,
+) -> Vec<Span<'static>> {
     let label = labels.join("│");
     let mut spans = Vec::new();
     for (i, part) in label.split('│').enumerate() {
-        let style = if i == active_tab { Style::default().fg(Color::Blue) } else { Style::default().fg(base_fg(theme)) };
+        let style = if i == active_tab {
+            Style::default().fg(Color::Blue)
+        } else {
+            Style::default().fg(base_fg(theme))
+        };
         spans.push(Span::styled(part.to_string(), style));
         if i + 1 < labels.len() {
             spans.push(Span::styled("│", Style::default().fg(base_fg(theme))));
@@ -40,10 +48,14 @@ fn append_startup_text(
     startup_text: Option<&str>,
     theme: &RenderTheme,
 ) {
-    let Some(text) = startup_text else { return; };
+    let Some(text) = startup_text else {
+        return;
+    };
     let cursor = spans.iter().map(|s| s.content.width()).sum::<usize>();
     let text_width = text.width();
-    if width <= cursor + text_width { return; }
+    if width <= cursor + text_width {
+        return;
+    }
     let pad = width.saturating_sub(cursor + text_width);
     spans.push(Span::raw(" ".repeat(pad)));
     spans.push(Span::styled(

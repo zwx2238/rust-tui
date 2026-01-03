@@ -33,9 +33,15 @@ impl<'a> InlineMathState<'a> {
     fn process(&mut self) {
         while self.i < self.bytes.len() {
             let ch = self.bytes[self.i] as char;
-            if self.handle_backtick(ch) { continue; }
-            if self.handle_paren_math(ch) { continue; }
-            if self.handle_dollar_math(ch) { continue; }
+            if self.handle_backtick(ch) {
+                continue;
+            }
+            if self.handle_paren_math(ch) {
+                continue;
+            }
+            if self.handle_dollar_math(ch) {
+                continue;
+            }
             self.i += 1;
         }
     }
@@ -48,8 +54,12 @@ impl<'a> InlineMathState<'a> {
     }
 
     fn handle_backtick(&mut self, ch: char) -> bool {
-        if ch != '`' { return false; }
-        if self.last < self.i { self.out.push_str(&self.line[self.last..self.i]); }
+        if ch != '`' {
+            return false;
+        }
+        if self.last < self.i {
+            self.out.push_str(&self.line[self.last..self.i]);
+        }
         self.out.push('`');
         self.in_code = !self.in_code;
         self.i += 1;
@@ -61,8 +71,12 @@ impl<'a> InlineMathState<'a> {
         if ch != '\\' || self.in_code || self.i + 1 >= self.bytes.len() {
             return false;
         }
-        if self.bytes[self.i + 1] as char != '(' { return false; }
-        if self.last < self.i { self.out.push_str(&self.line[self.last..self.i]); }
+        if self.bytes[self.i + 1] as char != '(' {
+            return false;
+        }
+        if self.last < self.i {
+            self.out.push_str(&self.line[self.last..self.i]);
+        }
         if let Some(end) = find_inline_paren_end(self.bytes, self.i + 2) {
             self.render_inline_expr(self.i + 2, end, "\\(", "\\)");
             self.i = end + 2;
@@ -73,16 +87,22 @@ impl<'a> InlineMathState<'a> {
     }
 
     fn handle_dollar_math(&mut self, ch: char) -> bool {
-        if ch != '$' || self.in_code || is_escaped(self.bytes, self.i) { return false; }
+        if ch != '$' || self.in_code || is_escaped(self.bytes, self.i) {
+            return false;
+        }
         if self.i + 1 < self.bytes.len() && self.bytes[self.i + 1] as char == '$' {
-            if self.last < self.i { self.out.push_str(&self.line[self.last..self.i]); }
+            if self.last < self.i {
+                self.out.push_str(&self.line[self.last..self.i]);
+            }
             self.out.push_str("$$");
             self.i += 2;
             self.last = self.i;
             return true;
         }
         if let Some(end) = find_inline_end(self.bytes, self.i + 1) {
-            if self.last < self.i { self.out.push_str(&self.line[self.last..self.i]); }
+            if self.last < self.i {
+                self.out.push_str(&self.line[self.last..self.i]);
+            }
             self.render_inline_expr(self.i + 1, end, "$", "$");
             self.i = end + 1;
             self.last = self.i;
@@ -115,11 +135,15 @@ impl<'a> InlineMathState<'a> {
 
 fn append_inline_render(out: &mut String, rendered: &str) {
     if rendered.contains('\n') {
-        if !out.ends_with('\n') && !out.is_empty() { out.push('\n'); }
+        if !out.ends_with('\n') && !out.is_empty() {
+            out.push('\n');
+        }
         out.push('\n');
         out.push_str("```math\n");
         out.push_str(rendered);
-        if !rendered.ends_with('\n') { out.push('\n'); }
+        if !rendered.ends_with('\n') {
+            out.push('\n');
+        }
         out.push_str("```\n\n");
     } else {
         out.push_str(rendered);
@@ -130,7 +154,9 @@ fn find_inline_end(bytes: &[u8], start: usize) -> Option<usize> {
     let mut i = start;
     while i < bytes.len() {
         let ch = bytes[i] as char;
-        if ch == '$' && !is_escaped(bytes, i) { return Some(i); }
+        if ch == '$' && !is_escaped(bytes, i) {
+            return Some(i);
+        }
         i += 1;
     }
     None
@@ -140,20 +166,27 @@ fn find_inline_paren_end(bytes: &[u8], start: usize) -> Option<usize> {
     let mut i = start;
     while i + 1 < bytes.len() {
         let ch = bytes[i] as char;
-        if ch == '\\' && bytes[i + 1] as char == ')' && !is_escaped(bytes, i) { return Some(i); }
+        if ch == '\\' && bytes[i + 1] as char == ')' && !is_escaped(bytes, i) {
+            return Some(i);
+        }
         i += 1;
     }
     None
 }
 
 fn is_escaped(bytes: &[u8], idx: usize) -> bool {
-    if idx == 0 { return false; }
+    if idx == 0 {
+        return false;
+    }
     let mut backslashes = 0;
     let mut i = idx;
     while i > 0 {
         i -= 1;
-        if bytes[i] as char == '\\' { backslashes += 1; }
-        else { break; }
+        if bytes[i] as char == '\\' {
+            backslashes += 1;
+        } else {
+            break;
+        }
     }
     backslashes % 2 == 1
 }

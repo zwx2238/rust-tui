@@ -10,6 +10,17 @@ use std::borrow::Cow;
 
 mod viewport;
 use viewport::ViewportState;
+
+pub struct ViewportRenderParams<'a> {
+    pub messages: &'a [Message],
+    pub width: usize,
+    pub theme: &'a RenderTheme,
+    pub label_suffixes: &'a [(usize, String)],
+    pub streaming_idx: Option<usize>,
+    pub scroll: u16,
+    pub height: u16,
+}
+
 #[derive(Clone)]
 pub struct RenderCacheEntry {
     pub(crate) role: String,
@@ -62,13 +73,15 @@ pub fn messages_to_text_cached(
     cache: &mut Vec<RenderCacheEntry>,
 ) -> Text<'static> {
     let (text, _) = messages_to_viewport_text_cached(
-        messages,
-        width,
-        theme,
-        label_suffixes,
-        streaming_idx,
-        0,
-        u16::MAX,
+        crate::render::ViewportRenderParams {
+            messages,
+            width,
+            theme,
+            label_suffixes,
+            streaming_idx,
+            scroll: 0,
+            height: u16::MAX,
+        },
         cache,
     );
     text
@@ -90,52 +103,31 @@ pub fn messages_to_plain_lines(
     out
 }
 pub fn messages_to_viewport_text_cached(
-    messages: &[Message],
-    width: usize,
-    theme: &RenderTheme,
-    label_suffixes: &[(usize, String)],
-    streaming_idx: Option<usize>,
-    scroll: u16,
-    height: u16,
+    params: ViewportRenderParams<'_>,
     cache: &mut Vec<RenderCacheEntry>,
 ) -> (Text<'static>, usize) {
-    let (text, total, _) = messages_to_viewport_text_cached_with_layout(
-        messages,
-        width,
-        theme,
-        label_suffixes,
-        streaming_idx,
-        scroll,
-        height,
-        cache,
-    );
+    let (text, total, _) = messages_to_viewport_text_cached_with_layout(params, cache);
     (text, total)
 }
 
 pub fn messages_to_viewport_text_cached_with_layout(
-    messages: &[Message],
-    width: usize,
-    theme: &RenderTheme,
-    label_suffixes: &[(usize, String)],
-    streaming_idx: Option<usize>,
-    scroll: u16,
-    height: u16,
+    params: ViewportRenderParams<'_>,
     cache: &mut Vec<RenderCacheEntry>,
 ) -> (Text<'static>, usize, Vec<MessageLayout>) {
-    let theme_key = theme_cache_key(theme);
-    trim_cache(cache, messages.len());
-    let start = scroll as usize;
-    let end = start.saturating_add(height as usize);
+    let theme_key = theme_cache_key(params.theme);
+    trim_cache(cache, params.messages.len());
+    let start = params.scroll as usize;
+    let end = start.saturating_add(params.height as usize);
     let mut state = ViewportState::new(
-        width,
-        theme,
+        params.width,
+        params.theme,
         theme_key,
-        label_suffixes,
-        streaming_idx,
+        params.label_suffixes,
+        params.streaming_idx,
         start,
         end,
     );
-    for (idx, msg) in messages.iter().enumerate() {
+    for (idx, msg) in params.messages.iter().enumerate() {
         state.process_message(idx, msg, cache);
     }
     state.finish()
@@ -147,12 +139,11 @@ fn trim_cache(cache: &mut Vec<RenderCacheEntry>, len: usize) {
     }
 }
 
-
-fn ensure_cache_entry<'a>(
-    cache: &'a mut Vec<RenderCacheEntry>,
+fn ensure_cache_entry(
+    cache: &mut Vec<RenderCacheEntry>,
     idx: usize,
     theme_key: u64,
-) -> &'a mut RenderCacheEntry {
+) -> &mut RenderCacheEntry {
     if cache.len() <= idx {
         cache.push(empty_entry(theme_key));
     }

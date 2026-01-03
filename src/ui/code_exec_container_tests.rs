@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::test_support::{env_lock, restore_env, set_env};
-    use crate::ui::code_exec_container::{ensure_container, run_python_in_container_stream, stop_exec};
+    use crate::ui::code_exec_container::{
+        ensure_container, run_python_in_container_stream, stop_exec,
+    };
     use crate::ui::state::CodeExecLive;
     use std::fs;
     use std::sync::{Arc, Mutex, atomic::AtomicBool};
@@ -44,9 +46,6 @@ esac
 
     fn write_executable(bin: &std::path::Path, script: &str) {
         fs::write(bin, script).unwrap();
-        let mut perms = fs::metadata(bin).unwrap().permissions();
-        perms.set_readonly(false);
-        fs::set_permissions(bin, perms).unwrap();
         let _ = std::process::Command::new("chmod")
             .arg("+x")
             .arg(bin)

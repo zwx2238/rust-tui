@@ -10,19 +10,19 @@ use crate::ui::runtime_requests::start_tab_request;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
+mod fork;
 mod key;
 mod mouse;
 mod mouse_overlay;
 mod nav;
-mod fork;
 mod tabs;
 
 const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新建对话。";
 
+pub(crate) use fork::{fork_message_by_index, fork_message_into_new_tab};
 pub(crate) use key::handle_key_event_loop;
 pub(crate) use mouse::handle_mouse_event_loop;
 pub(crate) use nav::handle_nav_key;
-pub(crate) use fork::{fork_message_by_index, fork_message_into_new_tab};
 pub(crate) use tabs::{
     close_all_tabs, close_other_tabs, close_tab, new_tab, next_category, next_tab, prev_category,
     prev_tab,
@@ -59,23 +59,24 @@ pub(crate) fn start_pending_request(
     tab_state: &mut TabState,
 ) {
     let model = resolve_model(registry, &tab_state.app.model_key);
-    start_tab_request(
+    let log_session_id = tab_state.app.log_session_id.clone();
+    start_tab_request(crate::ui::runtime_requests::StartTabRequestParams {
         tab_state,
-        "",
-        &model.base_url,
-        &model.api_key,
-        &model.model,
-        args.show_reasoning,
+        question: "",
+        base_url: &model.base_url,
+        api_key: &model.api_key,
+        model: &model.model,
+        _show_reasoning: args.show_reasoning,
         tx,
-        active_tab,
-        args.web_search_enabled(),
-        args.code_exec_enabled(),
-        args.read_file_enabled(),
-        args.read_code_enabled(),
-        args.modify_file_enabled(),
-        args.log_requests.clone(),
-        tab_state.app.log_session_id.clone(),
-    );
+        tab_id: active_tab,
+        enable_web_search: args.web_search_enabled(),
+        enable_code_exec: args.code_exec_enabled(),
+        enable_read_file: args.read_file_enabled(),
+        enable_read_code: args.read_code_enabled(),
+        enable_modify_file: args.modify_file_enabled(),
+        log_requests: args.log_requests.clone(),
+        log_session_id,
+    });
 }
 
 pub(crate) fn can_change_prompt(app: &crate::ui::state::App) -> bool {
@@ -93,10 +94,10 @@ pub(crate) fn sync_model_selection(
     ctx: &DispatchContext<'_>,
     layout: LayoutContext,
 ) {
-    if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) {
-        if let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key) {
-            view.model.selected = idx;
-        }
+    if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab)
+        && let Some(idx) = ctx.registry.index_of(&tab_state.app.model_key)
+    {
+        view.model.selected = idx;
     }
     let areas = overlay_areas(layout);
     let counts = overlay_counts(ctx);
@@ -110,15 +111,14 @@ pub(crate) fn sync_prompt_selection(
     ctx: &DispatchContext<'_>,
     layout: LayoutContext,
 ) {
-    if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) {
-        if let Some(idx) = ctx
+    if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab)
+        && let Some(idx) = ctx
             .prompt_registry
             .prompts
             .iter()
             .position(|p| p.key == tab_state.app.prompt_key)
-        {
-            view.prompt.selected = idx;
-        }
+    {
+        view.prompt.selected = idx;
     }
     let areas = overlay_areas(layout);
     let counts = overlay_counts(ctx);

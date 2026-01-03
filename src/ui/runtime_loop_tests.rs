@@ -8,9 +8,9 @@ mod tests {
     use crate::ui::net::UiEvent;
     use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
     use crate::ui::runtime_loop::run_loop;
+    use ratatui::Terminal;
     use ratatui::backend::CrosstermBackend;
     use ratatui::style::Color;
-    use ratatui::Terminal;
     use std::sync::mpsc;
     use std::time::Instant;
 
@@ -85,7 +85,14 @@ mod tests {
         let (_preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
         RunLoopState {
             terminal,
-            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["默认".to_string()],
             active_category: 0,
@@ -102,23 +109,23 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let prev = set_env("DEEPCHAT_TEST_RUN_LOOP_ONCE", "1");
         let mut state = base_run_loop_state();
-        let result = run_loop(
-            &mut state.terminal,
-            &mut state.tabs,
-            &mut state.active_tab,
-            &mut state.categories,
-            &mut state.active_category,
-            &mut state.session_location,
-            &state.rx,
-            &state.tx,
-            &state.preheat_tx,
-            &state.preheat_res_rx,
-            &registry(),
-            &prompt_registry(),
-            &args(),
-            &theme(),
-            Instant::now(),
-        );
+        let result = run_loop(crate::ui::runtime_loop::RunLoopParams {
+            terminal: &mut state.terminal,
+            tabs: &mut state.tabs,
+            active_tab: &mut state.active_tab,
+            categories: &mut state.categories,
+            active_category: &mut state.active_category,
+            session_location: &mut state.session_location,
+            rx: &state.rx,
+            tx: &state.tx,
+            preheat_tx: &state.preheat_tx,
+            preheat_res_rx: &state.preheat_res_rx,
+            registry: &registry(),
+            prompt_registry: &prompt_registry(),
+            args: &args(),
+            theme: &theme(),
+            start_time: Instant::now(),
+        });
         restore_env("DEEPCHAT_TEST_RUN_LOOP_ONCE", prev);
         assert!(result.is_ok());
     }

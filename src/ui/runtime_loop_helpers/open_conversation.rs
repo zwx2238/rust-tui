@@ -1,6 +1,6 @@
+use super::push_assistant_message;
 use crate::args::Args;
 use crate::ui::runtime_helpers::TabState;
-use super::push_assistant_message;
 
 pub(super) fn open_conversation_in_tab(
     tabs: &mut Vec<TabState>,
@@ -26,7 +26,7 @@ pub(super) fn open_conversation_in_tab(
     finalize_opened_tab(tabs, categories, active_tab, active_category, tab);
 }
 
-fn take_pending_conversation(tabs: &mut Vec<TabState>, active_tab: usize) -> Option<String> {
+fn take_pending_conversation(tabs: &mut [TabState], active_tab: usize) -> Option<String> {
     let active = tabs.get_mut(active_tab)?;
     active.app.pending_open_conversation.take()
 }
@@ -42,17 +42,17 @@ fn switch_to_existing_tab(
         return false;
     };
     *active_tab = idx;
-    if let Some(tab) = tabs.get(*active_tab) {
-        if let Some(pos) = categories.iter().position(|c| c == &tab.category) {
-            *active_category = pos;
-        }
+    if let Some(tab) = tabs.get(*active_tab)
+        && let Some(pos) = categories.iter().position(|c| c == &tab.category)
+    {
+        *active_category = pos;
     }
     true
 }
 
 fn load_conversation_or_report(
     conv_id: &str,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
 ) -> Option<crate::conversation::ConversationData> {
     match crate::conversation::load_conversation(conv_id) {

@@ -76,10 +76,7 @@ fn current_input_line(app: &App) -> Option<(usize, String, Vec<String>)> {
     Some((row, line, lines))
 }
 
-fn build_suggestion_line(
-    suggestion: &CommandSuggestion,
-    line: &str,
-) -> Option<(String, usize)> {
+fn build_suggestion_line(suggestion: &CommandSuggestion, line: &str) -> Option<(String, usize)> {
     let cmd_end_char = find_first_whitespace(line).unwrap_or(line.chars().count());
     let cmd_end_byte = byte_index_from_char(line, cmd_end_char);
     let mut new_line = match suggestion.kind {
@@ -90,11 +87,12 @@ fn build_suggestion_line(
         return None;
     }
     let mut new_col = new_line.chars().count();
-    if let CommandSuggestionKind::Command = suggestion.kind {
-        if command_has_args(&suggestion.insert) && !new_line.ends_with(' ') {
-            new_line.push(' ');
-            new_col += 1;
-        }
+    if let CommandSuggestionKind::Command = suggestion.kind
+        && command_has_args(&suggestion.insert)
+        && !new_line.ends_with(' ')
+    {
+        new_line.push(' ');
+        new_col += 1;
     }
     Some((new_line, new_col))
 }
@@ -116,12 +114,12 @@ fn replace_argument(line: &str, cmd_end_byte: usize, suggestion: &CommandSuggest
 fn apply_suggestion_line(
     app: &mut App,
     row: usize,
-    lines: &mut Vec<String>,
+    lines: &mut [String],
     new_line: String,
     new_col: usize,
 ) {
     lines[row] = new_line;
-    app.input = tui_textarea::TextArea::from(lines.clone());
+    app.input = tui_textarea::TextArea::from(lines.to_owned());
     app.input
         .move_cursor(tui_textarea::CursorMove::Jump(row as u16, new_col as u16));
 }

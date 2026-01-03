@@ -1,10 +1,10 @@
 use crate::render::theme::RenderTheme;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
+use std::sync::OnceLock;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
-use std::sync::OnceLock;
 
 pub(crate) fn render_code_block_lines(
     text: &str,
@@ -15,23 +15,25 @@ pub(crate) fn render_code_block_lines(
     let mut highlighter = HighlightLines::new(syntax, syn_theme);
     let lines: Vec<&str> = text.lines().collect();
     let show_line_numbers = lang != "math";
-    let max_digits = if show_line_numbers { lines.len().max(1).to_string().len() } else { 0 };
+    let max_digits = if show_line_numbers {
+        lines.len().max(1).to_string().len()
+    } else {
+        0
+    };
     let code_fg = theme.fg.unwrap_or(Color::White);
     let code_bg = theme.bg;
     let bg_luma = color_luma(code_bg);
     let mut out = Vec::new();
     for (i, raw) in lines.iter().enumerate() {
-        let spans = highlight_spans(
-            raw,
-            &mut highlighter,
-            &ss,
+        let config = HighlightConfig {
             show_line_numbers,
             max_digits,
-            i,
+            line_idx: i,
             code_fg,
             code_bg,
             bg_luma,
-        );
+        };
+        let spans = highlight_spans(raw, &mut highlighter, ss, config);
         out.push(Line::from(spans));
     }
     out
@@ -55,29 +57,47 @@ fn load_syntax(
     (ss, syn_theme, syntax)
 }
 
-fn highlight_spans(
-    raw: &str,
-    highlighter: &mut HighlightLines<'_>,
-    ss: &SyntaxSet,
+struct HighlightConfig {
     show_line_numbers: bool,
     max_digits: usize,
     line_idx: usize,
     code_fg: Color,
     code_bg: Color,
     bg_luma: u8,
+}
+
+fn highlight_spans(
+    raw: &str,
+    highlighter: &mut HighlightLines<'_>,
+    ss: &SyntaxSet,
+    config: HighlightConfig,
 ) -> Vec<Span<'static>> {
     let mut line_with_nl = String::with_capacity(raw.len() + 1);
     line_with_nl.push_str(raw);
     line_with_nl.push('\n');
-    let ranges = highlighter.highlight_line(&line_with_nl, ss).unwrap_or_default();
+    let ranges = highlighter
+        .highlight_line(&line_with_nl, ss)
+        .unwrap_or_default();
     let mut spans = Vec::new();
-    if show_line_numbers {
-        spans.push(line_no_span(line_idx + 1, max_digits, code_fg, code_bg));
+    if config.show_line_numbers {
+        spans.push(line_no_span(
+            config.line_idx + 1,
+            config.max_digits,
+            config.code_fg,
+            config.code_bg,
+        ));
     }
     for (style, part) in ranges {
         let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
-        let span_fg = if (color_luma(fg) as i16 - bg_luma as i16).abs() < 80 { code_fg } else { fg };
-        spans.push(Span::styled(part.to_string(), Style::default().fg(span_fg).bg(code_bg)));
+        let span_fg = if (color_luma(fg) as i16 - config.bg_luma as i16).abs() < 80 {
+            config.code_fg
+        } else {
+            fg
+        };
+        spans.push(Span::styled(
+            part.to_string(),
+            Style::default().fg(span_fg).bg(config.code_bg),
+        ));
     }
     spans
 }

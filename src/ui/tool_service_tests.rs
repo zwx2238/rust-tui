@@ -58,11 +58,12 @@ mod tests {
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         let calls = vec![tool_call("web_search", r#"{"query":"hi"}"#)];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("web_search 未启用")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("web_search 未启用"))
+        );
     }
 
     #[test]
@@ -94,11 +95,12 @@ mod tests {
             &format!(r#"{{"path":"{}"}}"#, path.to_string_lossy()),
         )];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("[read_file]")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("[read_file]"))
+        );
         let _ = std::fs::remove_file(&path);
     }
 
@@ -115,11 +117,12 @@ mod tests {
             r#"{"diff":"diff --git a/a b/a\n","path":"a"}"#,
         )];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("read_only")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("read_only"))
+        );
     }
 
     #[test]
@@ -131,11 +134,12 @@ mod tests {
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         let calls = vec![tool_call("web_search", r#"{"query":"hi"}"#)];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("tavily_api_key")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("tavily_api_key"))
+        );
     }
 
     #[test]
@@ -152,11 +156,12 @@ mod tests {
             &format!(r#"{{"path":"{}"}}"#, path.to_string_lossy()),
         )];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("1 | line1")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("1 | line1"))
+        );
         let _ = std::fs::remove_file(&path);
     }
 
@@ -172,11 +177,12 @@ mod tests {
             r#"{"language":"python","code":"print(1)"}"#,
         )];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("code_exec 未启用")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("code_exec 未启用"))
+        );
     }
 
     #[test]
@@ -188,11 +194,12 @@ mod tests {
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         let calls = vec![tool_call("read_file", r#"{"path":"a.txt"}"#)];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("read_file 未启用")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("read_file 未启用"))
+        );
     }
 
     #[test]
@@ -204,11 +211,12 @@ mod tests {
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         let calls = vec![tool_call("modify_file", "{")];
         service.apply_tool_calls(&mut tab, 0, &calls);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("modify_file 参数解析失败")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("modify_file 参数解析失败"))
+        );
     }
 
     #[test]
@@ -219,10 +227,11 @@ mod tests {
         let service = ToolService::new(&registry, &args, &tx);
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         service.apply_tool_calls(&mut tab, 0, &[]);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.content.contains("未找到可靠结果")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("未找到可靠结果"))
+        );
     }
 }

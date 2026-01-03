@@ -60,7 +60,7 @@ pub(crate) fn close_other_tabs(ctx: &mut DispatchContext<'_>) {
     ctx.categories.clear();
     let keep_category = ctx
         .tabs
-        .get(0)
+        .first()
         .map(|t| t.category.clone())
         .unwrap_or_else(|| "默认".to_string());
     ctx.categories.push(keep_category);
@@ -91,12 +91,14 @@ fn active_tab_keep_config(ctx: &DispatchContext<'_>) -> KeepConfig {
         log_session_id: String::new(),
         category: "默认".to_string(),
     };
-    ctx.tabs.get(*ctx.active_tab).map_or(fallback, |tab| KeepConfig {
-        prompts_dir: tab.app.prompts_dir.clone(),
-        tavily_api_key: tab.app.tavily_api_key.clone(),
-        log_session_id: tab.app.log_session_id.clone(),
-        category: tab.category.clone(),
-    })
+    ctx.tabs
+        .get(*ctx.active_tab)
+        .map_or(fallback, |tab| KeepConfig {
+            prompts_dir: tab.app.prompts_dir.clone(),
+            tavily_api_key: tab.app.tavily_api_key.clone(),
+            log_session_id: tab.app.log_session_id.clone(),
+            category: tab.category.clone(),
+        })
 }
 
 fn save_all_tabs(ctx: &DispatchContext<'_>) {

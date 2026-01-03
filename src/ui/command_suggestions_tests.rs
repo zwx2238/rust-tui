@@ -29,7 +29,7 @@ mod tests {
         let mut app = app_with_input("/he");
         refresh_command_suggestions(&mut app);
         assert!(apply_command_suggestion(&mut app));
-        let line = app.input.lines().get(0).cloned().unwrap_or_default();
+        let line = app.input.lines().first().cloned().unwrap_or_default();
         assert!(line.starts_with("/help"));
     }
 
@@ -50,15 +50,10 @@ mod tests {
         let msg_area = Rect::new(0, 0, 60, 20);
         let input_area = Rect::new(0, 20, 60, 3);
         let area = command_suggestions_area(msg_area, input_area, app.command_suggestions.len());
-        let clicked = handle_command_suggestion_click(
-            &mut app,
-            msg_area,
-            input_area,
-            area.x + 1,
-            area.y + 2,
-        );
+        let clicked =
+            handle_command_suggestion_click(&mut app, msg_area, input_area, area.x + 1, area.y + 2);
         assert!(clicked);
-        let line = app.input.lines().get(0).cloned().unwrap_or_default();
+        let line = app.input.lines().first().cloned().unwrap_or_default();
         assert!(line.starts_with("/help"));
     }
 }

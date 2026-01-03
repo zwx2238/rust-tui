@@ -13,7 +13,8 @@ use tokio::runtime::Runtime;
 mod net_logging;
 use net_logging::{build_enabled_tools, stream_chunks, write_request_log, write_response_log};
 
-type OpenAiStreamResponse = rig::providers::openai::completion::streaming::StreamingCompletionResponse;
+type OpenAiStreamResponse =
+    rig::providers::openai::completion::streaming::StreamingCompletionResponse;
 type RigStream = rig::streaming::StreamingCompletionResponse<OpenAiStreamResponse>;
 
 pub enum LlmEvent {
@@ -34,33 +35,47 @@ pub struct UiEvent {
     pub event: LlmEvent,
 }
 
-pub fn request_llm_stream(
-    base_url: &str, api_key: &str, model: &str, messages: &[Message], prompts_dir: &str,
-    enable_web_search: bool, enable_code_exec: bool, enable_read_file: bool,
-    enable_read_code: bool, enable_modify_file: bool, log_dir: Option<String>,
-    log_session_id: String, message_index: usize, cancel: Arc<AtomicBool>,
-    tx: Sender<UiEvent>, tab: usize, request_id: u64,
-) {
-    let input = RequestInput::new(
-        base_url,
-        api_key,
-        model,
-        messages,
-        prompts_dir,
-        log_dir,
-        log_session_id,
-        message_index,
-        tab,
-        request_id,
-    );
+pub struct LlmStreamRequestParams {
+    pub base_url: String,
+    pub api_key: String,
+    pub model: String,
+    pub messages: Vec<Message>,
+    pub prompts_dir: String,
+    pub enable_web_search: bool,
+    pub enable_code_exec: bool,
+    pub enable_read_file: bool,
+    pub enable_read_code: bool,
+    pub enable_modify_file: bool,
+    pub log_dir: Option<String>,
+    pub log_session_id: String,
+    pub message_index: usize,
+    pub cancel: Arc<AtomicBool>,
+    pub tx: Sender<UiEvent>,
+    pub tab: usize,
+    pub request_id: u64,
+}
+
+pub fn request_llm_stream(params: LlmStreamRequestParams) {
+    let input = RequestInput::new(RequestConfig {
+        base_url: params.base_url.clone(),
+        api_key: params.api_key.clone(),
+        model: params.model.clone(),
+        messages: params.messages.clone(),
+        prompts_dir: params.prompts_dir.clone(),
+        log_dir: params.log_dir.clone(),
+        log_session_id: params.log_session_id.clone(),
+        message_index: params.message_index,
+        tab: params.tab,
+        request_id: params.request_id,
+    });
     let enabled = build_enabled_tools(
-        enable_web_search,
-        enable_code_exec,
-        enable_read_file,
-        enable_read_code,
-        enable_modify_file,
+        params.enable_web_search,
+        params.enable_code_exec,
+        params.enable_read_file,
+        params.enable_read_code,
+        params.enable_modify_file,
     );
-    run_llm_stream_with_input(input, enabled, cancel, tx);
+    run_llm_stream_with_input(input, enabled, params.cancel, params.tx);
 }
 
 fn run_llm_stream_with_input(
@@ -91,30 +106,32 @@ struct RequestInput {
     request_id: u64,
 }
 
+struct RequestConfig {
+    base_url: String,
+    api_key: String,
+    model: String,
+    messages: Vec<Message>,
+    prompts_dir: String,
+    log_dir: Option<String>,
+    log_session_id: String,
+    message_index: usize,
+    tab: usize,
+    request_id: u64,
+}
+
 impl RequestInput {
-    fn new(
-        base_url: &str,
-        api_key: &str,
-        model: &str,
-        messages: &[Message],
-        prompts_dir: &str,
-        log_dir: Option<String>,
-        log_session_id: String,
-        message_index: usize,
-        tab: usize,
-        request_id: u64,
-    ) -> Self {
+    fn new(config: RequestConfig) -> Self {
         Self {
-            base_url: base_url.to_string(),
-            api_key: api_key.to_string(),
-            model: model.to_string(),
-            messages: messages.to_vec(),
-            prompts_dir: prompts_dir.to_string(),
-            log_dir,
-            log_session_id,
-            message_index,
-            tab,
-            request_id,
+            base_url: config.base_url,
+            api_key: config.api_key,
+            model: config.model,
+            messages: config.messages,
+            prompts_dir: config.prompts_dir,
+            log_dir: config.log_dir,
+            log_session_id: config.log_session_id,
+            message_index: config.message_index,
+            tab: config.tab,
+            request_id: config.request_id,
         }
     }
 }
@@ -300,7 +317,13 @@ fn log_request(input: &RequestInput, ctx: &crate::llm::rig::RigRequestContext) {
 
 fn log_response_text(input: &RequestInput, text: &str) {
     if let Some(dir) = input.log_dir.as_deref() {
-        let _ = write_response_log(dir, &input.log_session_id, input.tab, input.message_index, text);
+        let _ = write_response_log(
+            dir,
+            &input.log_session_id,
+            input.tab,
+            input.message_index,
+            text,
+        );
     }
 }
 
@@ -333,11 +356,7 @@ fn send_tool_calls(
     });
 }
 
-fn convert_tool_call(
-    call: &rig::message::ToolCall,
-    tab: usize,
-    request_id: u64,
-) -> ToolCall {
+fn convert_tool_call(call: &rig::message::ToolCall, tab: usize, request_id: u64) -> ToolCall {
     ToolCall {
         id: format!("rig-{}-{}", tab, request_id),
         kind: "function".to_string(),
@@ -366,14 +385,26 @@ fn log_tool_call(input: &RequestInput, name: &str, args: &serde_json::Value) {
             "tool_call: {name}\nargs: {}",
             serde_json::to_string_pretty(args).unwrap_or_default()
         );
-        let _ = write_response_log(dir, &input.log_session_id, input.tab, input.message_index, &payload);
+        let _ = write_response_log(
+            dir,
+            &input.log_session_id,
+            input.tab,
+            input.message_index,
+            &payload,
+        );
     }
 }
 
 fn handle_request_error(error: &str, input: &RequestInput, tx: &Sender<UiEvent>) {
     if let Some(dir) = input.log_dir.as_deref() {
         let payload = format!("error: {error}");
-        let _ = write_response_log(dir, &input.log_session_id, input.tab, input.message_index, &payload);
+        let _ = write_response_log(
+            dir,
+            &input.log_session_id,
+            input.tab,
+            input.message_index,
+            &payload,
+        );
     }
     let _ = tx.send(UiEvent {
         tab: input.tab,

@@ -2,9 +2,9 @@
 mod tests {
     use crate::render::RenderTheme;
     use crate::ui::runtime_helpers::{
-        PreheatTask, TabState, active_tab_position, collect_open_conversations, enqueue_preheat_tasks,
-        tab_index_at, tab_labels_for_category, tab_position_in_category, tab_to_conversation,
-        visible_tab_indices, stop_and_edit,
+        PreheatTask, TabState, active_tab_position, collect_open_conversations,
+        enqueue_preheat_tasks, stop_and_edit, tab_index_at, tab_labels_for_category,
+        tab_position_in_category, tab_to_conversation, visible_tab_indices,
     };
     use crate::ui::state::{Focus, RequestHandle};
     use ratatui::layout::Rect;
@@ -27,8 +27,14 @@ mod tests {
         let tab2 = TabState::new("b".into(), "cat2".into(), "", false, "m", "p");
         let tabs = vec![tab1, tab2];
         assert_eq!(visible_tab_indices(&tabs, "cat1"), vec![0]);
-        assert_eq!(tab_labels_for_category(&tabs, "cat1"), vec![" 对话 1 ".to_string()]);
-        assert_eq!(collect_open_conversations(&tabs), vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(
+            tab_labels_for_category(&tabs, "cat1"),
+            vec![" 对话 1 ".to_string()]
+        );
+        assert_eq!(
+            collect_open_conversations(&tabs),
+            vec!["a".to_string(), "b".to_string()]
+        );
         assert_eq!(active_tab_position(&tabs, "cat2", 1), 0);
         assert_eq!(tab_position_in_category(&tabs, "cat1", 0), Some(0));
     }
@@ -90,6 +96,13 @@ mod tests {
         assert!(changed);
         assert_eq!(tab.app.focus, Focus::Input);
         assert!(!tab.app.messages.iter().any(|m| m.content == "reply"));
-        assert!(tab.app.input.lines().first().unwrap_or(&String::new()).contains("hello"));
+        assert!(
+            tab.app
+                .input
+                .lines()
+                .first()
+                .unwrap_or(&String::new())
+                .contains("hello")
+        );
     }
 }

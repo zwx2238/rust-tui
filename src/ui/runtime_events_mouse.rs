@@ -15,40 +15,75 @@ use tui_textarea::CursorMove;
 
 use super::runtime_events_tabs::handle_tab_category_click;
 
-pub(crate) fn handle_mouse_event(
-    m: MouseEvent,
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &[String],
-    active_category: &mut usize,
-    tabs_area: Rect,
-    msg_area: Rect,
-    input_area: Rect,
-    category_area: Rect,
-    msg_width: usize,
-    view_height: u16,
-    total_lines: usize,
-    theme: &RenderTheme,
-) -> Option<usize> {
-    match m.kind {
-        MouseEventKind::Down(_) => handle_mouse_down(
-            m, tabs, active_tab, categories, active_category, tabs_area, msg_area, input_area,
-            category_area, msg_width, view_height, total_lines, theme,
-        ),
-        MouseEventKind::Up(_) => { handle_mouse_up(tabs, *active_tab); None }
-        MouseEventKind::Drag(_) => { handle_mouse_drag(m, tabs, *active_tab, msg_area, input_area, msg_width, view_height, total_lines, theme); None }
-        MouseEventKind::ScrollUp => { handle_mouse_scroll(tabs, *active_tab, false); None }
-        MouseEventKind::ScrollDown => { handle_mouse_scroll(tabs, *active_tab, true); None }
+pub(crate) struct MouseEventParams<'a> {
+    pub m: MouseEvent,
+    pub tabs: &'a mut [TabState],
+    pub active_tab: &'a mut usize,
+    pub categories: &'a [String],
+    pub active_category: &'a mut usize,
+    pub tabs_area: Rect,
+    pub msg_area: Rect,
+    pub input_area: Rect,
+    pub category_area: Rect,
+    pub msg_width: usize,
+    pub view_height: u16,
+    pub total_lines: usize,
+    pub theme: &'a RenderTheme,
+}
+
+pub(crate) fn handle_mouse_event(params: MouseEventParams<'_>) -> Option<usize> {
+    match params.m.kind {
+        MouseEventKind::Down(_) => handle_mouse_down(MouseDownParams {
+            m: params.m,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
+            tabs_area: params.tabs_area,
+            msg_area: params.msg_area,
+            input_area: params.input_area,
+            category_area: params.category_area,
+            msg_width: params.msg_width,
+            view_height: params.view_height,
+            total_lines: params.total_lines,
+            theme: params.theme,
+        }),
+        MouseEventKind::Up(_) => {
+            handle_mouse_up(params.tabs, *params.active_tab);
+            None
+        }
+        MouseEventKind::Drag(_) => {
+            handle_mouse_drag(MouseDragParams {
+                m: params.m,
+                tabs: params.tabs,
+                active_tab: *params.active_tab,
+                msg_area: params.msg_area,
+                input_area: params.input_area,
+                msg_width: params.msg_width,
+                view_height: params.view_height,
+                total_lines: params.total_lines,
+                theme: params.theme,
+            });
+            None
+        }
+        MouseEventKind::ScrollUp => {
+            handle_mouse_scroll(params.tabs, *params.active_tab, false);
+            None
+        }
+        MouseEventKind::ScrollDown => {
+            handle_mouse_scroll(params.tabs, *params.active_tab, true);
+            None
+        }
         _ => None,
     }
 }
 
-fn handle_mouse_down(
+struct MouseDownParams<'a> {
     m: MouseEvent,
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &[String],
-    active_category: &mut usize,
+    tabs: &'a mut [TabState],
+    active_tab: &'a mut usize,
+    categories: &'a [String],
+    active_category: &'a mut usize,
     tabs_area: Rect,
     msg_area: Rect,
     input_area: Rect,
@@ -56,16 +91,58 @@ fn handle_mouse_down(
     msg_width: usize,
     view_height: u16,
     total_lines: usize,
-    theme: &RenderTheme,
-) -> Option<usize> {
-    if handle_tab_category_click(
-        m.column, m.row, tabs, active_tab, categories, active_category, tabs_area, category_area,
-    ) { return None; }
-    if handle_scrollbar_click(m, tabs, *active_tab, msg_area, view_height, total_lines) { return None; }
-    if let Some(tab_state) = tabs.get_mut(*active_tab) {
-        if point_in_rect(m.column, m.row, input_area) { handle_input_click(tab_state, input_area, m); return None; }
-        if point_in_rect(m.column, m.row, msg_area) {
-            return handle_message_click(tab_state, msg_area, msg_width, view_height, m, theme);
+    theme: &'a RenderTheme,
+}
+
+struct MouseDragParams<'a> {
+    m: MouseEvent,
+    tabs: &'a mut [TabState],
+    active_tab: usize,
+    msg_area: Rect,
+    input_area: Rect,
+    msg_width: usize,
+    view_height: u16,
+    total_lines: usize,
+    theme: &'a RenderTheme,
+}
+
+fn handle_mouse_down(params: MouseDownParams<'_>) -> Option<usize> {
+    if handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+        mouse_x: params.m.column,
+        mouse_y: params.m.row,
+        tabs: params.tabs,
+        active_tab: params.active_tab,
+        categories: params.categories,
+        active_category: params.active_category,
+        tabs_area: params.tabs_area,
+        category_area: params.category_area,
+    }) {
+        return None;
+    }
+    if handle_scrollbar_click(
+        params.m,
+        params.tabs,
+        *params.active_tab,
+        params.msg_area,
+        params.view_height,
+        params.total_lines,
+    ) {
+        return None;
+    }
+    if let Some(tab_state) = params.tabs.get_mut(*params.active_tab) {
+        if point_in_rect(params.m.column, params.m.row, params.input_area) {
+            handle_input_click(tab_state, params.input_area, params.m);
+            return None;
+        }
+        if point_in_rect(params.m.column, params.m.row, params.msg_area) {
+            return handle_message_click(
+                tab_state,
+                params.msg_area,
+                params.msg_width,
+                params.view_height,
+                params.m,
+                params.theme,
+            );
         }
     }
     None
@@ -73,7 +150,7 @@ fn handle_mouse_down(
 
 fn handle_scrollbar_click(
     m: MouseEvent,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     msg_area: Rect,
     view_height: u16,
@@ -102,7 +179,8 @@ fn handle_input_click(tab_state: &mut TabState, input_area: Rect, m: MouseEvent)
     app.input_selecting = true;
     let (row, col) = click_to_cursor(app, input_area, m.column, m.row);
     app.input.cancel_selection();
-    app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
+    app.input
+        .move_cursor(CursorMove::Jump(row as u16, col as u16));
     refresh_command_suggestions(app);
 }
 
@@ -114,7 +192,15 @@ fn handle_message_click(
     m: MouseEvent,
     theme: &RenderTheme,
 ) -> Option<usize> {
-    if let Some(msg_idx) = hit_test_edit_button(tab_state, msg_area, msg_width, theme, view_height, m.column, m.row) {
+    if let Some(msg_idx) = hit_test_edit_button(
+        tab_state,
+        msg_area,
+        msg_width,
+        theme,
+        view_height,
+        m.column,
+        m.row,
+    ) {
         let app = &mut tab_state.app;
         app.focus = Focus::Chat;
         app.follow = false;
@@ -132,11 +218,14 @@ fn handle_message_click(
     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
     let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
     app.chat_selecting = true;
-    app.chat_selection = Some(Selection { start: pos, end: pos });
+    app.chat_selection = Some(Selection {
+        start: pos,
+        end: pos,
+    });
     None
 }
 
-fn handle_mouse_up(tabs: &mut Vec<TabState>, active_tab: usize) {
+fn handle_mouse_up(tabs: &mut [TabState], active_tab: usize) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let app = &mut tab_state.app;
         app.scrollbar_dragging = false;
@@ -150,27 +239,46 @@ fn handle_mouse_up(tabs: &mut Vec<TabState>, active_tab: usize) {
     }
 }
 
-fn handle_mouse_drag(
-    m: MouseEvent,
-    tabs: &mut Vec<TabState>,
-    active_tab: usize,
-    msg_area: Rect,
-    input_area: Rect,
-    msg_width: usize,
-    view_height: u16,
-    total_lines: usize,
-    theme: &RenderTheme,
-) {
-    let Some(tab_state) = tabs.get_mut(active_tab) else { return; };
+fn handle_mouse_drag(params: MouseDragParams<'_>) {
+    let Some(tab_state) = params.tabs.get_mut(params.active_tab) else {
+        return;
+    };
     let dragging = tab_state.app.scrollbar_dragging;
     let input_selecting = tab_state.app.input_selecting;
     let chat_selecting = tab_state.app.chat_selecting;
-    if dragging { drag_scrollbar(tab_state, msg_area, view_height, total_lines, m); return; }
-    if input_selecting && point_in_rect(m.column, m.row, input_area) { drag_input_selection(tab_state, input_area, m); return; }
-    if chat_selecting { drag_chat_selection(tab_state, msg_area, msg_width, view_height, m, theme); }
+    if dragging {
+        drag_scrollbar(
+            tab_state,
+            params.msg_area,
+            params.view_height,
+            params.total_lines,
+            params.m,
+        );
+        return;
+    }
+    if input_selecting && point_in_rect(params.m.column, params.m.row, params.input_area) {
+        drag_input_selection(tab_state, params.input_area, params.m);
+        return;
+    }
+    if chat_selecting {
+        drag_chat_selection(
+            tab_state,
+            params.msg_area,
+            params.msg_width,
+            params.view_height,
+            params.m,
+            params.theme,
+        );
+    }
 }
 
-fn drag_scrollbar(tab_state: &mut TabState, msg_area: Rect, view_height: u16, total_lines: usize, m: MouseEvent) {
+fn drag_scrollbar(
+    tab_state: &mut TabState,
+    msg_area: Rect,
+    view_height: u16,
+    total_lines: usize,
+    m: MouseEvent,
+) {
     let scroll_area = scrollbar_area(msg_area);
     let app = &mut tab_state.app;
     app.follow = false;
@@ -184,7 +292,8 @@ fn drag_input_selection(tab_state: &mut TabState, input_area: Rect, m: MouseEven
     if !app.input.is_selecting() {
         app.input.start_selection();
     }
-    app.input.move_cursor(CursorMove::Jump(row as u16, col as u16));
+    app.input
+        .move_cursor(CursorMove::Jump(row as u16, col as u16));
 }
 
 fn drag_chat_selection(
@@ -200,15 +309,21 @@ fn drag_chat_selection(
     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
     let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
     if let Some(sel) = app.chat_selection {
-        app.chat_selection = Some(Selection { start: sel.start, end: pos });
+        app.chat_selection = Some(Selection {
+            start: sel.start,
+            end: pos,
+        });
     }
 }
 
-fn handle_mouse_scroll(tabs: &mut Vec<TabState>, active_tab: usize, down: bool) {
+fn handle_mouse_scroll(tabs: &mut [TabState], active_tab: usize, down: bool) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
         let app = &mut tab_state.app;
-        if down { app.scroll = app.scroll.saturating_add(SCROLL_STEP_U16); }
-        else { app.scroll = app.scroll.saturating_sub(SCROLL_STEP_U16); }
+        if down {
+            app.scroll = app.scroll.saturating_add(SCROLL_STEP_U16);
+        } else {
+            app.scroll = app.scroll.saturating_sub(SCROLL_STEP_U16);
+        }
         app.follow = false;
         app.focus = Focus::Chat;
     }

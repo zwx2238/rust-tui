@@ -6,7 +6,7 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::runtime_dispatch::{
         DispatchContext, apply_model_selection, apply_prompt_selection, can_change_prompt,
-        fork_message_by_index, fork_message_into_new_tab, cycle_model, resolve_model,
+        cycle_model, fork_message_by_index, fork_message_into_new_tab, resolve_model,
         start_pending_request, sync_model_selection, sync_prompt_selection,
     };
     use crate::ui::runtime_helpers::TabState;
@@ -82,7 +82,14 @@ mod tests {
 
     fn base_state() -> DispatchTestState {
         DispatchTestState {
-            tabs: vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id".into(),
+                "cat".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["cat".to_string()],
             active_category: 0,
@@ -93,7 +100,7 @@ mod tests {
         }
     }
 
-    fn ctx<'a>(
+    struct CtxParams<'a> {
         tabs: &'a mut Vec<TabState>,
         active_tab: &'a mut usize,
         categories: &'a mut Vec<String>,
@@ -102,31 +109,33 @@ mod tests {
         registry: &'a ModelRegistry,
         prompt_registry: &'a PromptRegistry,
         args: &'a Args,
-    ) -> DispatchContext<'a> {
+    }
+
+    fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
         DispatchContext {
-            tabs,
-            active_tab,
-            categories,
-            active_category,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
             msg_width: 40,
-            theme,
-            registry,
-            prompt_registry,
-            args,
+            theme: params.theme,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
         }
     }
 
     fn ctx_from_state<'a>(state: &'a mut DispatchTestState) -> DispatchContext<'a> {
-        ctx(
-            &mut state.tabs,
-            &mut state.active_tab,
-            &mut state.categories,
-            &mut state.active_category,
-            &state.theme,
-            &state.registry,
-            &state.prompt_registry,
-            &state.args,
-        )
+        ctx(CtxParams {
+            tabs: &mut state.tabs,
+            active_tab: &mut state.active_tab,
+            categories: &mut state.categories,
+            active_category: &mut state.active_category,
+            theme: &state.theme,
+            registry: &state.registry,
+            prompt_registry: &state.prompt_registry,
+            args: &state.args,
+        })
     }
 
     fn layout() -> crate::ui::runtime_dispatch::LayoutContext {
@@ -247,13 +256,15 @@ mod tests {
         let (tx, _rx) = std::sync::mpsc::channel();
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m1", "p1");
         tab.app.pending_send = Some("hello".to_string());
-        let mut tabs = vec![tab];
+        let mut tabs = [tab];
         start_pending_request(&registry, &args, &tx, 0, &mut tabs[0]);
-        assert!(tabs[0]
-            .app
-            .messages
-            .iter()
-            .any(|m| m.role == crate::types::ROLE_USER));
+        assert!(
+            tabs[0]
+                .app
+                .messages
+                .iter()
+                .any(|m| m.role == crate::types::ROLE_USER)
+        );
     }
 
     #[test]

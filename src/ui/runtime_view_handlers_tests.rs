@@ -91,20 +91,14 @@ mod tests {
     fn model_key_selects_model() {
         let mut view = ViewState::new();
         view.model.selected = 1;
-        let action = handle_model_key(
-            &mut view,
-            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
-        );
+        let action = handle_model_key(&mut view, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
         assert!(matches!(action, ViewAction::SelectModel(1)));
     }
 
     #[test]
     fn model_key_moves_selection() {
         let mut view = ViewState::new();
-        let _ = handle_model_key(
-            &mut view,
-            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
-        );
+        let _ = handle_model_key(&mut view, KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
         assert!(view.model.selected > 0 || view.model.scroll > 0);
     }
 
@@ -112,20 +106,15 @@ mod tests {
     fn prompt_key_selects_prompt() {
         let mut view = ViewState::new();
         view.prompt.selected = 2;
-        let action = handle_prompt_key(
-            &mut view,
-            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
-        );
+        let action =
+            handle_prompt_key(&mut view, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
         assert!(matches!(action, ViewAction::SelectPrompt(2)));
     }
 
     #[test]
     fn prompt_key_moves_selection() {
         let mut view = ViewState::new();
-        let _ = handle_prompt_key(
-            &mut view,
-            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
-        );
+        let _ = handle_prompt_key(&mut view, KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
         assert!(view.prompt.selected > 0 || view.prompt.scroll > 0);
     }
 
@@ -144,10 +133,7 @@ mod tests {
     fn help_key_esc_closes_overlay() {
         let mut view = ViewState::new();
         view.overlay.open(crate::ui::overlay::OverlayKind::Help);
-        let action = handle_help_key(
-            &mut view,
-            KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
-        );
+        let action = handle_help_key(&mut view, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
         assert!(matches!(action, ViewAction::None));
         assert!(view.overlay.is_chat());
     }
@@ -166,10 +152,7 @@ mod tests {
     #[test]
     fn help_key_up_runs() {
         let mut view = ViewState::new();
-        let _ = handle_help_key(
-            &mut view,
-            KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
-        );
+        let _ = handle_help_key(&mut view, KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
         assert_eq!(view.help.selected, 0);
     }
 

@@ -1,5 +1,6 @@
 use crate::render::{
-    RenderTheme, messages_to_viewport_text_cached, messages_to_viewport_text_cached_with_layout,
+    RenderTheme, ViewportRenderParams, messages_to_viewport_text_cached,
+    messages_to_viewport_text_cached_with_layout,
 };
 use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{
@@ -157,13 +158,8 @@ pub fn prepare_active_frame(
     startup_elapsed: Option<Duration>,
 ) -> ActiveFrameData {
     let label_suffixes = build_active_label_suffixes(&tab_state.app);
-    let (text, computed_total_lines) = update_text_and_scroll(
-        tab_state,
-        theme,
-        msg_width,
-        view_height,
-        &label_suffixes,
-    );
+    let (text, computed_total_lines) =
+        update_text_and_scroll(tab_state, theme, msg_width, view_height, &label_suffixes);
     update_input_view_top(&mut tab_state.app, input_area);
     let startup_text = format_startup_text(startup_elapsed);
     let (pending_line, pending_command) = take_pending(&mut tab_state.app);
@@ -213,25 +209,24 @@ fn render_active_text(
     label_suffixes: &[(usize, String)],
 ) -> (Text<'static>, usize) {
     let app = &mut tab_state.app;
-    let (text, total, layouts) = messages_to_viewport_text_cached_with_layout(
-        &app.messages,
-        msg_width,
+    let params = ViewportRenderParams {
+        messages: &app.messages,
+        width: msg_width,
         theme,
         label_suffixes,
-        app.pending_assistant,
-        app.scroll,
-        view_height,
-        &mut tab_state.render_cache,
-    );
+        streaming_idx: app.pending_assistant,
+        scroll: app.scroll,
+        height: view_height,
+    };
+    let (text, total, layouts) =
+        messages_to_viewport_text_cached_with_layout(params, &mut tab_state.render_cache);
     app.message_layouts = layouts;
     (text, total)
 }
 
 fn update_scroll(app: &mut crate::ui::state::App, total_lines: usize, view_height: u16) -> u16 {
     let max_scroll = max_scroll_u16(total_lines, view_height);
-    if app.follow {
-        app.scroll = max_scroll;
-    } else if app.scroll > max_scroll {
+    if app.follow || app.scroll > max_scroll {
         app.scroll = max_scroll;
     }
     max_scroll
@@ -246,13 +241,15 @@ fn refresh_text_after_scroll(
 ) -> Text<'static> {
     let app = &mut tab_state.app;
     let (text, _) = messages_to_viewport_text_cached(
-        &app.messages,
-        msg_width,
-        theme,
-        label_suffixes,
-        app.pending_assistant,
-        app.scroll,
-        view_height,
+        crate::render::ViewportRenderParams {
+            messages: &app.messages,
+            width: msg_width,
+            theme,
+            label_suffixes,
+            streaming_idx: app.pending_assistant,
+            scroll: app.scroll,
+            height: view_height,
+        },
         &mut tab_state.render_cache,
     );
     text

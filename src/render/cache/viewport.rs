@@ -1,9 +1,9 @@
 use super::{
     RenderCacheEntry, ensure_cache_entry, render_message_content_lines, update_cache_entry,
 };
-use crate::render::{MessageLayout, label_line_layout, label_line_with_button};
 use crate::render::theme::RenderTheme;
 use crate::render::util::{label_for_role, ranges_overlap, suffix_for_index};
+use crate::render::{MessageLayout, label_line_layout, label_line_with_button};
 use crate::types::Message;
 use ratatui::text::{Line, Text};
 
@@ -74,7 +74,8 @@ impl<'a> ViewportState<'a> {
             button_range,
         });
         if self.line_cursor >= self.start && self.line_cursor < self.end {
-            self.out.push(label_line_with_button(&msg.role, label, self.theme));
+            self.out
+                .push(label_line_with_button(&msg.role, label, self.theme));
         }
         self.line_cursor += 1;
     }
@@ -83,7 +84,12 @@ impl<'a> ViewportState<'a> {
         if entry.rendered {
             return;
         }
-        let within = ranges_overlap(self.start, self.end, self.line_cursor, self.line_cursor + entry.line_count);
+        let within = ranges_overlap(
+            self.start,
+            self.end,
+            self.line_cursor,
+            self.line_cursor + entry.line_count,
+        );
         if within {
             entry.lines = render_message_content_lines(msg, self.width, self.theme, streaming);
             entry.rendered = true;

@@ -22,7 +22,8 @@ pub(crate) fn handle_code_exec_overlay_mouse(
     let Some(pending) = tab_state.app.pending_code_exec.clone() else {
         return handle_code_exec_fallback(m, ctx, layout, view);
     };
-    let popup = code_exec_popup_layout(layout.size, tab_state.app.code_exec_reason_target.is_some());
+    let popup =
+        code_exec_popup_layout(layout.size, tab_state.app.code_exec_reason_target.is_some());
     if handle_code_exec_popup_mouse(m, theme, view, tab_state, &pending, popup) {
         return true;
     }
@@ -49,7 +50,11 @@ fn handle_code_exec_popup_mouse(
     false
 }
 
-fn handle_code_exec_hover(m: MouseEvent, tab_state: &mut TabState, popup: CodeExecPopupLayout) -> bool {
+fn handle_code_exec_hover(
+    m: MouseEvent,
+    tab_state: &mut TabState,
+    popup: CodeExecPopupLayout,
+) -> bool {
     if !is_mouse_moved(m.kind) {
         return false;
     }
@@ -60,9 +65,17 @@ fn handle_code_exec_hover(m: MouseEvent, tab_state: &mut TabState, popup: CodeEx
 
 fn hover_at(m: MouseEvent, popup: CodeExecPopupLayout, reason_mode: bool) -> Option<CodeExecHover> {
     if point_in_rect(m.column, m.row, popup.approve_btn) {
-        Some(if reason_mode { CodeExecHover::ReasonConfirm } else { CodeExecHover::Approve })
+        Some(if reason_mode {
+            CodeExecHover::ReasonConfirm
+        } else {
+            CodeExecHover::Approve
+        })
     } else if point_in_rect(m.column, m.row, popup.deny_btn) {
-        Some(if reason_mode { CodeExecHover::ReasonBack } else { CodeExecHover::Deny })
+        Some(if reason_mode {
+            CodeExecHover::ReasonBack
+        } else {
+            CodeExecHover::Deny
+        })
     } else if point_in_rect(m.column, m.row, popup.stop_btn) {
         Some(CodeExecHover::Stop)
     } else if point_in_rect(m.column, m.row, popup.exit_btn) {
@@ -131,7 +144,11 @@ fn handle_code_exec_stdout_scroll(
         return false;
     }
     let max_scroll = stdout_max_scroll(content, area.width, area.height, theme);
-    apply_scroll(&mut tab_state.app.code_exec_stdout_scroll, delta, max_scroll);
+    apply_scroll(
+        &mut tab_state.app.code_exec_stdout_scroll,
+        delta,
+        max_scroll,
+    );
     true
 }
 
@@ -147,7 +164,11 @@ fn handle_code_exec_stderr_scroll(
         return false;
     }
     let max_scroll = stderr_max_scroll(content, area.width, area.height, theme);
-    apply_scroll(&mut tab_state.app.code_exec_stderr_scroll, delta, max_scroll);
+    apply_scroll(
+        &mut tab_state.app.code_exec_stderr_scroll,
+        delta,
+        max_scroll,
+    );
     true
 }
 
@@ -156,7 +177,11 @@ fn code_exec_output(tab_state: &TabState) -> (String, String) {
         .app
         .code_exec_live
         .as_ref()
-        .and_then(|live| live.lock().ok().map(|live| (live.stdout.clone(), live.stderr.clone())))
+        .and_then(|live| {
+            live.lock()
+                .ok()
+                .map(|live| (live.stdout.clone(), live.stderr.clone()))
+        })
         .unwrap_or_else(|| (String::new(), String::new()))
 }
 
@@ -174,10 +199,10 @@ fn handle_code_exec_click(
     }
     let finished = code_exec_finished(tab_state);
     let running = tab_state.app.code_exec_live.is_some() && !finished;
-    if let Some(target) = tab_state.app.code_exec_reason_target {
-        if handle_code_exec_reason_click(m, tab_state, view, popup, target) {
-            return true;
-        }
+    if let Some(target) = tab_state.app.code_exec_reason_target
+        && handle_code_exec_reason_click(m, tab_state, view, popup, target)
+    {
+        return true;
     }
     handle_code_exec_action_click(m, tab_state, view, popup, running, finished)
 }
@@ -187,7 +212,11 @@ fn code_exec_finished(tab_state: &TabState) -> bool {
         .app
         .code_exec_live
         .as_ref()
-        .and_then(|live| live.lock().ok().map(|live| live.done || live.exit_code.is_some()))
+        .and_then(|live| {
+            live.lock()
+                .ok()
+                .map(|live| live.done || live.exit_code.is_some())
+        })
         .unwrap_or(false)
 }
 
@@ -270,10 +299,10 @@ fn handle_code_exec_fallback(
         }
         view.overlay.close();
     }
-    if is_mouse_moved(m.kind) {
-        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-            tab_state.app.code_exec_hover = None;
-        }
+    if is_mouse_moved(m.kind)
+        && let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab)
+    {
+        tab_state.app.code_exec_hover = None;
     }
     true
 }

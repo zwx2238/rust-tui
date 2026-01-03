@@ -4,12 +4,12 @@ mod tests {
     use crate::ui::overlay_table::{
         OverlayTable, centered_area, draw_overlay_table, header_style, row_at, visible_rows,
     };
+    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::{Constraint, Rect};
     use ratatui::style::Color;
     use ratatui::text::Line;
     use ratatui::widgets::{Cell, Row};
-    use ratatui::Terminal;
 
     fn theme() -> RenderTheme {
         RenderTheme {

@@ -46,7 +46,9 @@ pub(crate) fn handle_file_patch_apply(
     args: &Args,
     tx: &mpsc::Sender<UiEvent>,
 ) {
-    let Some(pending) = tab_state.app.pending_file_patch.take() else { return; };
+    let Some(pending) = tab_state.app.pending_file_patch.take() else {
+        return;
+    };
     let message = build_apply_message(&pending, apply_patch(&pending.diff));
     push_tool_message(&mut tab_state.app, message, pending.call_id);
     reset_patch_ui(&mut tab_state.app);
@@ -60,8 +62,14 @@ pub(crate) fn handle_file_patch_cancel(
     args: &Args,
     tx: &mpsc::Sender<UiEvent>,
 ) {
-    let Some(pending) = tab_state.app.pending_file_patch.take() else { return; };
-    push_tool_message(&mut tab_state.app, r#"{"error":"用户取消"}"#.to_string(), pending.call_id);
+    let Some(pending) = tab_state.app.pending_file_patch.take() else {
+        return;
+    };
+    push_tool_message(
+        &mut tab_state.app,
+        r#"{"error":"用户取消"}"#.to_string(),
+        pending.call_id,
+    );
     reset_patch_ui(&mut tab_state.app);
     start_followup(tab_state, tab_id, registry, args, tx);
 }
@@ -70,7 +78,11 @@ fn build_apply_message(pending: &PendingFilePatch, result: Result<(), String>) -
     match result {
         Ok(()) => format!(
             r#"{{"ok":true,"message":"已应用补丁{}"}}"#,
-            pending.path.as_ref().map(|p| format!(" ({p})")).unwrap_or_default()
+            pending
+                .path
+                .as_ref()
+                .map(|p| format!(" ({p})"))
+                .unwrap_or_default()
         ),
         Err(err) => format!(r#"{{"error":"{}"}}"#, escape_json_string(&err)),
     }
@@ -102,22 +114,23 @@ fn start_followup(
     let model = registry
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
-    start_followup_request(
+    let log_session_id = tab_state.app.log_session_id.clone();
+    start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
         tab_state,
-        &model.base_url,
-        &model.api_key,
-        &model.model,
-        args.show_reasoning,
+        base_url: &model.base_url,
+        api_key: &model.api_key,
+        model: &model.model,
+        _show_reasoning: args.show_reasoning,
         tx,
         tab_id,
-        args.web_search_enabled(),
-        args.code_exec_enabled(),
-        args.read_file_enabled(),
-        args.read_code_enabled(),
-        args.modify_file_enabled(),
-        args.log_requests.clone(),
-        tab_state.app.log_session_id.clone(),
-    );
+        enable_web_search: args.web_search_enabled(),
+        enable_code_exec: args.code_exec_enabled(),
+        enable_read_file: args.read_file_enabled(),
+        enable_read_code: args.read_code_enabled(),
+        enable_modify_file: args.modify_file_enabled(),
+        log_requests: args.log_requests.clone(),
+        log_session_id,
+    });
 }
 
 fn render_diff_preview(diff: &str) -> String {
@@ -132,12 +145,12 @@ fn render_diff_preview(diff: &str) -> String {
         if let Some(mut stdin) = child.stdin.take() {
             let _ = stdin.write_all(diff.as_bytes());
         }
-        if let Ok(output) = child.wait_with_output() {
-            if output.status.success() {
-                let text = String::from_utf8_lossy(&output.stdout).to_string();
-                if !text.trim().is_empty() {
-                    return text;
-                }
+        if let Ok(output) = child.wait_with_output()
+            && output.status.success()
+        {
+            let text = String::from_utf8_lossy(&output.stdout).to_string();
+            if !text.trim().is_empty() {
+                return text;
             }
         }
     }

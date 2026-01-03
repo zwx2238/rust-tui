@@ -16,7 +16,7 @@ pub(crate) struct ItemContext {
 
 pub(crate) fn append_text(
     buf: &mut String,
-    item_stack: &mut Vec<ItemContext>,
+    item_stack: &mut [ItemContext],
     table: &mut TableBuild,
     text: &str,
 ) {

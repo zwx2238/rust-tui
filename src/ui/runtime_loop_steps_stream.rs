@@ -2,7 +2,6 @@ use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_loop_helpers::handle_pending_command;
 use crate::ui::runtime_tick::{
     ActiveFrameData, build_exec_header_note, collect_stream_events, finalize_done_tabs,
     preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay, sync_file_patch_overlay,
@@ -15,26 +14,42 @@ use ratatui::layout::Rect;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+pub(crate) struct ProcessStreamUpdatesParams<'a> {
+    pub rx: &'a mpsc::Receiver<UiEvent>,
+    pub tabs: &'a mut Vec<TabState>,
+    pub active_tab: usize,
+    pub theme: &'a RenderTheme,
+    pub msg_width: usize,
+    pub registry: &'a crate::model_registry::ModelRegistry,
+    pub args: &'a Args,
+    pub tx: &'a mpsc::Sender<UiEvent>,
+    pub preheat_tx: &'a mpsc::Sender<crate::ui::runtime_helpers::PreheatTask>,
+    pub view: &'a mut ViewState,
+}
+
 pub(crate) fn process_stream_updates(
-    rx: &mpsc::Receiver<UiEvent>,
-    tabs: &mut Vec<TabState>,
-    active_tab: usize,
-    theme: &RenderTheme,
-    msg_width: usize,
-    registry: &crate::model_registry::ModelRegistry,
-    args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
-    preheat_tx: &mpsc::Sender<crate::ui::runtime_helpers::PreheatTask>,
-    view: &mut ViewState,
+    params: ProcessStreamUpdatesParams<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (done_tabs, tool_queue) = collect_stream_events(rx, tabs, theme);
-    apply_tool_queue(tabs, registry, args, tx, tool_queue);
-    update_code_exec_results(tabs);
-    maybe_auto_finalize(tabs, registry, args, tx);
-    finalize_done_tabs(tabs, &done_tabs)?;
-    update_tab_widths(tabs, msg_width);
-    preheat_inactive_tabs(tabs, active_tab, theme, msg_width, preheat_tx);
-    sync_overlays_if_needed(tabs, active_tab, view, args);
+    let (done_tabs, tool_queue) = collect_stream_events(params.rx, params.tabs, params.theme);
+    apply_tool_queue(
+        params.tabs,
+        params.registry,
+        params.args,
+        params.tx,
+        tool_queue,
+    );
+    update_code_exec_results(params.tabs);
+    maybe_auto_finalize(params.tabs, params.registry, params.args, params.tx);
+    finalize_done_tabs(params.tabs, &done_tabs)?;
+    update_tab_widths(params.tabs, params.msg_width);
+    preheat_inactive_tabs(
+        params.tabs,
+        params.active_tab,
+        params.theme,
+        params.msg_width,
+        params.preheat_tx,
+    );
+    sync_overlays_if_needed(params.tabs, params.active_tab, params.view, params.args);
     Ok(())
 }
 
@@ -65,38 +80,12 @@ pub(crate) fn handle_pending_line(
     args: &Args,
     tx: &mpsc::Sender<UiEvent>,
 ) {
-    if let Some(line) = pending_line {
-        if let Some(tab_state) = tabs.get_mut(active_tab) {
-            tab_state.app.pending_send = Some(line);
-            crate::ui::runtime_dispatch::start_pending_request(registry, args, tx, active_tab, tab_state);
-        }
-    }
-}
-
-pub(crate) fn handle_pending_command_if_any(
-    pending_command: Option<crate::ui::state::PendingCommand>,
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &mut Vec<String>,
-    active_category: &mut usize,
-    session_location: &mut Option<crate::session::SessionLocation>,
-    registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::llm::prompts::PromptRegistry,
-    args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
-) {
-    if let Some(cmd) = pending_command {
-        handle_pending_command(
-            tabs,
-            active_tab,
-            categories,
-            active_category,
-            cmd,
-            session_location,
-            registry,
-            prompt_registry,
-            args,
-            tx,
+    if let Some(line) = pending_line
+        && let Some(tab_state) = tabs.get_mut(active_tab)
+    {
+        tab_state.app.pending_send = Some(line);
+        crate::ui::runtime_dispatch::start_pending_request(
+            registry, args, tx, active_tab, tab_state,
         );
     }
 }

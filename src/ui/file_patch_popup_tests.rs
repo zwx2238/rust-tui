@@ -3,10 +3,10 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::file_patch_popup::draw_file_patch_popup;
     use crate::ui::state::{FilePatchHover, PendingFilePatch};
+    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::Rect;
     use ratatui::style::Color;
-    use ratatui::Terminal;
 
     fn theme() -> RenderTheme {
         RenderTheme {

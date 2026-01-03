@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone)]
@@ -93,12 +93,7 @@ fn parse_session_data(raw: serde_json::Value) -> Result<SessionData, Box<dyn std
     Ok(data)
 }
 
-fn resolve_session_id(
-    data: &SessionData,
-    input: &str,
-    custom_path: bool,
-    path: &PathBuf,
-) -> String {
+fn resolve_session_id(data: &SessionData, input: &str, custom_path: bool, path: &Path) -> String {
     if !data.id.trim().is_empty() {
         return data.id.clone();
     }
@@ -171,7 +166,7 @@ fn resolve_save_location(
     Ok((id, path, false))
 }
 
-fn ensure_parent_dir(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn ensure_parent_dir(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -212,10 +207,7 @@ fn build_session_data(
     }
 }
 
-fn write_session(
-    path: &PathBuf,
-    session: &SessionData,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn write_session(path: &PathBuf, session: &SessionData) -> Result<(), Box<dyn std::error::Error>> {
     let text = serde_json::to_string_pretty(session)?;
     fs::write(path, text)?;
     Ok(())

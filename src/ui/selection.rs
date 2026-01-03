@@ -64,7 +64,12 @@ pub fn apply_selection_to_text(
             out.push(to_owned_line(line));
             continue;
         };
-        out.push(apply_selection_to_line(line, sel_start, sel_end, select_style));
+        out.push(apply_selection_to_line(
+            line,
+            sel_start,
+            sel_end,
+            select_style,
+        ));
     }
     Text::from(out)
 }
@@ -122,9 +127,11 @@ fn build_selected_spans(
     for span in &line.spans {
         process_span(
             span,
-            sel_start,
-            sel_end,
-            select_style,
+            ProcessSpanParams {
+                sel_start,
+                sel_end,
+                select_style,
+            },
             &mut col,
             &mut spans,
             &mut current_style,
@@ -135,11 +142,15 @@ fn build_selected_spans(
     spans
 }
 
-fn process_span(
-    span: &Span<'_>,
+struct ProcessSpanParams {
     sel_start: usize,
     sel_end: usize,
     select_style: Style,
+}
+
+fn process_span(
+    span: &Span<'_>,
+    params: ProcessSpanParams,
     col: &mut usize,
     spans: &mut Vec<Span<'static>>,
     current_style: &mut Option<Style>,
@@ -149,9 +160,9 @@ fn process_span(
     for ch in span.content.chars() {
         let width = UnicodeWidthChar::width(ch).unwrap_or(0).max(1);
         let next = col.saturating_add(width);
-        let selected = next > sel_start && *col < sel_end;
+        let selected = next > params.sel_start && *col < params.sel_end;
         let style = if selected {
-            base_style.patch(select_style)
+            base_style.patch(params.select_style)
         } else {
             base_style
         };
@@ -175,10 +186,10 @@ fn update_buffer(
 }
 
 fn flush_buffer(spans: &mut Vec<Span<'static>>, style: Option<Style>, buffer: &mut String) {
-    if let Some(style) = style {
-        if !buffer.is_empty() {
-            spans.push(Span::styled(std::mem::take(buffer), style));
-        }
+    if let Some(style) = style
+        && !buffer.is_empty()
+    {
+        spans.push(Span::styled(std::mem::take(buffer), style));
     }
 }
 
@@ -220,14 +231,9 @@ pub fn extract_selection(lines: &[String], selection: Selection) -> String {
     let end_line = end_line.min(lines.len().saturating_sub(1));
     let mut out = Vec::new();
     for (idx, line) in lines.iter().enumerate() {
-        let Some((sel_start, sel_end)) = selection_range_for_line(
-            idx,
-            start_line,
-            end_line,
-            start_col,
-            end_col,
-            line.width(),
-        ) else {
+        let Some((sel_start, sel_end)) =
+            selection_range_for_line(idx, start_line, end_line, start_col, end_col, line.width())
+        else {
             continue;
         };
         out.push(slice_line_by_cols(line, sel_start, sel_end));

@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
 pub struct SystemPrompt {
@@ -36,7 +36,7 @@ pub fn load_prompts(
     })
 }
 
-fn ensure_prompts_dir(dir_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn ensure_prompts_dir(dir_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     if !dir_path.exists() {
         return Err(format!("提示词目录不存在：{}", dir_path.display()).into());
     }
@@ -46,17 +46,15 @@ fn ensure_prompts_dir(dir_path: &PathBuf) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-fn read_prompts_from_dir(
-    dir_path: &PathBuf,
-) -> Result<Vec<SystemPrompt>, Box<dyn std::error::Error>> {
+fn read_prompts_from_dir(dir_path: &Path) -> Result<Vec<SystemPrompt>, Box<dyn std::error::Error>> {
     let mut prompts = Vec::new();
     let entries = fs::read_dir(dir_path)?;
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.is_file() {
-            if let Some(prompt) = read_prompt_file(&path) {
-                prompts.push(prompt);
-            }
+        if path.is_file()
+            && let Some(prompt) = read_prompt_file(&path)
+        {
+            prompts.push(prompt);
         }
     }
     Ok(prompts)

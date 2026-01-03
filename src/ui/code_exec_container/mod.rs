@@ -10,10 +10,10 @@ mod container_start;
 use container_start::{is_container_running, start_container};
 
 pub(crate) fn ensure_container(container_id: &mut Option<String>) -> Result<String, String> {
-    if let Some(id) = container_id.as_ref() {
-        if is_container_running(id) {
-            return Ok(id.clone());
-        }
+    if let Some(id) = container_id.as_ref()
+        && is_container_running(id)
+    {
+        return Ok(id.clone());
     }
     let id = start_container()?;
     *container_id = Some(id.clone());
@@ -146,12 +146,12 @@ fn finalize_exec(
     let _ = t_out.join();
     let _ = t_err.join();
     let _ = killer.join();
-    if let Ok(mut live) = live.lock() {
-        if !live.done {
-            live.exit_code = Some(status_code.unwrap_or(-1));
-            live.done = true;
-            live.finished_at = Some(std::time::Instant::now());
-        }
+    if let Ok(mut live) = live.lock()
+        && !live.done
+    {
+        live.exit_code = Some(status_code.unwrap_or(-1));
+        live.done = true;
+        live.finished_at = Some(std::time::Instant::now());
     }
 }
 

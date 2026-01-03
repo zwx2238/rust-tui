@@ -162,10 +162,10 @@ fn ensure_category(ctx: &mut DispatchContext<'_>, category: &str) {
 }
 
 fn sync_active_category(ctx: &mut DispatchContext<'_>) {
-    if let Some(tab) = ctx.tabs.get(*ctx.active_tab) {
-        if let Some(idx) = ctx.categories.iter().position(|c| c == &tab.category) {
-            *ctx.active_category = idx;
-        }
+    if let Some(tab) = ctx.tabs.get(*ctx.active_tab)
+        && let Some(idx) = ctx.categories.iter().position(|c| c == &tab.category)
+    {
+        *ctx.active_category = idx;
     }
 }
 

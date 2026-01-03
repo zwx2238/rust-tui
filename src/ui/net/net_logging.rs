@@ -1,5 +1,5 @@
-use crate::llm::rig::RigRequestContext;
 use super::{LlmEvent, UiEvent};
+use crate::llm::rig::RigRequestContext;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
@@ -117,9 +117,7 @@ fn tool_result_text(result: &rig::completion::message::ToolResult) -> String {
     parts.join("\n")
 }
 
-fn assistant_content_text(
-    content: &rig::OneOrMany<rig::completion::AssistantContent>,
-) -> String {
+fn assistant_content_text(content: &rig::OneOrMany<rig::completion::AssistantContent>) -> String {
     let mut parts = Vec::new();
     for item in content.iter() {
         match item {

@@ -25,7 +25,14 @@ pub(crate) fn code_exec_popup_layout(area: Rect, with_reason: bool) -> CodeExecP
     let popup = popup_rect(safe);
     let inner = inset_rect(popup, 1);
     let (body, reason_area, actions_area) = split_inner(inner, with_reason);
-    let (code_text_area, code_scrollbar_area, stdout_text_area, stdout_scrollbar_area, stderr_text_area, stderr_scrollbar_area) = split_body(body);
+    let (
+        code_text_area,
+        code_scrollbar_area,
+        stdout_text_area,
+        stdout_scrollbar_area,
+        stderr_text_area,
+        stderr_scrollbar_area,
+    ) = split_body(body);
     let (approve_btn, deny_btn, stop_btn, exit_btn) = action_buttons(actions_area);
     CodeExecPopupLayout {
         popup,
@@ -94,40 +101,74 @@ fn split_inner(inner: Rect, with_reason: bool) -> (Rect, Rect, Rect) {
 }
 
 fn split_body(body: Rect) -> (Rect, Rect, Rect, Rect, Rect, Rect) {
-    let body_cols = Layout::horizontal([
-        Constraint::Percentage(55),
-        Constraint::Percentage(45),
-    ])
-    .split(body);
+    let body_cols =
+        Layout::horizontal([Constraint::Percentage(55), Constraint::Percentage(45)]).split(body);
     let (code_text_area, code_scrollbar_area) = text_and_scrollbar(body_cols[0]);
     let out_chunks = Layout::vertical([Constraint::Percentage(60), Constraint::Percentage(40)])
         .split(body_cols[1]);
     let (stdout_text_area, stdout_scrollbar_area) = text_and_scrollbar(out_chunks[0]);
     let (stderr_text_area, stderr_scrollbar_area) = text_and_scrollbar(out_chunks[1]);
-    (code_text_area, code_scrollbar_area, stdout_text_area, stdout_scrollbar_area, stderr_text_area, stderr_scrollbar_area)
+    (
+        code_text_area,
+        code_scrollbar_area,
+        stdout_text_area,
+        stdout_scrollbar_area,
+        stderr_text_area,
+        stderr_scrollbar_area,
+    )
 }
 
 fn text_and_scrollbar(area: Rect) -> (Rect, Rect) {
-    let text_area = Rect { x: area.x, y: area.y, width: area.width.saturating_sub(1), height: area.height };
-    let scrollbar_area = Rect { x: area.x.saturating_add(area.width.saturating_sub(1)), y: area.y, width: 1, height: area.height };
+    let text_area = Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width.saturating_sub(1),
+        height: area.height,
+    };
+    let scrollbar_area = Rect {
+        x: area.x.saturating_add(area.width.saturating_sub(1)),
+        y: area.y,
+        width: 1,
+        height: area.height,
+    };
     (text_area, scrollbar_area)
 }
 
 fn action_buttons(area: Rect) -> (Rect, Rect, Rect, Rect) {
     let gap = 2u16;
     let btn_width = area.width.saturating_sub(gap).saturating_div(2).max(6);
-    let approve_btn = Rect { x: area.x, y: area.y, width: btn_width, height: area.height };
+    let approve_btn = Rect {
+        x: area.x,
+        y: area.y,
+        width: btn_width,
+        height: area.height,
+    };
     let deny_btn = Rect {
         x: area.x.saturating_add(btn_width + gap),
         y: area.y,
         width: area.width.saturating_sub(btn_width + gap).max(btn_width),
         height: area.height,
     };
-    let stop_btn = Rect { x: area.x, y: area.y, width: area.width, height: area.height };
-    let exit_btn = Rect { x: area.x, y: area.y, width: area.width, height: area.height };
+    let stop_btn = Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: area.height,
+    };
+    let exit_btn = Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: area.height,
+    };
     (approve_btn, deny_btn, stop_btn, exit_btn)
 }
 
 fn empty_rect() -> Rect {
-    Rect { x: 0, y: 0, width: 0, height: 0 }
+    Rect {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+    }
 }

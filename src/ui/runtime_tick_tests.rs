@@ -9,8 +9,8 @@ mod tests {
         preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay,
         sync_file_patch_overlay, update_code_exec_results, update_tab_widths,
     };
-    use crate::ui::state::{CodeExecLive, PendingCodeExec, RequestHandle};
     use crate::ui::runtime_view::ViewState;
+    use crate::ui::state::{CodeExecLive, PendingCodeExec, RequestHandle};
     use ratatui::layout::Rect;
     use ratatui::style::Color;
     use std::sync::{Arc, Mutex, atomic::AtomicBool, mpsc};
@@ -90,7 +90,14 @@ mod tests {
 
     #[test]
     fn update_tab_widths_sets_last_width() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m", "p")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "cat".into(),
+            "",
+            false,
+            "m",
+            "p",
+        )];
         update_tab_widths(&mut tabs, 99);
     }
 
@@ -114,7 +121,14 @@ mod tests {
 
     #[test]
     fn sync_overlays_toggle() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m", "p")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "cat".into(),
+            "",
+            false,
+            "m",
+            "p",
+        )];
         let mut view = ViewState::new();
         sync_code_exec_overlay(&mut tabs, 0, &mut view);
         assert!(view.overlay.is_chat());
@@ -170,15 +184,23 @@ mod tests {
             tool_call_id: None,
             tool_calls: None,
         });
-        let ActiveFrameData { text, total_lines, .. } =
-            prepare_active_frame(&mut tab, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
+        let ActiveFrameData {
+            text, total_lines, ..
+        } = prepare_active_frame(&mut tab, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
         assert!(total_lines >= 1);
         assert!(!text.lines.is_empty());
     }
 
     #[test]
     fn build_exec_header_note_lists_tabs() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m", "p")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "cat".into(),
+            "",
+            false,
+            "m",
+            "p",
+        )];
         tabs[0].app.pending_code_exec = Some(PendingCodeExec {
             call_id: "c".to_string(),
             language: "python".to_string(),
@@ -187,7 +209,7 @@ mod tests {
             requested_at: Instant::now(),
             stop_reason: None,
         });
-        let note = build_exec_header_note(&tabs, &vec!["cat".to_string()]);
+        let note = build_exec_header_note(&tabs, &["cat".to_string()]);
         assert!(note.is_some());
     }
 }

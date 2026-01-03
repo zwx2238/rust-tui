@@ -28,7 +28,7 @@ pub(crate) fn compute_layout(
     let (header_area, category_area, tabs_area, msg_area, input_area, footer_area) =
         layout_chunks(size, input_height, sidebar_width);
     let msg_width = inner_width(msg_area, 1);
-    let view_height = inner_height(msg_area, 0) as u16;
+    let view_height = inner_height(msg_area, 0);
     LayoutInfo {
         header_area,
         category_area,
@@ -49,13 +49,10 @@ pub(crate) fn compute_sidebar_width(categories: &[String], total_width: u16) -> 
     desired.min(max_allowed)
 }
 
-fn compute_input_height(
-    size: Rect,
-    view: &ViewState,
-    tabs: &[TabState],
-    active_tab: usize,
-) -> u16 {
-    if view.overlay.uses_simple_layout() { return 0; }
+fn compute_input_height(size: Rect, view: &ViewState, tabs: &[TabState], active_tab: usize) -> u16 {
+    if view.overlay.uses_simple_layout() {
+        return 0;
+    }
     let input_lines = tabs
         .get(active_tab)
         .map(|tab| tab.app.input.lines().len())

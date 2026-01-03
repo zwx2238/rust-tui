@@ -3,10 +3,10 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::notice::{draw_notice, push_notice};
     use crate::ui::state::{App, Notice};
+    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::Rect;
     use ratatui::style::Color;
-    use ratatui::Terminal;
     use std::time::{Duration, Instant};
 
     fn theme() -> RenderTheme {

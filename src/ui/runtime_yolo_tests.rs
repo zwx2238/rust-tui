@@ -42,7 +42,14 @@ mod tests {
         let registry = registry();
         let args = args(false);
         let (tx, _rx) = mpsc::channel();
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "默认".into(),
+            "",
+            false,
+            "m1",
+            "p1",
+        )];
         tabs[0].app.pending_code_exec = Some(crate::ui::state::PendingCodeExec {
             call_id: "call".to_string(),
             language: "python".to_string(),
@@ -62,7 +69,14 @@ mod tests {
         let registry = registry();
         let args = args(true);
         let (tx, _rx) = mpsc::channel();
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
+        let mut tabs = vec![TabState::new(
+            "id".into(),
+            "默认".into(),
+            "",
+            false,
+            "m1",
+            "p1",
+        )];
         tabs[0].app.pending_code_exec = Some(crate::ui::state::PendingCodeExec {
             call_id: "call".to_string(),
             language: "python".to_string(),

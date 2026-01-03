@@ -65,10 +65,7 @@ fn build_new_tab_for_category(
     tab
 }
 
-fn select_model_key(
-    active: &TabState,
-    registry: &crate::model_registry::ModelRegistry,
-) -> String {
+fn select_model_key(active: &TabState, registry: &crate::model_registry::ModelRegistry) -> String {
     if registry.get(&active.app.model_key).is_some() {
         return active.app.model_key.clone();
     }

@@ -2,7 +2,10 @@ use crate::ui::runtime_code_exec_helpers::filter_pip_output;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 
-pub(crate) fn build_code_exec_tool_output(pending: &PendingCodeExec, live: &CodeExecLive) -> String {
+pub(crate) fn build_code_exec_tool_output(
+    pending: &PendingCodeExec,
+    live: &CodeExecLive,
+) -> String {
     let stdout_filtered = filter_pip_output(&live.stdout, live.exit_code);
     let stdout_empty = stdout_filtered.trim().is_empty();
     let stderr_empty = live.stderr.trim().is_empty();
@@ -29,7 +32,11 @@ pub(crate) fn take_code_exec_reason(
     tab_state.app.code_exec_reason_target = None;
     tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
     let trimmed = reason.trim();
-    if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 pub(crate) fn escape_json_string(input: &str) -> String {
@@ -43,29 +50,47 @@ pub(crate) fn escape_json_string(input: &str) -> String {
 
 fn append_code_block(out: &mut String, code: &str) {
     out.push_str("code:\n");
-    if code.trim().is_empty() { out.push_str("(空)\n"); return; }
+    if code.trim().is_empty() {
+        out.push_str("(空)\n");
+        return;
+    }
     out.push_str("```python\n");
     out.push_str(code);
-    if !code.ends_with('\n') { out.push('\n'); }
+    if !code.ends_with('\n') {
+        out.push('\n');
+    }
     out.push_str("```\n");
 }
 
 fn append_exit_code(out: &mut String, exit_code: Option<i32>) {
-    if let Some(code) = exit_code { out.push_str(&format!("exit_code: {}\n", code)); }
-    else { out.push_str("exit_code: (执行中)\n"); }
+    if let Some(code) = exit_code {
+        out.push_str(&format!("exit_code: {}\n", code));
+    } else {
+        out.push_str("exit_code: (执行中)\n");
+    }
 }
 
 fn append_output_block(out: &mut String, label: &str, content: &str, empty: bool) {
     out.push_str(label);
     out.push_str(":\n");
-    if empty { out.push_str("(空)\n"); return; }
+    if empty {
+        out.push_str("(空)\n");
+        return;
+    }
     out.push_str("```text\n");
     out.push_str(content);
-    if !content.ends_with('\n') { out.push('\n'); }
+    if !content.ends_with('\n') {
+        out.push('\n');
+    }
     out.push_str("```\n");
 }
 
-fn append_empty_note(out: &mut String, live: &CodeExecLive, stdout_empty: bool, stderr_empty: bool) {
+fn append_empty_note(
+    out: &mut String,
+    live: &CodeExecLive,
+    stdout_empty: bool,
+    stderr_empty: bool,
+) {
     if live.done && live.exit_code == Some(0) && stdout_empty && stderr_empty {
         out.push_str("note: 程序正常执行但没有输出。\n");
     }

@@ -4,17 +4,27 @@ use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
+type RestoreTabsResult =
+    Result<(Vec<TabState>, usize, Vec<String>, usize), Box<dyn std::error::Error>>;
+
 pub(crate) fn restore_tabs_from_session(
     session: &crate::session::SessionData,
     registry: &crate::model_registry::ModelRegistry,
     prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
-) -> Result<(Vec<TabState>, usize, Vec<String>, usize), Box<dyn std::error::Error>> {
+) -> RestoreTabsResult {
     let (mut categories, active_category_name) = init_categories(session);
     let mut tabs = load_tabs(session, registry, prompt_registry, args, &mut categories)?;
-    ensure_default_tab(&mut tabs, &active_category_name, registry, prompt_registry, args)?;
+    ensure_default_tab(
+        &mut tabs,
+        &active_category_name,
+        registry,
+        prompt_registry,
+        args,
+    )?;
     let active_tab = resolve_active_tab(session, &tabs);
-    let active_category = resolve_active_category(&active_category_name, &categories, &tabs, active_tab);
+    let active_category =
+        resolve_active_category(&active_category_name, &categories, &tabs, active_tab);
     Ok((tabs, active_tab, categories, active_category))
 }
 
@@ -32,7 +42,14 @@ pub(crate) fn fork_last_tab_for_retry(
     let model_key = resolve_model_key(source, registry);
     let prompt_key = resolve_prompt_key(source, prompt_registry);
     let conv_id = crate::conversation::new_conversation_id().ok()?;
-    let mut new_tab = TabState::new(conv_id, source.category.clone(), "", false, &model_key, &prompt_key);
+    let mut new_tab = TabState::new(
+        conv_id,
+        source.category.clone(),
+        "",
+        false,
+        &model_key,
+        &prompt_key,
+    );
     new_tab.app.set_log_session_id(&source.app.log_session_id);
     insert_system_prompt(&mut history, &system_prompt);
     new_tab.app.messages = history;
@@ -59,9 +76,17 @@ pub(crate) fn spawn_preheat_workers(
 
 fn init_categories(session: &crate::session::SessionData) -> (Vec<String>, String) {
     let mut categories = session.categories.clone();
-    if categories.is_empty() { categories.push("默认".to_string()); }
-    let name = if session.active_category.trim().is_empty() { categories[0].clone() } else { session.active_category.clone() };
-    if !categories.contains(&name) { categories.push(name.clone()); }
+    if categories.is_empty() {
+        categories.push("默认".to_string());
+    }
+    let name = if session.active_category.trim().is_empty() {
+        categories[0].clone()
+    } else {
+        session.active_category.clone()
+    };
+    if !categories.contains(&name) {
+        categories.push(name.clone());
+    }
     (categories, name)
 }
 
@@ -79,17 +104,32 @@ fn load_tabs(
         let category = normalize_category(&conv.category, categories);
         let model_key = resolve_conv_model(&conv, registry);
         let prompt_key = resolve_conv_prompt(&conv, prompt_registry);
-        let mut state = TabState::new(conv.id.clone(), category, "", false, &model_key, &prompt_key);
+        let mut state = TabState::new(
+            conv.id.clone(),
+            category,
+            "",
+            false,
+            &model_key,
+            &prompt_key,
+        );
         apply_conversation_state(&mut state, &conv, &prompt_key, prompt_registry, args);
         tabs.push(state);
     }
-    if categories.is_empty() { categories.push("默认".to_string()); }
+    if categories.is_empty() {
+        categories.push("默认".to_string());
+    }
     Ok(tabs)
 }
 
 fn normalize_category(category: &str, categories: &mut Vec<String>) -> String {
-    let value = if category.trim().is_empty() { "默认".to_string() } else { category.to_string() };
-    if !categories.contains(&value) { categories.push(value.clone()); }
+    let value = if category.trim().is_empty() {
+        "默认".to_string()
+    } else {
+        category.to_string()
+    };
+    if !categories.contains(&value) {
+        categories.push(value.clone());
+    }
     value
 }
 
@@ -136,9 +176,16 @@ fn ensure_system_prompt(
     prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
 ) {
-    if state.app.messages.iter().any(|m| m.role == ROLE_SYSTEM) { return; }
-    let content = prompt_registry.get(prompt_key).map(|p| p.content.as_str()).unwrap_or(&args.system);
-    if !content.trim().is_empty() { state.app.set_system_prompt(prompt_key, content); }
+    if state.app.messages.iter().any(|m| m.role == ROLE_SYSTEM) {
+        return;
+    }
+    let content = prompt_registry
+        .get(prompt_key)
+        .map(|p| p.content.as_str())
+        .unwrap_or(&args.system);
+    if !content.trim().is_empty() {
+        state.app.set_system_prompt(prompt_key, content);
+    }
 }
 
 fn ensure_default_tab(
@@ -148,10 +195,22 @@ fn ensure_default_tab(
     prompt_registry: &crate::llm::prompts::PromptRegistry,
     args: &Args,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if !tabs.is_empty() { return Ok(()); }
+    if !tabs.is_empty() {
+        return Ok(());
+    }
     let conv_id = crate::conversation::new_conversation_id()?;
-    let prompt = prompt_registry.get(&prompt_registry.default_key).map(|p| p.content.as_str()).unwrap_or(&args.system);
-    tabs.push(TabState::new(conv_id, active_category_name.to_string(), prompt, false, &registry.default_key, &prompt_registry.default_key));
+    let prompt = prompt_registry
+        .get(&prompt_registry.default_key)
+        .map(|p| p.content.as_str())
+        .unwrap_or(&args.system);
+    tabs.push(TabState::new(
+        conv_id,
+        active_category_name.to_string(),
+        prompt,
+        false,
+        &registry.default_key,
+        &prompt_registry.default_key,
+    ));
     Ok(())
 }
 
@@ -173,19 +232,27 @@ fn resolve_active_category(
     categories
         .iter()
         .position(|c| c == active_category_name)
-        .or_else(|| tabs.get(active_tab).and_then(|t| categories.iter().position(|c| c == &t.category)))
+        .or_else(|| {
+            tabs.get(active_tab)
+                .and_then(|t| categories.iter().position(|c| c == &t.category))
+        })
         .unwrap_or(0)
 }
 
 fn last_user_message(source: &TabState) -> Option<(usize, String)> {
     let mut last_user_idx = None;
     for (idx, msg) in source.app.messages.iter().enumerate().rev() {
-        if msg.role == ROLE_USER { last_user_idx = Some(idx); break; }
+        if msg.role == ROLE_USER {
+            last_user_idx = Some(idx);
+            break;
+        }
     }
     let msg_idx = last_user_idx?;
     let msg = source.app.messages.get(msg_idx)?;
     let content = msg.content.clone();
-    if content.trim().is_empty() { return None; }
+    if content.trim().is_empty() {
+        return None;
+    }
     Some((msg_idx, content))
 }
 
@@ -200,29 +267,46 @@ fn resolve_system_prompt(
         .iter()
         .find(|m| m.role == ROLE_SYSTEM)
         .map(|m| m.content.clone())
-        .or_else(|| prompt_registry.get(&source.app.prompt_key).map(|p| p.content.clone()))
+        .or_else(|| {
+            prompt_registry
+                .get(&source.app.prompt_key)
+                .map(|p| p.content.clone())
+        })
         .unwrap_or_else(|| args.system.clone())
 }
 
-fn resolve_model_key(
-    source: &TabState,
-    registry: &crate::model_registry::ModelRegistry,
-) -> String {
-    if registry.get(&source.app.model_key).is_some() { source.app.model_key.clone() }
-    else { registry.default_key.clone() }
+fn resolve_model_key(source: &TabState, registry: &crate::model_registry::ModelRegistry) -> String {
+    if registry.get(&source.app.model_key).is_some() {
+        source.app.model_key.clone()
+    } else {
+        registry.default_key.clone()
+    }
 }
 
 fn resolve_prompt_key(
     source: &TabState,
     prompt_registry: &crate::llm::prompts::PromptRegistry,
 ) -> String {
-    if prompt_registry.get(&source.app.prompt_key).is_some() { source.app.prompt_key.clone() }
-    else { prompt_registry.default_key.clone() }
+    if prompt_registry.get(&source.app.prompt_key).is_some() {
+        source.app.prompt_key.clone()
+    } else {
+        prompt_registry.default_key.clone()
+    }
 }
 
 fn insert_system_prompt(history: &mut Vec<crate::types::Message>, system_prompt: &str) {
-    if history.iter().any(|m| m.role == ROLE_SYSTEM) || system_prompt.trim().is_empty() { return; }
-    history.insert(0, crate::types::Message { role: ROLE_SYSTEM.to_string(), content: system_prompt.to_string(), tool_call_id: None, tool_calls: None });
+    if history.iter().any(|m| m.role == ROLE_SYSTEM) || system_prompt.trim().is_empty() {
+        return;
+    }
+    history.insert(
+        0,
+        crate::types::Message {
+            role: ROLE_SYSTEM.to_string(),
+            content: system_prompt.to_string(),
+            tool_call_id: None,
+            tool_calls: None,
+        },
+    );
 }
 
 fn resolve_worker_count() -> usize {
@@ -231,7 +315,9 @@ fn resolve_worker_count() -> usize {
         .and_then(|v| v.parse::<usize>().ok())
         .filter(|v| *v > 0)
         .unwrap_or_else(|| {
-            std::thread::available_parallelism().map(|n| (n.get() / 2).max(1)).unwrap_or(1)
+            std::thread::available_parallelism()
+                .map(|n| (n.get() / 2).max(1))
+                .unwrap_or(1)
         })
 }
 
@@ -242,12 +328,27 @@ fn spawn_preheat_worker(
     std::thread::spawn(move || {
         loop {
             let task = {
-                let guard = match preheat_rx.lock() { Ok(g) => g, Err(_) => break };
+                let guard = match preheat_rx.lock() {
+                    Ok(g) => g,
+                    Err(_) => break,
+                };
                 guard.recv().ok()
             };
-            let task = match task { Some(t) => t, None => break };
-            let entry = crate::render::build_cache_entry(&task.msg, task.width, &task.theme, task.streaming);
-            let _ = preheat_res_tx.send(PreheatResult { tab: task.tab, idx: task.idx, entry });
+            let task = match task {
+                Some(t) => t,
+                None => break,
+            };
+            let entry = crate::render::build_cache_entry(
+                &task.msg,
+                task.width,
+                &task.theme,
+                task.streaming,
+            );
+            let _ = preheat_res_tx.send(PreheatResult {
+                tab: task.tab,
+                idx: task.idx,
+                entry,
+            });
         }
     });
 }

@@ -137,7 +137,10 @@ mod tests {
             kind: "function".to_string(),
             function: ToolFunctionCall {
                 name: "read_file".to_string(),
-                arguments: format!(r#"{{"path":"{}","start_line":2,"end_line":2}}"#, path.display()),
+                arguments: format!(
+                    r#"{{"path":"{}","start_line":2,"end_line":2}}"#,
+                    path.display()
+                ),
             },
         };
         let result = run_tool(&call, "", None);

@@ -1,6 +1,8 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::style::{base_fg, base_style, selection_bg};
-use crate::ui::file_patch_popup_layout::{FilePatchPopupLayout, OUTER_MARGIN, file_patch_popup_layout};
+use crate::ui::file_patch_popup_layout::{
+    FilePatchPopupLayout, OUTER_MARGIN, file_patch_popup_layout,
+};
 use crate::ui::file_patch_popup_text::{build_patch_text, patch_max_scroll};
 use crate::ui::state::{FilePatchHover, PendingFilePatch};
 use ratatui::layout::Rect;
@@ -47,7 +49,12 @@ fn popup_mask(area: Rect, popup: Rect) -> Rect {
         .height
         .saturating_add(OUTER_MARGIN.saturating_mul(2))
         .min(max_y.saturating_sub(mask_y));
-    Rect { x: mask_x, y: mask_y, width: mask_w, height: mask_h }
+    Rect {
+        x: mask_x,
+        y: mask_y,
+        width: mask_w,
+        height: mask_h,
+    }
 }
 
 fn render_mask(f: &mut ratatui::Frame<'_>, theme: &RenderTheme, mask: Rect) {
@@ -63,7 +70,9 @@ fn render_popup_base(f: &mut ratatui::Frame<'_>, theme: &RenderTheme, popup: Rec
         .borders(Borders::ALL)
         .title_top(Line::from(vec![Span::styled(
             title,
-            Style::default().fg(base_fg(theme)).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(base_fg(theme))
+                .add_modifier(Modifier::BOLD),
         )]))
         .style(base_style(theme))
         .border_style(Style::default().fg(base_fg(theme)));
@@ -132,7 +141,11 @@ fn render_button(f: &mut ratatui::Frame<'_>, area: Rect, label: &str, style: Sty
     );
 }
 
-fn button_style(hover: Option<FilePatchHover>, target: FilePatchHover, theme: &RenderTheme) -> Style {
+fn button_style(
+    hover: Option<FilePatchHover>,
+    target: FilePatchHover,
+    theme: &RenderTheme,
+) -> Style {
     match hover {
         Some(h) if h == target => Style::default()
             .bg(selection_bg(theme.bg))

@@ -113,7 +113,10 @@ fn help_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMe
 }
 
 fn empty_metrics(areas: OverlayAreas) -> OverlayTableMetrics {
-    OverlayTableMetrics { area: areas.msg, rows: 0 }
+    OverlayTableMetrics {
+        area: areas.msg,
+        rows: 0,
+    }
 }
 
 pub(crate) fn overlay_visible_rows(

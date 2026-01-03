@@ -4,26 +4,44 @@ use crate::ui::runtime_helpers::{
 };
 use ratatui::layout::Rect;
 
-pub(crate) fn handle_tab_category_click(
-    mouse_x: u16,
-    mouse_y: u16,
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &[String],
-    active_category: &mut usize,
-    tabs_area: Rect,
-    category_area: Rect,
-) -> bool {
-    if handle_category_click(mouse_x, mouse_y, tabs, active_tab, categories, active_category, category_area) {
+pub(crate) struct TabCategoryClickParams<'a> {
+    pub mouse_x: u16,
+    pub mouse_y: u16,
+    pub tabs: &'a mut [TabState],
+    pub active_tab: &'a mut usize,
+    pub categories: &'a [String],
+    pub active_category: &'a mut usize,
+    pub tabs_area: Rect,
+    pub category_area: Rect,
+}
+
+pub(crate) fn handle_tab_category_click(params: TabCategoryClickParams<'_>) -> bool {
+    if handle_category_click(
+        params.mouse_x,
+        params.mouse_y,
+        params.tabs,
+        params.active_tab,
+        params.categories,
+        params.active_category,
+        params.category_area,
+    ) {
         return true;
     }
-    handle_tabs_click(mouse_x, mouse_y, tabs, active_tab, categories, *active_category, tabs_area)
+    handle_tabs_click(
+        params.mouse_x,
+        params.mouse_y,
+        params.tabs,
+        params.active_tab,
+        params.categories,
+        *params.active_category,
+        params.tabs_area,
+    )
 }
 
 fn handle_category_click(
     mouse_x: u16,
     mouse_y: u16,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: &mut usize,
     categories: &[String],
     active_category: &mut usize,
@@ -48,7 +66,7 @@ fn handle_category_click(
 fn handle_tabs_click(
     mouse_x: u16,
     mouse_y: u16,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: &mut usize,
     categories: &[String],
     active_category: usize,
@@ -57,7 +75,10 @@ fn handle_tabs_click(
     if !point_in_rect(mouse_x, mouse_y, tabs_area) {
         return false;
     }
-    let category = categories.get(active_category).map(|s| s.as_str()).unwrap_or("默认");
+    let category = categories
+        .get(active_category)
+        .map(|s| s.as_str())
+        .unwrap_or("默认");
     let labels = tab_labels_for_category(tabs, category);
     if let Some(pos) = tab_index_at(mouse_x, tabs_area, &labels) {
         let visible = visible_tab_indices(tabs, category);

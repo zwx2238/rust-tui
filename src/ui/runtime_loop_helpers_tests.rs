@@ -7,7 +7,7 @@ mod tests {
     use crate::session::SessionLocation;
     use crate::test_support::{env_lock, restore_env, set_env};
     use crate::ui::runtime_helpers::TabState;
-    use crate::ui::runtime_loop_helpers::handle_pending_command;
+    use crate::ui::runtime_loop_helpers::{HandlePendingCommandParams, handle_pending_command};
     use crate::ui::state::PendingCommand;
     use std::fs;
     use std::sync::mpsc;
@@ -84,7 +84,14 @@ mod tests {
 
     fn base_pending_ctx() -> PendingCtx {
         PendingCtx {
-            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["默认".to_string()],
             active_category: 0,
@@ -100,18 +107,18 @@ mod tests {
         args: &Args,
         tx: &mpsc::Sender<crate::ui::net::UiEvent>,
     ) {
-        handle_pending_command(
-            &mut ctx.tabs,
-            &mut ctx.active_tab,
-            &mut ctx.categories,
-            &mut ctx.active_category,
+        handle_pending_command(HandlePendingCommandParams {
+            tabs: &mut ctx.tabs,
+            active_tab: &mut ctx.active_tab,
+            categories: &mut ctx.categories,
+            active_category: &mut ctx.active_category,
             pending,
-            &mut ctx.session_location,
+            session_location: &mut ctx.session_location,
             registry,
             prompt_registry,
             args,
             tx,
-        );
+        });
     }
 
     fn save_conversation_for_test() {
@@ -183,5 +190,4 @@ mod tests {
 
         cleanup_temp_home(temp, prev);
     }
-
 }

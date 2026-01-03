@@ -14,11 +14,11 @@ mod ui;
 
 use args::Args;
 use clap::Parser;
-use config::{default_config_path, load_config, Config};
+use config::{Config, default_config_path, load_config};
 use question_set::{list_question_sets, question_sets_dir};
 use render::theme_from_config;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     if args.wait_gdb {
@@ -59,7 +59,7 @@ fn maybe_list_question_sets(args: &Args) -> Result<bool, Box<dyn std::error::Err
     Ok(true)
 }
 
-fn print_question_sets(sets: &[String], dir: &PathBuf) {
+fn print_question_sets(sets: &[String], dir: &Path) {
     if sets.is_empty() {
         println!("未找到问题集目录或目录为空：{}", dir.display());
         return;

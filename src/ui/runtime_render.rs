@@ -21,7 +21,10 @@ pub(crate) fn render_view(
 }
 
 fn clamp_overlay_tables(view: &mut ViewState, ctx: &RenderContext<'_>, jump_len: usize) {
-    let areas = OverlayAreas { full: ctx.full_area, msg: ctx.msg_area };
+    let areas = OverlayAreas {
+        full: ctx.full_area,
+        msg: ctx.msg_area,
+    };
     let counts = OverlayRowCounts {
         tabs: ctx.tabs.len(),
         jump: jump_len,

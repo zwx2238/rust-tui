@@ -1,5 +1,7 @@
 use ratatui::style::Color;
-use rust_tui::render::{RenderCacheEntry, RenderTheme, messages_to_viewport_text_cached};
+use rust_tui::render::{
+    RenderCacheEntry, RenderTheme, ViewportRenderParams, messages_to_viewport_text_cached,
+};
 use rust_tui::types::Message;
 use std::fs::File;
 use std::io::Write;
@@ -55,28 +57,32 @@ fn long_conversation_render_latency() {
     let t0 = Instant::now();
     let height = 30u16;
     let (cold_text, total_lines) = messages_to_viewport_text_cached(
-        &messages,
-        width,
-        &theme,
-        &[],
-        None,
-        0,
-        height,
+        ViewportRenderParams {
+            messages: &messages,
+            width,
+            theme: &theme,
+            label_suffixes: &[],
+            streaming_idx: None,
+            scroll: 0,
+            height,
+        },
         &mut cache,
     );
     let cold = t0.elapsed();
 
     let t1 = Instant::now();
     let _ = messages_to_viewport_text_cached(
-        &messages,
-        width,
-        &theme,
-        &[],
-        None,
-        total_lines
-            .saturating_sub(height as usize)
-            .min(u16::MAX as usize) as u16,
-        height,
+        ViewportRenderParams {
+            messages: &messages,
+            width,
+            theme: &theme,
+            label_suffixes: &[],
+            streaming_idx: None,
+            scroll: total_lines
+                .saturating_sub(height as usize)
+                .min(u16::MAX as usize) as u16,
+            height,
+        },
         &mut cache,
     );
     let warm = t1.elapsed();
@@ -99,15 +105,15 @@ fn long_conversation_render_latency() {
         cold, warm
     );
 
-    if let Ok(path) = std::env::var("PERF_RENDER_OUTPUT") {
-        if let Ok(mut file) = File::create(path) {
-            for line in cold_text.lines {
-                let mut s = String::new();
-                for span in line.spans {
-                    s.push_str(&span.content);
-                }
-                let _ = writeln!(file, "{s}");
+    if let Ok(path) = std::env::var("PERF_RENDER_OUTPUT")
+        && let Ok(mut file) = File::create(path)
+    {
+        for line in cold_text.lines {
+            let mut s = String::new();
+            for span in line.spans {
+                s.push_str(&span.content);
             }
+            let _ = writeln!(file, "{s}");
         }
     }
 

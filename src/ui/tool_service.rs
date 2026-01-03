@@ -191,26 +191,31 @@ impl<'a> ToolService<'a> {
     fn resolve_model(&self, tab_state: &TabState) -> &ModelProfile {
         self.registry
             .get(&tab_state.app.model_key)
-            .unwrap_or_else(|| self.registry.get(&self.registry.default_key).expect("model"))
+            .unwrap_or_else(|| {
+                self.registry
+                    .get(&self.registry.default_key)
+                    .expect("model")
+            })
     }
 
     fn start_followup(&self, tab_state: &mut TabState, tab_id: usize, model: &ModelProfile) {
-        start_followup_request(
+        let log_session_id = tab_state.app.log_session_id.clone();
+        start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
             tab_state,
-            &model.base_url,
-            &model.api_key,
-            &model.model,
-            self.args.show_reasoning,
-            self.tx,
+            base_url: &model.base_url,
+            api_key: &model.api_key,
+            model: &model.model,
+            _show_reasoning: self.args.show_reasoning,
+            tx: self.tx,
             tab_id,
-            self.args.web_search_enabled(),
-            self.args.code_exec_enabled(),
-            self.args.read_file_enabled(),
-            self.args.read_code_enabled(),
-            self.args.modify_file_enabled(),
-            self.args.log_requests.clone(),
-            tab_state.app.log_session_id.clone(),
-        );
+            enable_web_search: self.args.web_search_enabled(),
+            enable_code_exec: self.args.code_exec_enabled(),
+            enable_read_file: self.args.read_file_enabled(),
+            enable_read_code: self.args.read_code_enabled(),
+            enable_modify_file: self.args.modify_file_enabled(),
+            log_requests: self.args.log_requests.clone(),
+            log_session_id,
+        });
     }
 }
 

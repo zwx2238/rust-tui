@@ -8,7 +8,7 @@ use crossterm::event::{KeyEvent, KeyModifiers};
 
 pub(crate) fn handle_key_event(
     key: KeyEvent,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     msg_width: usize,
     theme: &RenderTheme,
@@ -16,17 +16,17 @@ pub(crate) fn handle_key_event(
     if let Some(result) = handle_ctrl_c(key, tabs, active_tab, msg_width, theme)? {
         return Ok(result);
     }
-    if let Some(tab_state) = tabs.get_mut(active_tab) {
-        if handle_key(key, &mut tab_state.app)? {
-            return Ok(true);
-        }
+    if let Some(tab_state) = tabs.get_mut(active_tab)
+        && handle_key(key, &mut tab_state.app)?
+    {
+        return Ok(true);
     }
     Ok(false)
 }
 
 fn handle_ctrl_c(
     key: KeyEvent,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     msg_width: usize,
     theme: &RenderTheme,
@@ -60,7 +60,11 @@ fn copy_input_selection(app: &mut crate::ui::state::App) -> bool {
     true
 }
 
-fn copy_chat_selection(app: &mut crate::ui::state::App, msg_width: usize, theme: &RenderTheme) -> bool {
+fn copy_chat_selection(
+    app: &mut crate::ui::state::App,
+    msg_width: usize,
+    theme: &RenderTheme,
+) -> bool {
     if app.focus != Focus::Chat {
         return false;
     }

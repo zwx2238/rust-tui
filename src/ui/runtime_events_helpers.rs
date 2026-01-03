@@ -15,13 +15,15 @@ pub(crate) fn selection_view_text(
     let app = &tab_state.app;
     let label_suffixes = build_label_suffixes(app, &timer_text(app));
     let (text, _) = messages_to_viewport_text_cached(
-        &app.messages,
-        msg_width,
-        theme,
-        &label_suffixes,
-        app.pending_assistant,
-        app.scroll,
-        view_height,
+        crate::render::ViewportRenderParams {
+            messages: &app.messages,
+            width: msg_width,
+            theme,
+            label_suffixes: &label_suffixes,
+            streaming_idx: app.pending_assistant,
+            scroll: app.scroll,
+            height: view_height,
+        },
         &mut tab_state.render_cache,
     );
     text
@@ -65,10 +67,7 @@ fn find_edit_button_at(app: &crate::ui::state::App, row: usize, col: usize) -> O
     None
 }
 
-fn hit_test_layout_button(
-    layout: &crate::render::MessageLayout,
-    col: usize,
-) -> Option<usize> {
+fn hit_test_layout_button(layout: &crate::render::MessageLayout, col: usize) -> Option<usize> {
     let (start, end) = layout.button_range?;
     if col >= start && col < end {
         Some(layout.index)

@@ -7,11 +7,11 @@ mod tests {
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::runtime_render::render_view;
     use crate::ui::runtime_view::ViewState;
+    use ratatui::Terminal;
     use ratatui::backend::CrosstermBackend;
     use ratatui::layout::Rect;
     use ratatui::style::Color;
     use ratatui::text::{Line, Text};
-    use ratatui::Terminal;
     use std::io::Stdout;
 
     struct RenderTestState {
@@ -65,9 +65,10 @@ mod tests {
     }
 
     fn full_area(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Rect {
-        let size = terminal
-            .size()
-            .unwrap_or(ratatui::layout::Size { width: 80, height: 24 });
+        let size = terminal.size().unwrap_or(ratatui::layout::Size {
+            width: 80,
+            height: 24,
+        });
         Rect::new(0, 0, size.width, size.height)
     }
 
@@ -76,7 +77,14 @@ mod tests {
         let full_area = full_area(&mut terminal);
         RenderTestState {
             terminal,
-            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             view: ViewState::new(),
             full_area,
             text: Text::from(vec![Line::from("hello")]),
@@ -148,7 +156,10 @@ mod tests {
     #[test]
     fn render_view_summary_smoke() {
         let mut state = build_state();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::Summary);
         let (mut ctx, view) = render_context_and_view(&mut state);
         let _ = render_view(&mut ctx, view).unwrap();
     }
@@ -170,10 +181,16 @@ mod tests {
             diff: "diff --git a/a b/a".to_string(),
             preview: "preview".to_string(),
         });
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::CodeExec);
         let (mut ctx, view) = render_context_and_view(&mut state);
         let _ = render_view(&mut ctx, view).unwrap();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::FilePatch);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::FilePatch);
         let (mut ctx, view) = render_context_and_view(&mut state);
         let _ = render_view(&mut ctx, view).unwrap();
     }

@@ -54,10 +54,7 @@ mod tests {
 
         let mut app = make_app();
         let _ = handle_command_line("/open abc", &mut app).unwrap();
-        assert_eq!(
-            app.pending_command,
-            Some(PendingCommand::OpenConversation)
-        );
+        assert_eq!(app.pending_command, Some(PendingCommand::OpenConversation));
         assert_eq!(app.pending_open_conversation.as_deref(), Some("abc"));
     }
 
@@ -82,11 +79,6 @@ mod tests {
     fn unknown_command_adds_message() {
         let mut app = make_app();
         let _ = handle_command_line("/unknown", &mut app).unwrap();
-        assert!(app
-            .messages
-            .last()
-            .unwrap()
-            .content
-            .contains("未知命令"));
+        assert!(app.messages.last().unwrap().content.contains("未知命令"));
     }
 }

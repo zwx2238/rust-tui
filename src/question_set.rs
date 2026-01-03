@@ -26,8 +26,8 @@ pub fn list_question_sets() -> Result<Vec<String>, String> {
         return Ok(Vec::new());
     }
     let mut out = Vec::new();
-    let entries = fs::read_dir(&dir)
-        .map_err(|e| format!("读取问题集目录失败：{} ({e})", dir.display()))?;
+    let entries =
+        fs::read_dir(&dir).map_err(|e| format!("读取问题集目录失败：{} ({e})", dir.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("读取问题集目录失败：{} ({e})", dir.display()))?;
         let path = entry.path();

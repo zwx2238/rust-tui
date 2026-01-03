@@ -28,7 +28,6 @@ pub(crate) struct Channels {
     pub(crate) tx: mpsc::Sender<UiEvent>,
     pub(crate) rx: mpsc::Receiver<UiEvent>,
     pub(crate) preheat_tx: mpsc::Sender<PreheatTask>,
-    pub(crate) preheat_res_tx: mpsc::Sender<PreheatResult>,
     pub(crate) preheat_res_rx: mpsc::Receiver<PreheatResult>,
 }
 
@@ -58,16 +57,16 @@ pub(crate) fn init_run_state(
     tavily_api_key: &str,
 ) -> Result<RunState, Box<dyn std::error::Error>> {
     if let Some(resume) = args.resume.as_deref() {
-        return load_run_state(
-            resume,
-            registry,
-            prompt_registry,
-            args,
-            cfg,
-            tavily_api_key,
-        );
+        return load_run_state(resume, registry, prompt_registry, args, cfg, tavily_api_key);
     }
-    build_new_state(args, cfg, registry, prompt_registry, question_set, tavily_api_key)
+    build_new_state(
+        args,
+        cfg,
+        registry,
+        prompt_registry,
+        question_set,
+        tavily_api_key,
+    )
 }
 
 fn load_run_state(
@@ -213,7 +212,6 @@ fn init_channels() -> Channels {
         tx,
         rx,
         preheat_tx,
-        preheat_res_tx,
         preheat_res_rx,
     }
 }
@@ -237,10 +235,13 @@ pub(crate) fn maybe_fork_retry(
 }
 
 pub(crate) fn sync_active_category(state: &mut RunState) {
-    if let Some(tab_state) = state.tabs.get(state.active_tab) {
-        if let Some(idx) = state.categories.iter().position(|c| c == &tab_state.category) {
-            state.active_category = idx;
-        }
+    if let Some(tab_state) = state.tabs.get(state.active_tab)
+        && let Some(idx) = state
+            .categories
+            .iter()
+            .position(|c| c == &tab_state.category)
+    {
+        state.active_category = idx;
     }
 }
 
@@ -259,7 +260,10 @@ pub(crate) fn finalize_session(state: &mut RunState) -> Result<(), Box<dyn std::
         &state.categories,
         &open_conversations,
         active_conversation.as_deref(),
-        state.categories.get(state.active_category).map(|s| s.as_str()),
+        state
+            .categories
+            .get(state.active_category)
+            .map(|s| s.as_str()),
         state.session_location.as_ref(),
     ) {
         state.session_location = Some(loc);

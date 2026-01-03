@@ -47,27 +47,41 @@ impl MathPreprocessor {
     }
 
     fn push_line(&mut self, line: &str) {
-        if !self.first_line { self.out.push('\n'); }
+        if !self.first_line {
+            self.out.push('\n');
+        }
         self.first_line = false;
-        if self.handle_math_block_line(line) { return; }
-        if self.handle_fence_line(line) { return; }
-        if self.handle_dollar_start(line) { return; }
-        if self.handle_bracket_start(line) { return; }
+        if self.handle_math_block_line(line) {
+            return;
+        }
+        if self.handle_fence_line(line) {
+            return;
+        }
+        if self.handle_dollar_start(line) {
+            return;
+        }
+        if self.handle_bracket_start(line) {
+            return;
+        }
         self.out.push_str(&render_inline_math(line));
     }
 
     fn finish(&mut self, ended_with_newline: bool) {
-        if let Some(kind) = self.in_math_block {
-            if !self.math_buf.trim().is_empty() {
-                self.out.push('\n');
-                append_math_block(&mut self.out, &self.math_buf, kind);
-            }
+        if let Some(kind) = self.in_math_block
+            && !self.math_buf.trim().is_empty()
+        {
+            self.out.push('\n');
+            append_math_block(&mut self.out, &self.math_buf, kind);
         }
-        if ended_with_newline { self.out.push('\n'); }
+        if ended_with_newline {
+            self.out.push('\n');
+        }
     }
 
     fn handle_math_block_line(&mut self, line: &str) -> bool {
-        let Some(kind) = self.in_math_block else { return false; };
+        let Some(kind) = self.in_math_block else {
+            return false;
+        };
         match kind {
             MathBlockKind::Dollar => self.handle_block_line(line, "$$", kind),
             MathBlockKind::Bracket => self.handle_block_line(line, "\\]", kind),
@@ -106,7 +120,9 @@ impl MathPreprocessor {
     }
 
     fn handle_dollar_start(&mut self, line: &str) -> bool {
-        let Some(pos) = line.find("$$") else { return false; };
+        let Some(pos) = line.find("$$") else {
+            return false;
+        };
         let (before, after) = line.split_at(pos);
         self.write_before_math(before);
         let after = &after[2..];
@@ -122,7 +138,9 @@ impl MathPreprocessor {
     }
 
     fn handle_bracket_start(&mut self, line: &str) -> bool {
-        let Some(pos) = line.find("\\[") else { return false; };
+        let Some(pos) = line.find("\\[") else {
+            return false;
+        };
         let (before, after) = line.split_at(pos);
         self.write_before_math(before);
         let after = &after[2..];
@@ -138,9 +156,13 @@ impl MathPreprocessor {
     }
 
     fn write_before_math(&mut self, before: &str) {
-        if before.is_empty() { return; }
+        if before.is_empty() {
+            return;
+        }
         self.out.push_str(before);
-        if !before.trim().is_empty() { ensure_blank_line(&mut self.out); }
+        if !before.trim().is_empty() {
+            ensure_blank_line(&mut self.out);
+        }
     }
 
     fn write_after_math(&mut self, rest: &str) {

@@ -81,11 +81,20 @@ impl TableBuild {
         theme: &RenderTheme,
     ) -> Vec<Line<'static>> {
         let mut out = Vec::new();
-        if !self.in_table { return out; }
+        if !self.in_table {
+            return out;
+        }
         let cols = table_cols(&self.header, &self.rows);
-        if cols == 0 { self.in_table = false; return out; }
+        if cols == 0 {
+            self.in_table = false;
+            return out;
+        }
         let style = Style::default().fg(theme.fg.unwrap_or(Color::White));
-        if self.streaming { self.render_streaming(&mut out, style); self.in_table = false; return out; }
+        if self.streaming {
+            self.render_streaming(&mut out, style);
+            self.in_table = false;
+            return out;
+        }
         let widths = compute_table_widths(&self.header, &self.rows, cols, width);
         self.render_fixed(&mut out, &widths, style);
         self.in_table = false;
@@ -94,21 +103,36 @@ impl TableBuild {
 
     fn render_streaming(&self, out: &mut Vec<Line<'static>>, style: Style) {
         if let Some(header) = &self.header {
-            out.push(Line::from(Span::styled(render_table_row_unaligned(header), style.add_modifier(Modifier::BOLD))));
-            out.push(Line::from(Span::styled(render_table_rule_unaligned(header), style)));
+            out.push(Line::from(Span::styled(
+                render_table_row_unaligned(header),
+                style.add_modifier(Modifier::BOLD),
+            )));
+            out.push(Line::from(Span::styled(
+                render_table_rule_unaligned(header),
+                style,
+            )));
         }
         for row in &self.rows {
-            out.push(Line::from(Span::styled(render_table_row_unaligned(row), style)));
+            out.push(Line::from(Span::styled(
+                render_table_row_unaligned(row),
+                style,
+            )));
         }
     }
 
     fn render_fixed(&self, out: &mut Vec<Line<'static>>, widths: &[usize], style: Style) {
         if let Some(header) = &self.header {
-            out.push(Line::from(Span::styled(render_table_row(header, widths), style.add_modifier(Modifier::BOLD))));
+            out.push(Line::from(Span::styled(
+                render_table_row(header, widths),
+                style.add_modifier(Modifier::BOLD),
+            )));
             out.push(Line::from(Span::styled(render_table_rule(widths), style)));
         }
         for row in &self.rows {
-            out.push(Line::from(Span::styled(render_table_row(row, widths), style)));
+            out.push(Line::from(Span::styled(
+                render_table_row(row, widths),
+                style,
+            )));
         }
     }
 

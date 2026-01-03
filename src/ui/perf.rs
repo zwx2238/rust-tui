@@ -20,7 +20,7 @@ pub fn seed_perf_messages(app: &mut App) {
 }
 
 fn role_for_index(i: usize) -> &'static str {
-    if i % 2 == 0 {
+    if i.is_multiple_of(2) {
         ROLE_USER
     } else {
         ROLE_ASSISTANT

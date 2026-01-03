@@ -73,11 +73,7 @@ fn attach_tool_calls(
     }
 }
 
-fn record_assistant_stats(
-    app: &mut App,
-    usage: Option<&crate::types::Usage>,
-    elapsed_ms: u64,
-) {
+fn record_assistant_stats(app: &mut App, usage: Option<&crate::types::Usage>, elapsed_ms: u64) {
     let stats = format_stats(usage, elapsed_ms);
     if let Some(idx) = app.pending_assistant.take() {
         app.assistant_stats.insert(idx, stats);
@@ -139,12 +135,11 @@ pub fn build_label_suffixes(app: &App, timer_text: &str) -> Vec<(usize, String)>
     for (idx, stats) in &app.assistant_stats {
         out.push((*idx, stats.clone()));
     }
-    if app.busy {
-        if let Some(idx) = app.pending_assistant {
-            if !timer_text.is_empty() {
-                out.push((idx, timer_text.to_string()));
-            }
-        }
+    if app.busy
+        && let Some(idx) = app.pending_assistant
+        && !timer_text.is_empty()
+    {
+        out.push((idx, timer_text.to_string()));
     }
     out
 }
@@ -251,12 +246,12 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
 }
 
 fn set_pending_assistant_content(app: &mut App, content: &str) {
-    if let Some(idx) = app.pending_assistant {
-        if let Some(msg) = app.messages.get_mut(idx) {
-            msg.content = content.to_string();
-            app.dirty_indices.push(idx);
-            return;
-        }
+    if let Some(idx) = app.pending_assistant
+        && let Some(msg) = app.messages.get_mut(idx)
+    {
+        msg.content = content.to_string();
+        app.dirty_indices.push(idx);
+        return;
     }
     app.messages.push(Message {
         role: ROLE_ASSISTANT.to_string(),

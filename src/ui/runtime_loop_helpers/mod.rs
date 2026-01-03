@@ -9,25 +9,104 @@ use crate::ui::runtime_file_patch::{handle_file_patch_apply, handle_file_patch_c
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::PendingCommand;
 
-mod open_conversation;
 mod category;
+mod open_conversation;
 
-pub(crate) fn handle_pending_command(
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &mut Vec<String>,
-    active_category: &mut usize,
+pub(crate) struct HandlePendingCommandParams<'a> {
+    pub tabs: &'a mut Vec<TabState>,
+    pub active_tab: &'a mut usize,
+    pub categories: &'a mut Vec<String>,
+    pub active_category: &'a mut usize,
+    pub pending: PendingCommand,
+    pub session_location: &'a mut Option<SessionLocation>,
+    pub registry: &'a crate::model_registry::ModelRegistry,
+    pub prompt_registry: &'a crate::llm::prompts::PromptRegistry,
+    pub args: &'a Args,
+    pub tx: &'a std::sync::mpsc::Sender<UiEvent>,
+}
+
+pub(crate) struct HandlePendingCommandIfAnyParams<'a> {
+    pub pending_command: Option<PendingCommand>,
+    pub tabs: &'a mut Vec<TabState>,
+    pub active_tab: &'a mut usize,
+    pub categories: &'a mut Vec<String>,
+    pub active_category: &'a mut usize,
+    pub session_location: &'a mut Option<SessionLocation>,
+    pub registry: &'a crate::model_registry::ModelRegistry,
+    pub prompt_registry: &'a crate::llm::prompts::PromptRegistry,
+    pub args: &'a Args,
+    pub tx: &'a std::sync::mpsc::Sender<UiEvent>,
+}
+
+pub(crate) fn handle_pending_command(params: HandlePendingCommandParams<'_>) {
+    if handle_session_command(
+        params.pending,
+        params.tabs,
+        params.active_tab,
+        params.categories,
+        params.active_category,
+        params.session_location,
+    ) {
+        return;
+    }
+    if handle_code_exec_command(
+        params.pending,
+        params.tabs,
+        *params.active_tab,
+        params.registry,
+        params.args,
+        params.tx,
+    ) {
+        return;
+    }
+    if handle_file_patch_command(
+        params.pending,
+        params.tabs,
+        *params.active_tab,
+        params.registry,
+        params.args,
+        params.tx,
+    ) {
+        return;
+    }
+    handle_tab_command(HandleTabCommandParams {
+        pending: params.pending,
+        tabs: params.tabs,
+        active_tab: params.active_tab,
+        categories: params.categories,
+        active_category: params.active_category,
+        registry: params.registry,
+        prompt_registry: params.prompt_registry,
+        args: params.args,
+    });
+}
+
+pub(crate) fn handle_pending_command_if_any(params: HandlePendingCommandIfAnyParams<'_>) {
+    if let Some(pending) = params.pending_command {
+        handle_pending_command(HandlePendingCommandParams {
+            pending,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
+            session_location: params.session_location,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
+            tx: params.tx,
+        });
+    }
+}
+
+pub(crate) struct HandleTabCommandParams<'a> {
     pending: PendingCommand,
-    session_location: &mut Option<SessionLocation>,
-    registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::llm::prompts::PromptRegistry,
-    args: &Args,
-    tx: &std::sync::mpsc::Sender<UiEvent>,
-) {
-    if handle_session_command(pending, tabs, active_tab, categories, active_category, session_location) { return; }
-    if handle_code_exec_command(pending, tabs, *active_tab, registry, args, tx) { return; }
-    if handle_file_patch_command(pending, tabs, *active_tab, registry, args, tx) { return; }
-    handle_tab_command(pending, tabs, active_tab, categories, active_category, registry, prompt_registry, args);
+    tabs: &'a mut Vec<TabState>,
+    active_tab: &'a mut usize,
+    categories: &'a mut Vec<String>,
+    active_category: &'a mut usize,
+    registry: &'a crate::model_registry::ModelRegistry,
+    prompt_registry: &'a crate::llm::prompts::PromptRegistry,
+    args: &'a Args,
 }
 
 enum CodeExecAction {
@@ -44,14 +123,20 @@ enum FilePatchAction {
 
 fn handle_session_command(
     pending: PendingCommand,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: &mut usize,
-    categories: &mut Vec<String>,
+    categories: &mut [String],
     active_category: &mut usize,
     session_location: &mut Option<SessionLocation>,
 ) -> bool {
     if let PendingCommand::SaveSession = pending {
-        handle_save_session(tabs, active_tab, categories, active_category, session_location);
+        handle_save_session(
+            tabs,
+            active_tab,
+            categories,
+            active_category,
+            session_location,
+        );
         return true;
     }
     false
@@ -59,7 +144,7 @@ fn handle_session_command(
 
 fn handle_code_exec_command(
     pending: PendingCommand,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
@@ -81,7 +166,7 @@ fn handle_code_exec_command(
 
 fn handle_file_patch_command(
     pending: PendingCommand,
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
@@ -99,31 +184,34 @@ fn handle_file_patch_command(
     false
 }
 
-fn handle_tab_command(
-    pending: PendingCommand,
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &mut Vec<String>,
-    active_category: &mut usize,
-    registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::llm::prompts::PromptRegistry,
-    args: &Args,
-) {
-    match pending {
+fn handle_tab_command(params: HandleTabCommandParams<'_>) {
+    match params.pending {
         PendingCommand::NewCategory => category::create_category_and_tab(
-            tabs, active_tab, categories, active_category, registry, prompt_registry, args,
+            params.tabs,
+            params.active_tab,
+            params.categories,
+            params.active_category,
+            params.registry,
+            params.prompt_registry,
+            params.args,
         ),
         PendingCommand::OpenConversation => open_conversation::open_conversation_in_tab(
-            tabs, active_tab, categories, active_category, registry, prompt_registry, args,
+            params.tabs,
+            params.active_tab,
+            params.categories,
+            params.active_category,
+            params.registry,
+            params.prompt_registry,
+            params.args,
         ),
         _ => {}
     }
 }
 
 fn handle_save_session(
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: &usize,
-    categories: &mut Vec<String>,
+    categories: &mut [String],
     active_category: &mut usize,
     session_location: &mut Option<SessionLocation>,
 ) {
@@ -178,7 +266,7 @@ fn push_assistant_message(tab_state: &mut TabState, content: String) {
 }
 
 fn handle_code_exec_action(
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
@@ -189,7 +277,9 @@ fn handle_code_exec_action(
         return;
     };
     match action {
-        CodeExecAction::Approve => handle_code_exec_approve(tab_state, active_tab, registry, args, tx),
+        CodeExecAction::Approve => {
+            handle_code_exec_approve(tab_state, active_tab, registry, args, tx)
+        }
         CodeExecAction::Deny => handle_code_exec_deny(tab_state, active_tab, registry, args, tx),
         CodeExecAction::Exit => handle_code_exec_exit(tab_state, active_tab, registry, args, tx),
         CodeExecAction::Stop => handle_code_exec_stop(tab_state),
@@ -197,7 +287,7 @@ fn handle_code_exec_action(
 }
 
 fn handle_file_patch_action(
-    tabs: &mut Vec<TabState>,
+    tabs: &mut [TabState],
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
@@ -208,7 +298,9 @@ fn handle_file_patch_action(
         return;
     };
     match action {
-        FilePatchAction::Apply => handle_file_patch_apply(tab_state, active_tab, registry, args, tx),
+        FilePatchAction::Apply => {
+            handle_file_patch_apply(tab_state, active_tab, registry, args, tx)
+        }
         FilePatchAction::Cancel => {
             handle_file_patch_cancel(tab_state, active_tab, registry, args, tx)
         }

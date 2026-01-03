@@ -16,7 +16,14 @@ pub fn layout_chunks(
     let sidebar_area = horizontal[0];
     let main = horizontal[1];
     let main_split = split_main(main, input_constraint);
-    (vertical[0], sidebar_area, main_split[0], main_split[1], main_split[2], vertical[2])
+    (
+        vertical[0],
+        sidebar_area,
+        main_split[0],
+        main_split[1],
+        main_split[2],
+        vertical[2],
+    )
 }
 
 fn input_constraint(input_height: u16) -> Constraint {

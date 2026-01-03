@@ -12,32 +12,56 @@ use ratatui::widgets::{
     Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
 };
 
-pub(crate) fn draw_messages(
-    f: &mut ratatui::Frame<'_>,
-    area: Rect,
-    text: &Text<'_>,
-    scroll: u16,
-    theme: &RenderTheme,
-    focused: bool,
-    total_lines: usize,
-    selection: Option<Selection>,
-) {
-    let style = base_style(theme);
-    let inner = inner_area(area, PADDING_X, PADDING_Y);
+pub(crate) struct MessagesDrawParams<'a> {
+    pub area: Rect,
+    pub text: &'a Text<'a>,
+    pub scroll: u16,
+    pub theme: &'a RenderTheme,
+    pub focused: bool,
+    pub total_lines: usize,
+    pub selection: Option<Selection>,
+}
+
+pub(crate) fn draw_messages(f: &mut ratatui::Frame<'_>, params: MessagesDrawParams<'_>) {
+    let style = base_style(params.theme);
+    let inner = inner_area(params.area, PADDING_X, PADDING_Y);
     let content_height = inner.height;
-    let right_title = build_right_title(area, scroll, total_lines, content_height);
-    let block = build_block(area, theme, focused, right_title, style);
-    let display_text = apply_selection(text, scroll, selection);
+    let right_title = build_right_title(
+        params.area,
+        params.scroll,
+        params.total_lines,
+        content_height,
+    );
+    let block = build_block(
+        params.area,
+        params.theme,
+        params.focused,
+        right_title,
+        style,
+    );
+    let display_text = apply_selection(params.text, params.scroll, params.selection);
     let paragraph = Paragraph::new(display_text)
         .block(block)
         .style(style)
         .wrap(Wrap { trim: false })
         .scroll((0, 0));
-    f.render_widget(paragraph, area);
-    render_scrollbar(f, area, theme, scroll, total_lines, content_height);
+    f.render_widget(paragraph, params.area);
+    render_scrollbar(
+        f,
+        params.area,
+        params.theme,
+        params.scroll,
+        params.total_lines,
+        content_height,
+    );
 }
 
-fn build_right_title(area: Rect, scroll: u16, total_lines: usize, content_height: u16) -> Line<'static> {
+fn build_right_title(
+    area: Rect,
+    scroll: u16,
+    total_lines: usize,
+    content_height: u16,
+) -> Line<'static> {
     let lines_above = scroll as usize;
     let lines_below = total_lines.saturating_sub(lines_above + content_height as usize);
     let mut right_text = format!("{} {}", lines_above, lines_below);
@@ -74,15 +98,12 @@ fn build_block(
         .border_style(border_style)
 }
 
-fn apply_selection<'a>(
-    text: &'a Text<'a>,
-    scroll: u16,
-    selection: Option<Selection>,
-) -> Text<'a> {
+fn apply_selection<'a>(text: &'a Text<'a>, scroll: u16, selection: Option<Selection>) -> Text<'a> {
     let mut display_text = text.clone();
     if let Some(selection) = selection {
         let select_style = Style::default().bg(Color::DarkGray);
-        display_text = apply_selection_to_text(&display_text, scroll as usize, selection, select_style);
+        display_text =
+            apply_selection_to_text(&display_text, scroll as usize, selection, select_style);
     }
     display_text
 }
@@ -95,7 +116,9 @@ fn render_scrollbar(
     total_lines: usize,
     content_height: u16,
 ) {
-    if total_lines <= content_height as usize { return; }
+    if total_lines <= content_height as usize {
+        return;
+    }
     let viewport_len = content_height as usize;
     let max_scroll = max_scroll(total_lines, viewport_len);
     let scrollbar_content_len = max_scroll.saturating_add(1).max(1);

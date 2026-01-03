@@ -74,7 +74,7 @@ mod tests {
         }
     }
 
-    fn ctx<'a>(
+    struct CtxParams<'a> {
         tabs: &'a mut Vec<TabState>,
         active_tab: &'a mut usize,
         categories: &'a mut Vec<String>,
@@ -83,17 +83,19 @@ mod tests {
         registry: &'a ModelRegistry,
         prompt_registry: &'a PromptRegistry,
         args: &'a Args,
-    ) -> DispatchContext<'a> {
+    }
+
+    fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
         DispatchContext {
-            tabs,
-            active_tab,
-            categories,
-            active_category,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
             msg_width: 40,
-            theme,
-            registry,
-            prompt_registry,
-            args,
+            theme: params.theme,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
         }
     }
 
@@ -111,17 +113,20 @@ mod tests {
         let prompt_registry = prompt_registry();
         let args = args();
         let mut view = ViewState::new();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
+        let mut ctx = ctx(CtxParams {
+            tabs: &mut tabs,
+            active_tab: &mut active_tab,
+            categories: &mut categories,
+            active_category: &mut active_category,
+            theme: &theme,
+            registry: &registry,
+            prompt_registry: &prompt_registry,
+            args: &args,
+        });
+        let key = KeyEvent::new(
+            KeyCode::Char('w'),
+            KeyModifiers::CONTROL | KeyModifiers::SHIFT,
         );
-        let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
         assert_eq!(ctx.tabs.len(), 1);
         assert_eq!(*ctx.active_tab, 0);
@@ -142,16 +147,16 @@ mod tests {
         let prompt_registry = prompt_registry();
         let args = args();
         let mut view = ViewState::new();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx(CtxParams {
+            tabs: &mut tabs,
+            active_tab: &mut active_tab,
+            categories: &mut categories,
+            active_category: &mut active_category,
+            theme: &theme,
+            registry: &registry,
+            prompt_registry: &prompt_registry,
+            args: &args,
+        });
         let key = KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
         assert_eq!(ctx.tabs.len(), 1);
@@ -172,16 +177,16 @@ mod tests {
         let prompt_registry = prompt_registry();
         let args = args();
         let mut view = ViewState::new();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx(CtxParams {
+            tabs: &mut tabs,
+            active_tab: &mut active_tab,
+            categories: &mut categories,
+            active_category: &mut active_category,
+            theme: &theme,
+            registry: &registry,
+            prompt_registry: &prompt_registry,
+            args: &args,
+        });
         let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
         assert_eq!(ctx.tabs.len(), 1);
@@ -201,19 +206,18 @@ mod tests {
         let prompt_registry = prompt_registry();
         let args = args();
         let mut view = ViewState::new();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx(CtxParams {
+            tabs: &mut tabs,
+            active_tab: &mut active_tab,
+            categories: &mut categories,
+            active_category: &mut active_category,
+            theme: &theme,
+            registry: &registry,
+            prompt_registry: &prompt_registry,
+            args: &args,
+        });
         let key = KeyEvent::new(KeyCode::F(9), KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
         assert_eq!(*ctx.active_tab, 1);
     }
-
 }

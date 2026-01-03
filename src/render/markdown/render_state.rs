@@ -108,20 +108,15 @@ impl<'a> RenderState<'a> {
     }
 
     fn start_list(&mut self, start: Option<u64>) {
-        if let Some(item) = self.item_stack.last_mut() {
-            if !item.buf.trim().is_empty() {
-                let prefix = list_prefix(item.ordered, item.index);
-                let indent = list_indent(item.depth);
-                let lines = render_list_item_lines(
-                    item.buf.trim(),
-                    &prefix,
-                    &indent,
-                    self.width,
-                    self.theme,
-                );
-                self.lines.extend(lines);
-                item.buf.clear();
-            }
+        if let Some(item) = self.item_stack.last_mut()
+            && !item.buf.trim().is_empty()
+        {
+            let prefix = list_prefix(item.ordered, item.index);
+            let indent = list_indent(item.depth);
+            let lines =
+                render_list_item_lines(item.buf.trim(), &prefix, &indent, self.width, self.theme);
+            self.lines.extend(lines);
+            item.buf.clear();
         }
         self.list_stack.push(ListState {
             ordered: start.is_some(),
@@ -146,19 +141,14 @@ impl<'a> RenderState<'a> {
     }
 
     fn end_item(&mut self) {
-        if let Some(item) = self.item_stack.pop() {
-            if !item.buf.trim().is_empty() {
-                let prefix = list_prefix(item.ordered, item.index);
-                let indent = list_indent(item.depth);
-                let lines = render_list_item_lines(
-                    item.buf.trim(),
-                    &prefix,
-                    &indent,
-                    self.width,
-                    self.theme,
-                );
-                self.lines.extend(lines);
-            }
+        if let Some(item) = self.item_stack.pop()
+            && !item.buf.trim().is_empty()
+        {
+            let prefix = list_prefix(item.ordered, item.index);
+            let indent = list_indent(item.depth);
+            let lines =
+                render_list_item_lines(item.buf.trim(), &prefix, &indent, self.width, self.theme);
+            self.lines.extend(lines);
         }
     }
 
@@ -196,11 +186,7 @@ impl<'a> RenderState<'a> {
 
     fn end_code_block(&mut self) {
         self.in_code = false;
-        let lines = render_code_block_lines(
-            &self.code_buf,
-            self.code_lang.trim(),
-            self.theme,
-        );
+        let lines = render_code_block_lines(&self.code_buf, self.code_lang.trim(), self.theme);
         self.lines.extend(lines);
         self.code_buf.clear();
         self.code_lang.clear();

@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use crate::ui::runtime_helpers::TabState;
-    use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_key, handle_view_mouse};
-    use crate::ui::overlay::OverlayKind;
     use crate::ui::jump::JumpRow;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind, MouseButton};
+    use crate::ui::overlay::OverlayKind;
+    use crate::ui::runtime_helpers::TabState;
+    use crate::ui::runtime_view::{
+        ViewAction, ViewState, apply_view_action, handle_view_key, handle_view_mouse,
+    };
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind};
 
     fn setup_view_action_state() -> (Vec<TabState>, usize, Vec<String>, usize, Vec<JumpRow>) {
         let tabs = vec![

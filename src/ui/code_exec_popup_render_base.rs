@@ -1,5 +1,5 @@
 use crate::render::RenderTheme;
-use crate::ui::code_exec_popup_layout::{OUTER_MARGIN, CodeExecPopupLayout};
+use crate::ui::code_exec_popup_layout::{CodeExecPopupLayout, OUTER_MARGIN};
 use crate::ui::code_exec_popup_text::{build_code_text, build_stderr_text, build_stdout_text};
 use crate::ui::draw::style::{base_fg, base_style};
 use crate::ui::state::PendingCodeExec;
@@ -48,7 +48,9 @@ pub(crate) fn render_popup_base(
         .borders(Borders::ALL)
         .title_top(Line::from(vec![Span::styled(
             title,
-            Style::default().fg(base_fg(theme)).add_modifier(ratatui::style::Modifier::BOLD),
+            Style::default()
+                .fg(base_fg(theme))
+                .add_modifier(ratatui::style::Modifier::BOLD),
         )]))
         .style(base_style(theme))
         .border_style(Style::default().fg(base_fg(theme)));
@@ -71,13 +73,15 @@ pub(crate) fn render_code_panel(
     );
     render_text_panel(
         f,
-        theme,
-        text,
-        layout.code_text_area,
-        layout.code_scrollbar_area,
-        total_lines,
-        scroll,
-        None,
+        TextPanelParams {
+            theme,
+            text,
+            area: layout.code_text_area,
+            scrollbar_area: layout.code_scrollbar_area,
+            total_lines,
+            scroll,
+            title: None,
+        },
     );
 }
 
@@ -97,13 +101,15 @@ pub(crate) fn render_stdout_panel(
     );
     render_text_panel(
         f,
-        theme,
-        text,
-        layout.stdout_text_area,
-        layout.stdout_scrollbar_area,
-        total_lines,
-        scroll,
-        Some("STDOUT"),
+        TextPanelParams {
+            theme,
+            text,
+            area: layout.stdout_text_area,
+            scrollbar_area: layout.stdout_scrollbar_area,
+            total_lines,
+            scroll,
+            title: Some("STDOUT"),
+        },
     );
 }
 
@@ -123,33 +129,45 @@ pub(crate) fn render_stderr_panel(
     );
     render_text_panel(
         f,
-        theme,
-        text,
-        layout.stderr_text_area,
-        layout.stderr_scrollbar_area,
-        total_lines,
-        scroll,
-        Some("STDERR"),
+        TextPanelParams {
+            theme,
+            text,
+            area: layout.stderr_text_area,
+            scrollbar_area: layout.stderr_scrollbar_area,
+            total_lines,
+            scroll,
+            title: Some("STDERR"),
+        },
     );
 }
 
-fn render_text_panel(
-    f: &mut ratatui::Frame<'_>,
-    theme: &RenderTheme,
-    text: Text<'_>,
+struct TextPanelParams<'a> {
+    theme: &'a RenderTheme,
+    text: Text<'a>,
     area: Rect,
     scrollbar_area: Rect,
     total_lines: usize,
     scroll: usize,
-    title: Option<&str>,
-) {
-    let block = match title {
+    title: Option<&'a str>,
+}
+
+fn render_text_panel(f: &mut ratatui::Frame<'_>, params: TextPanelParams<'_>) {
+    let block = match params.title {
         Some(title) => Block::default().borders(Borders::NONE).title_top(title),
         None => Block::default().borders(Borders::NONE),
     };
-    let para = Paragraph::new(text).style(base_style(theme)).block(block);
-    f.render_widget(para, area);
-    render_scrollbar_if_needed(f, theme, area, scrollbar_area, total_lines, scroll);
+    let para = Paragraph::new(params.text)
+        .style(base_style(params.theme))
+        .block(block);
+    f.render_widget(para, params.area);
+    render_scrollbar_if_needed(
+        f,
+        params.theme,
+        params.area,
+        params.scrollbar_area,
+        params.total_lines,
+        params.scroll,
+    );
 }
 
 fn render_scrollbar_if_needed(

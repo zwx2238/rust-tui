@@ -4,12 +4,11 @@ pub(crate) fn sanitize_tex(expr: &str) -> String {
     }
     let mut out = Vec::new();
     let mut lines: Vec<&str> = expr.lines().collect();
-    if let Some(start) = lines.iter().position(|l| l.contains("\\begin{cases}")) {
-        if let Some(end) = lines.iter().rposition(|l| l.contains("\\end{cases}")) {
-            if end >= start {
-                lines = lines[start..=end].to_vec();
-            }
-        }
+    if let Some(start) = lines.iter().position(|l| l.contains("\\begin{cases}"))
+        && let Some(end) = lines.iter().rposition(|l| l.contains("\\end{cases}"))
+        && end >= start
+    {
+        lines = lines[start..=end].to_vec();
     }
     for raw in lines {
         let mut line = raw.replace('\r', "");

@@ -27,10 +27,7 @@ fn is_input_ready(app: &App) -> bool {
     app.focus == Focus::Input && !app.busy
 }
 
-fn handle_input_key(
-    key: KeyEvent,
-    app: &mut App,
-) -> Result<bool, Box<dyn std::error::Error>> {
+fn handle_input_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
     if handle_ctrl_shortcuts(key, app) {
         return Ok(false);
     }
@@ -104,10 +101,7 @@ fn handle_command_suggestion_nav(key: KeyEvent, app: &mut App) -> bool {
     true
 }
 
-fn handle_input_editing(
-    key: KeyEvent,
-    app: &mut App,
-) -> Result<bool, Box<dyn std::error::Error>> {
+fn handle_input_editing(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
     match key.code {
         KeyCode::Tab => handle_tab_key(key, app),
         KeyCode::Enter => handle_enter_key(app),

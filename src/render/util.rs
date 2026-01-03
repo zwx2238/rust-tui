@@ -6,7 +6,7 @@ pub(crate) fn ranges_overlap(start: usize, end: usize, a: usize, b: usize) -> bo
     a < end && b > start
 }
 
-pub(crate) fn suffix_for_index<'a>(suffixes: &'a [(usize, String)], idx: usize) -> Option<&'a str> {
+pub(crate) fn suffix_for_index(suffixes: &[(usize, String)], idx: usize) -> Option<&str> {
     suffixes
         .iter()
         .find(|(i, _)| *i == idx)
@@ -18,11 +18,11 @@ pub(crate) fn label_for_role(role: &str, suffix: Option<&str>) -> Option<String>
         ROLE_USER => Some("👤".to_string()),
         ROLE_ASSISTANT => {
             let mut label = "🤖".to_string();
-            if let Some(s) = suffix {
-                if !s.is_empty() {
-                    label.push(' ');
-                    label.push_str(s);
-                }
+            if let Some(s) = suffix
+                && !s.is_empty()
+            {
+                label.push(' ');
+                label.push_str(s);
             }
             Some(label)
         }

@@ -76,7 +76,14 @@ mod tests {
 
     fn base_state() -> KeyDispatchState {
         KeyDispatchState {
-            tabs: vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id1".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["默认".to_string()],
             active_category: 0,
@@ -114,7 +121,7 @@ mod tests {
             args,
             view,
         } = state;
-        let ctx = ctx(
+        let ctx = ctx(CtxParams {
             tabs,
             active_tab,
             categories,
@@ -123,11 +130,11 @@ mod tests {
             registry,
             prompt_registry,
             args,
-        );
+        });
         (ctx, view)
     }
 
-    fn ctx<'a>(
+    struct CtxParams<'a> {
         tabs: &'a mut Vec<TabState>,
         active_tab: &'a mut usize,
         categories: &'a mut Vec<String>,
@@ -136,17 +143,19 @@ mod tests {
         registry: &'a ModelRegistry,
         prompt_registry: &'a PromptRegistry,
         args: &'a Args,
-    ) -> DispatchContext<'a> {
+    }
+
+    fn ctx<'a>(params: CtxParams<'a>) -> DispatchContext<'a> {
         DispatchContext {
-            tabs,
-            active_tab,
-            categories,
-            active_category,
+            tabs: params.tabs,
+            active_tab: params.active_tab,
+            categories: params.categories,
+            active_category: params.active_category,
             msg_width: 40,
-            theme,
-            registry,
-            prompt_registry,
-            args,
+            theme: params.theme,
+            registry: params.registry,
+            prompt_registry: params.prompt_registry,
+            args: params.args,
         }
     }
 
@@ -181,7 +190,10 @@ mod tests {
     #[test]
     fn code_exec_overlay_closes_when_no_pending() {
         let mut state = base_state();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::CodeExec);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
@@ -191,7 +203,10 @@ mod tests {
     #[test]
     fn file_patch_overlay_closes_when_no_pending() {
         let mut state = base_state();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::FilePatch);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::FilePatch);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
@@ -201,7 +216,10 @@ mod tests {
     #[test]
     fn f4_and_f5_sync_overlays() {
         let mut state = base_state();
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::Model);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::Model);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::F(4), KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
@@ -226,11 +244,21 @@ mod tests {
         state.tabs[0].app.code_exec_reason_target =
             Some(crate::ui::state::CodeExecReasonTarget::Deny);
         state.tabs[0].app.code_exec_reason_input.insert_str("why");
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::CodeExec);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
-        assert!(ctx.tabs[0].app.code_exec_reason_input.lines().join("").is_empty());
+        assert!(
+            ctx.tabs[0]
+                .app
+                .code_exec_reason_input
+                .lines()
+                .join("")
+                .is_empty()
+        );
         assert!(ctx.tabs[0].app.code_exec_reason_target.is_some());
     }
 
@@ -247,7 +275,10 @@ mod tests {
         });
         state.tabs[0].app.code_exec_reason_target =
             Some(crate::ui::state::CodeExecReasonTarget::Deny);
-        state.view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
+        state
+            .view
+            .overlay
+            .open(crate::ui::overlay::OverlayKind::CodeExec);
         let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();

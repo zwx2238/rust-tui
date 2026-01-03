@@ -74,7 +74,12 @@ mod tests {
         let call = patch_call(r#"{"diff":"diff --git a/a b/a\n","path":"a"}"#);
         handle_file_patch_request(&mut tab, &call).unwrap();
         handle_file_patch_cancel(&mut tab, 0, &registry, &args, &tx);
-        assert!(tab.app.messages.iter().any(|m| m.content.contains("用户取消")));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("用户取消"))
+        );
     }
 
     #[test]
@@ -98,10 +103,11 @@ mod tests {
             preview: "preview".to_string(),
         });
         crate::ui::runtime_file_patch::handle_file_patch_apply(&mut tab, 0, &registry, &args, &tx);
-        assert!(tab
-            .app
-            .messages
-            .iter()
-            .any(|m| m.role == crate::types::ROLE_TOOL));
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.role == crate::types::ROLE_TOOL)
+        );
     }
 }

@@ -2,9 +2,9 @@
 mod tests {
     use crate::render::RenderTheme;
     use crate::ui::shortcut_help::{draw_shortcut_help, help_popup_area, help_rows_len};
+    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::Rect;
-    use ratatui::Terminal;
     use ratatui::style::Color;
 
     fn theme() -> RenderTheme {

@@ -130,10 +130,10 @@ fn handle_file_patch_fallback(
         }
         view.overlay.close();
     }
-    if is_mouse_moved(m.kind) {
-        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-            tab_state.app.file_patch_hover = None;
-        }
+    if is_mouse_moved(m.kind)
+        && let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab)
+    {
+        tab_state.app.file_patch_hover = None;
     }
     true
 }
