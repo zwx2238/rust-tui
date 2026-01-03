@@ -114,8 +114,37 @@ pub fn build_history_and_prompt(
 
 #[cfg(test)]
 mod tests {
-    use super::augment_system;
+    use super::{augment_system, build_history_and_prompt, extract_system};
     use crate::test_support::{env_lock, restore_env, set_env};
+    use crate::types::Message as UiMessage;
+    use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let dir = std::env::temp_dir().join(format!("deepchat_{name}_{ts}"));
+        fs::create_dir_all(&dir).expect("create temp dir");
+        dir
+    }
+
+    fn rig_templates() -> crate::llm::templates::RigTemplates {
+        let dir = temp_dir("rig_prompt");
+        let rig = dir.join("rig");
+        fs::create_dir_all(&rig).unwrap();
+        fs::write(
+            rig.join("tools.json"),
+            r#"[{"name":"tool","description":"t","parameters":{"type":"object"}}]"#,
+        )
+        .unwrap();
+        fs::write(rig.join("tool_preamble.jinja"), "PRE").unwrap();
+        fs::write(rig.join("tool_result.jinja"), "TOOL={{ output }}").unwrap();
+        fs::write(rig.join("tool_followup.jinja"), "FOLLOWUP").unwrap();
+        crate::llm::templates::RigTemplates::load(dir.to_string_lossy().as_ref()).unwrap()
+    }
 
     #[test]
     fn augment_system_adds_read_only_note() {
@@ -124,5 +153,80 @@ mod tests {
         let out = augment_system("base");
         assert!(out.contains("只读模式"));
         restore_env("DEEPCHAT_READ_ONLY", prev);
+    }
+
+    #[test]
+    fn extract_system_returns_first_system() {
+        let msgs = vec![
+            UiMessage {
+                role: ROLE_USER.to_string(),
+                content: "u".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            UiMessage {
+                role: ROLE_SYSTEM.to_string(),
+                content: "sys".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+        ];
+        assert_eq!(extract_system(&msgs), "sys");
+    }
+
+    #[test]
+    fn build_history_uses_last_user_as_prompt() {
+        let templates = rig_templates();
+        let msgs = vec![
+            UiMessage {
+                role: ROLE_SYSTEM.to_string(),
+                content: "sys".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            UiMessage {
+                role: ROLE_USER.to_string(),
+                content: "first".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            UiMessage {
+                role: ROLE_ASSISTANT.to_string(),
+                content: "ok".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            UiMessage {
+                role: ROLE_USER.to_string(),
+                content: "last".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+        ];
+        let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
+        assert_eq!(prompt, "last");
+        assert!(history.iter().any(|m| m.content == "first"));
+    }
+
+    #[test]
+    fn build_history_wraps_tools_after_last_user() {
+        let templates = rig_templates();
+        let msgs = vec![
+            UiMessage {
+                role: ROLE_USER.to_string(),
+                content: "ask".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            UiMessage {
+                role: ROLE_TOOL.to_string(),
+                content: "tool output".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+        ];
+        let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
+        assert_eq!(prompt, "FOLLOWUP");
+        assert!(history.iter().any(|m| m.content.contains("TOOL=tool output")));
     }
 }

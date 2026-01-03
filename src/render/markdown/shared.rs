@@ -46,3 +46,58 @@ pub(crate) fn markdown_parser<'a>(text: &'a str) -> MdParser<'a> {
     options.insert(Options::ENABLE_TABLES);
     MdParser::new_ext(text, options)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::theme::RenderTheme;
+    use ratatui::style::Color;
+
+    fn theme() -> RenderTheme {
+        RenderTheme {
+            bg: Color::Black,
+            fg: Some(Color::White),
+            code_bg: Color::Black,
+            code_theme: "base16-ocean.dark",
+            heading_fg: Some(Color::Cyan),
+        }
+    }
+
+    #[test]
+    fn list_prefix_and_indent() {
+        assert_eq!(list_prefix(true, 2), "2. ");
+        assert_eq!(list_prefix(false, 1), "• ");
+        assert_eq!(list_indent(1), "");
+        assert_eq!(list_indent(3), "    ");
+    }
+
+    #[test]
+    fn append_text_targets_table_cell() {
+        let mut buf = String::new();
+        let mut items = Vec::new();
+        let mut table = TableBuild::default();
+        table.start(false);
+        table.start_row();
+        table.start_cell();
+        append_text(&mut buf, &mut items, &mut table, "cell");
+        table.end_cell();
+        table.end_row();
+        let out = table.finish_render(20, &theme());
+        assert!(out[0].to_string().contains("cell"));
+    }
+
+    #[test]
+    fn append_text_targets_item_buffer() {
+        let mut buf = String::new();
+        let mut items = vec![ItemContext {
+            buf: String::new(),
+            depth: 1,
+            ordered: false,
+            index: 1,
+        }];
+        let mut table = TableBuild::default();
+        append_text(&mut buf, &mut items, &mut table, "text");
+        assert_eq!(items[0].buf, "text");
+        assert!(buf.is_empty());
+    }
+}

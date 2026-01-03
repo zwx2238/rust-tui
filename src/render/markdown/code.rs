@@ -74,3 +74,36 @@ fn color_luma(color: Color) -> u8 {
         _ => 128,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::theme::RenderTheme;
+    use ratatui::style::Color;
+
+    fn theme() -> RenderTheme {
+        RenderTheme {
+            bg: Color::Black,
+            fg: Some(Color::White),
+            code_bg: Color::Black,
+            code_theme: "base16-ocean.dark",
+            heading_fg: Some(Color::Cyan),
+        }
+    }
+
+    #[test]
+    fn renders_line_numbers_for_non_math() {
+        let lines = render_code_block_lines("let x = 1;\nlet y = 2;", "rust", &theme());
+        assert_eq!(lines.len(), 2);
+        let first = lines[0].to_string();
+        assert!(first.contains("|"));
+    }
+
+    #[test]
+    fn omits_line_numbers_for_math() {
+        let lines = render_code_block_lines("x^2 + 1", "math", &theme());
+        assert_eq!(lines.len(), 1);
+        let line = lines[0].to_string();
+        assert!(!line.contains("|"));
+    }
+}

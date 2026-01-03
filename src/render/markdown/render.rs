@@ -184,3 +184,60 @@ pub fn render_markdown_lines(
     }
     lines
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::style::Color;
+
+    fn theme() -> RenderTheme {
+        RenderTheme {
+            bg: Color::Black,
+            fg: Some(Color::White),
+            code_bg: Color::Black,
+            code_theme: "base16-ocean.dark",
+            heading_fg: Some(Color::Cyan),
+        }
+    }
+
+    #[test]
+    fn renders_complex_markdown() {
+        let input = r#"
+# Title
+
+Paragraph with `code` and [link](http://example.com).
+
+1. First item
+2. Second item
+
+| A | B |
+|---|---|
+| 1 | 2 |
+
+```rust
+let x = 1;
+```
+"#;
+        let lines = render_markdown_lines(input, 20, &theme(), false);
+        assert!(!lines.is_empty());
+        let joined = lines
+            .iter()
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(joined.contains("Title"));
+        assert!(joined.contains("1."));
+        assert!(joined.contains("|"));
+    }
+
+    #[test]
+    fn renders_streaming_table() {
+        let input = r#"
+| A | B |
+|---|---|
+| 1 | 2 |
+"#;
+        let lines = render_markdown_lines(input, 50, &theme(), true);
+        assert!(!lines.is_empty());
+    }
+}

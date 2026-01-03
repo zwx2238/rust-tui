@@ -145,3 +145,26 @@ fn is_escaped(bytes: &[u8], idx: usize) -> bool {
     }
     backslashes % 2 == 1
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_inline_code_untouched() {
+        let out = render_inline_math("`$x+1$` inside code");
+        assert!(out.contains("`$x+1$`"));
+    }
+
+    #[test]
+    fn skips_escaped_dollar() {
+        let out = render_inline_math("\\$x+1$");
+        assert!(out.contains("\\$x+1$"));
+    }
+
+    #[test]
+    fn renders_inline_math_or_reports_error() {
+        let out = render_inline_math("value is $x+1$");
+        assert!(!out.trim().is_empty());
+    }
+}

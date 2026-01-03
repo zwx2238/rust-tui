@@ -14,6 +14,7 @@ mod ui;
 use args::Args;
 use clap::Parser;
 use config::{default_config_path, load_config};
+use question_set::{list_question_sets, question_sets_dir};
 use render::theme_from_config;
 use std::env;
 use std::path::PathBuf;
@@ -31,6 +32,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         unsafe {
             env::set_var("DEEPCHAT_READ_ONLY", "1");
         }
+    }
+
+    if args.question_set.as_deref() == Some("list") {
+        let sets = list_question_sets()?;
+        let dir = question_sets_dir()?;
+        if sets.is_empty() {
+            println!("未找到问题集目录或目录为空：{}", dir.display());
+        } else {
+            println!("可用问题集（{}）：", sets.len());
+            for name in sets {
+                println!("{name}");
+            }
+            println!("目录：{}", dir.display());
+        }
+        return Ok(());
     }
 
     let cfg_path = match args.config.as_deref() {

@@ -42,3 +42,37 @@ pub(crate) fn theme_cache_key(theme: &RenderTheme) -> u64 {
     theme.heading_fg.hash(&mut hasher);
     hasher.finish()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn theme_from_config_rejects_unknown() {
+        let cfg = Config {
+            theme: "unknown".to_string(),
+            models: vec![],
+            default_model: "m".to_string(),
+            prompts_dir: "p".to_string(),
+            tavily_api_key: "k".to_string(),
+        };
+        assert!(theme_from_config(&cfg).is_err());
+    }
+
+    #[test]
+    fn theme_cache_key_changes() {
+        let cfg = Config {
+            theme: "light".to_string(),
+            models: vec![],
+            default_model: "m".to_string(),
+            prompts_dir: "p".to_string(),
+            tavily_api_key: "k".to_string(),
+        };
+        let theme = theme_from_config(&cfg).unwrap();
+        let key1 = theme_cache_key(&theme);
+        let mut theme2 = theme.clone();
+        theme2.code_theme = "base16-ocean.dark";
+        let key2 = theme_cache_key(&theme2);
+        assert_ne!(key1, key2);
+    }
+}

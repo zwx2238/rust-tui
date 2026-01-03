@@ -20,7 +20,32 @@ pub fn load_question_set(spec: &str) -> Result<Vec<String>, String> {
     Ok(questions)
 }
 
-fn question_sets_dir() -> Result<PathBuf, String> {
+pub fn list_question_sets() -> Result<Vec<String>, String> {
+    let dir = question_sets_dir()?;
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    let entries = fs::read_dir(&dir)
+        .map_err(|e| format!("读取问题集目录失败：{} ({e})", dir.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("读取问题集目录失败：{} ({e})", dir.display()))?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("txt") {
+            continue;
+        }
+        if !path.is_file() {
+            continue;
+        }
+        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+            out.push(stem.to_string());
+        }
+    }
+    out.sort();
+    Ok(out)
+}
+
+pub fn question_sets_dir() -> Result<PathBuf, String> {
     let home = env::var("HOME").map_err(|_| "无法确定 HOME".to_string())?;
     Ok(PathBuf::from(home)
         .join(".config")
@@ -40,7 +65,7 @@ fn resolve_question_set_path(spec: &str) -> Result<(PathBuf, bool), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::load_question_set;
+    use super::{list_question_sets, load_question_set, question_sets_dir};
     use crate::test_support::{env_lock, restore_env, set_env};
     use std::fs;
 
@@ -92,6 +117,24 @@ mod tests {
         fs::write(&path, "# only comment\n").unwrap();
         let err = load_question_set("empty").unwrap_err();
         assert!(err.contains("问题集为空"));
+        restore_home(prev);
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn list_question_sets_sorted() {
+        let _guard = env_lock().lock().unwrap();
+        let temp = std::env::temp_dir().join("deepchat-qs-list");
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+        let prev = set_home(&temp);
+        let dir = question_sets_dir().unwrap();
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("b.txt"), "Q1\n").unwrap();
+        fs::write(dir.join("a.txt"), "Q1\n").unwrap();
+        fs::write(dir.join("c.md"), "Q1\n").unwrap();
+        let list = list_question_sets().unwrap();
+        assert_eq!(list, vec!["a".to_string(), "b".to_string()]);
         restore_home(prev);
         let _ = fs::remove_dir_all(&temp);
     }

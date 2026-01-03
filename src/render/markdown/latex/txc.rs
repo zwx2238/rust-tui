@@ -48,3 +48,21 @@ fn txc_available() -> bool {
     static AVAILABLE: OnceLock<bool> = OnceLock::new();
     *AVAILABLE.get_or_init(|| Command::new("txc").arg("--help").output().is_ok())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_empty_expression() {
+        let err = render_texicode("").unwrap_err();
+        assert!(err.contains("表达式为空或过长"));
+    }
+
+    #[test]
+    fn rejects_too_long_expression() {
+        let long_expr = "x".repeat(2001);
+        let err = render_texicode(&long_expr).unwrap_err();
+        assert!(err.contains("表达式为空或过长"));
+    }
+}

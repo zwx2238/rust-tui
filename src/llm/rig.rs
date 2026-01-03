@@ -120,3 +120,35 @@ fn extract_usage(response: &openai::CompletionResponse) -> Option<Usage> {
         }
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::llm::templates::ToolSchema;
+
+    #[test]
+    fn normalize_base_url_appends_v1() {
+        assert_eq!(normalize_base_url("https://api.example.com"), "https://api.example.com/v1");
+        assert_eq!(normalize_base_url("https://api.example.com/"), "https://api.example.com/v1");
+        assert_eq!(normalize_base_url("https://api.example.com/v1"), "https://api.example.com/v1");
+    }
+
+    #[test]
+    fn filter_tools_by_enabled_names() {
+        let tools = vec![
+            ToolSchema {
+                name: "a".to_string(),
+                description: "A".to_string(),
+                parameters: serde_json::json!({}),
+            },
+            ToolSchema {
+                name: "b".to_string(),
+                description: "B".to_string(),
+                parameters: serde_json::json!({}),
+            },
+        ];
+        let filtered = filter_tools(tools, &["b"]);
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].name, "b");
+    }
+}

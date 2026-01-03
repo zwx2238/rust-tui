@@ -62,3 +62,39 @@ pub(crate) fn write_math_trace(raw: &str, processed: Option<&str>, skipped: bool
     }
     let _ = fs::write(path, out);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::{env_lock, restore_env, set_env};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> String {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let dir = std::env::temp_dir().join(format!("deepchat_{name}_{ts}"));
+        fs::create_dir_all(&dir).unwrap();
+        dir.to_string_lossy().to_string()
+    }
+
+    #[test]
+    fn writes_tex_debug_and_trace_files() {
+        let guard = env_lock().lock().unwrap();
+        let dir = temp_dir("tex_trace");
+        let prev_debug = set_env("DEEPCHAT_TEX_DEBUG_DIR", &dir);
+        let prev_trace = set_env("DEEPCHAT_TEX_TRACE_DIR", &dir);
+
+        write_tex_debug("raw", "sanitized");
+        write_math_trace("raw", Some("processed"), false);
+
+        restore_env("DEEPCHAT_TEX_DEBUG_DIR", prev_debug);
+        restore_env("DEEPCHAT_TEX_TRACE_DIR", prev_trace);
+        drop(guard);
+
+        let entries = fs::read_dir(&dir).unwrap().count();
+        assert!(entries >= 2);
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
