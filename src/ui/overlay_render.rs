@@ -1,10 +1,6 @@
 use crate::ui::draw::redraw_with_overlay;
 use crate::ui::jump::{JumpRow, build_jump_rows, max_preview_width, redraw_jump};
 use crate::ui::model_popup::draw_model_popup;
-pub(crate) use crate::ui::overlay_render_base::render_chat_view;
-pub(crate) use crate::ui::overlay_render_tool::{
-    render_code_exec_overlay, render_file_patch_overlay,
-};
 use crate::ui::prompt_popup::draw_prompt_popup;
 use crate::ui::render_context::RenderContext;
 use crate::ui::runtime_view::ViewState;

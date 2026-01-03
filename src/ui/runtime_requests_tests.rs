@@ -154,7 +154,8 @@ mod tests {
             log_session_id,
         });
         assert!(cancel.load(std::sync::atomic::Ordering::Relaxed));
-        assert!(tab.app.active_request.is_none());
+        let new_handle = tab.app.active_request.as_ref().unwrap();
+        assert!(!new_handle.cancel.load(std::sync::atomic::Ordering::Relaxed));
     }
 
     #[test]
