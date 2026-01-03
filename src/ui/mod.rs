@@ -113,7 +113,6 @@ mod runtime_layout;
 mod runtime_layout_tests;
 mod runtime_loop;
 mod runtime_loop_iteration;
-mod runtime_loop_iteration_render;
 mod runtime_loop_helpers;
 #[cfg(test)]
 mod runtime_loop_helpers_more_tests;

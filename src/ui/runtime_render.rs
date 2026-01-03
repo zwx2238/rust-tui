@@ -9,5 +9,5 @@ pub(crate) fn render_view(
     view: &mut ViewState,
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
     let mut system = WidgetSystem::new();
-    system.render(ctx, view)
+    system.render_view(ctx, view)
 }
