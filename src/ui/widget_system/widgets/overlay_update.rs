@@ -1,28 +1,24 @@
-use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_helpers::{
     HandlePendingCommandIfAnyParams, handle_pending_command_if_any,
 };
 use crate::ui::runtime_loop_steps::{
-    DispatchContextParams, FrameLayout, LayoutContextParams, ProcessStreamUpdatesParams,
-    active_frame_data, frame_layout, handle_pending_line, header_note, poll_and_dispatch_event,
+    FrameLayout, ProcessStreamUpdatesParams, active_frame_data, handle_pending_line, header_note,
     prepare_categories, process_stream_updates, tab_labels_and_pos,
 };
 use crate::ui::runtime_tick::{ActiveFrameData, drain_preheat_results};
 use std::error::Error;
 
-use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput};
+use super::super::context::{UpdateCtx, UpdateOutput};
 
-pub(crate) fn layout_base(ctx: &mut LayoutCtx<'_>) -> Result<FrameLayout, Box<dyn Error>> {
-    frame_layout(ctx.terminal, ctx.view, ctx.tabs, ctx.active_tab, ctx.categories)
-}
-
-pub(crate) fn update_base(
+pub(crate) fn update_overlay(
     ctx: &mut UpdateCtx<'_>,
     layout: &FrameLayout,
+    overlay_hook: fn(&mut UpdateCtx<'_>),
 ) -> Result<UpdateOutput, Box<dyn Error>> {
     drain_preheat_results(ctx.preheat_res_rx, ctx.tabs);
     let tabs = prepare_tabs(ctx);
     run_stream_updates(ctx, layout)?;
+    overlay_hook(ctx);
     let active_data = build_active_data(ctx, layout);
     let header_note = header_note(ctx.tabs, ctx.categories);
     handle_pending_actions(ctx, &active_data);
@@ -32,17 +28,6 @@ pub(crate) fn update_base(
         active_tab_pos: tabs.active_pos,
         header_note,
     })
-}
-
-pub(crate) fn event_base(
-    ctx: &mut EventCtx<'_>,
-    layout: &FrameLayout,
-    update: &UpdateOutput,
-    jump_rows: &[JumpRow],
-) -> Result<bool, Box<dyn Error>> {
-    let mut dispatch = prepare_event_dispatch(ctx, layout);
-    let layout_params = build_layout_params(layout, update);
-    poll_and_dispatch_event(&mut dispatch.params, layout_params, dispatch.view, jump_rows)
 }
 
 struct TabMeta {
@@ -109,47 +94,4 @@ fn handle_pending_actions(ctx: &mut UpdateCtx<'_>, active_data: &ActiveFrameData
         args: ctx.args,
         tx: ctx.tx,
     });
-}
-
-fn build_layout_params(layout: &FrameLayout, update: &UpdateOutput) -> LayoutContextParams {
-    LayoutContextParams {
-        size: layout.size,
-        tabs_area: layout.layout.tabs_area,
-        msg_area: layout.layout.msg_area,
-        input_area: layout.layout.input_area,
-        category_area: layout.layout.category_area,
-        view_height: layout.layout.view_height,
-        total_lines: update.active_data.total_lines,
-    }
-}
-
-struct EventDispatch<'a> {
-    params: DispatchContextParams<'a>,
-    view: &'a mut crate::ui::runtime_view::ViewState,
-}
-
-fn prepare_event_dispatch<'a>(ctx: &'a mut EventCtx<'_>, layout: &FrameLayout) -> EventDispatch<'a> {
-    let EventCtx {
-        tabs,
-        active_tab,
-        categories,
-        active_category,
-        theme,
-        registry,
-        prompt_registry,
-        args,
-        view,
-    } = ctx;
-    let params = DispatchContextParams {
-        tabs,
-        active_tab,
-        categories,
-        active_category,
-        msg_width: layout.layout.msg_width,
-        theme,
-        registry,
-        prompt_registry,
-        args,
-    };
-    EventDispatch { params, view }
 }

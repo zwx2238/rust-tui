@@ -84,6 +84,7 @@ impl Widget for RootWidget {
 
     fn render(&mut self, frame: &mut WidgetFrame<'_, '_>) -> Result<(), Box<dyn Error>> {
         let active = frame.view.overlay.active;
+        frame.jump_rows.clear();
         self.active_widget(active).render(frame)
     }
 }

@@ -1,4 +1,5 @@
 mod context;
+mod events;
 mod lifecycle;
 mod render;
 mod widgets;
@@ -70,3 +71,4 @@ impl WidgetSystem {
         render_root_view(ctx, view, &mut self.root)
     }
 }
+mod bindings;

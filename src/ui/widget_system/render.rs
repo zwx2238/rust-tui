@@ -1,9 +1,7 @@
 use crate::ui::jump::JumpRow;
-use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
 use crate::ui::render_context::RenderContext;
 use crate::ui::runtime_loop_steps::{FrameLayout, note_elapsed};
 use crate::ui::runtime_view::ViewState;
-use crate::ui::shortcut_help::help_rows_len;
 use std::error::Error;
 
 use super::context::{RenderCtx, UpdateOutput, WidgetFrame};
@@ -29,36 +27,16 @@ pub(crate) fn render_root_view(
     view: &mut ViewState,
     root: &mut RootWidget,
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
-    let jump_rows = crate::ui::overlay_render::build_jump_overlay_rows(view, ctx);
-    clamp_overlay_tables(view, ctx, jump_rows.len());
+    let mut jump_rows = Vec::new();
     {
         let mut frame = WidgetFrame {
             ctx,
             view,
-            jump_rows: &jump_rows,
+            jump_rows: &mut jump_rows,
         };
         root.render(&mut frame)?;
     }
     Ok(jump_rows)
-}
-
-pub(crate) fn clamp_overlay_tables(
-    view: &mut ViewState,
-    ctx: &RenderContext<'_>,
-    jump_len: usize,
-) {
-    let areas = OverlayAreas {
-        full: ctx.full_area,
-        msg: ctx.msg_area,
-    };
-    let counts = OverlayRowCounts {
-        tabs: ctx.tabs.len(),
-        jump: jump_len,
-        models: ctx.models.len(),
-        prompts: ctx.prompts.len(),
-        help: help_rows_len(),
-    };
-    let _ = with_active_table_handle(view, areas, counts, |mut handle| handle.clamp());
 }
 
 fn split_render_inputs<'a>(

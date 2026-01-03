@@ -11,7 +11,7 @@ use std::time::Instant;
 pub(crate) struct WidgetFrame<'a, 'b> {
     pub(crate) ctx: &'a mut crate::ui::render_context::RenderContext<'b>,
     pub(crate) view: &'a mut ViewState,
-    pub(crate) jump_rows: &'a [crate::ui::jump::JumpRow],
+    pub(crate) jump_rows: &'a mut Vec<crate::ui::jump::JumpRow>,
 }
 
 pub(crate) struct LayoutCtx<'a> {

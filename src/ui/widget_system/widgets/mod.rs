@@ -1,6 +1,6 @@
 mod chat;
 mod code_exec;
-mod common;
+mod overlay_update;
 mod file_patch;
 mod help;
 mod jump;

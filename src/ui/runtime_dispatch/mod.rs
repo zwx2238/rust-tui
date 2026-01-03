@@ -12,9 +12,9 @@ use std::sync::mpsc;
 
 pub(crate) mod fork;
 mod key;
-mod key_helpers;
+pub(crate) mod key_helpers;
 mod mouse;
-mod mouse_overlay;
+pub(crate) mod mouse_overlay;
 pub(crate) mod nav;
 pub(crate) mod tabs;
 
