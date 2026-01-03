@@ -134,22 +134,43 @@ fn start_request_common(params: StartRequestCommonParams<'_>) {
     if !ensure_api_key(params.app, params.api_key) {
         return;
     }
-    let (messages, idx, request_id, cancel) = setup_request_state(params.app);
-    let base_url = params.base_url.trim_end_matches('/').to_string();
-    let api_key = params.api_key.to_string();
-    let model = params.model.to_string();
-    let prompts_dir = params.app.prompts_dir.clone();
-    let tx = params.tx.clone();
+    let state = build_request_state(params.app);
     #[cfg(test)]
     if std::env::var("DEEPCHAT_TEST_SKIP_REQUEST").is_ok() {
         return;
     }
-    spawn_llm_request(SpawnLlmRequestParams {
-        base_url,
-        api_key,
-        model,
+    spawn_llm_request(build_spawn_params(params, state));
+}
+
+struct RequestState {
+    messages: Vec<Message>,
+    idx: usize,
+    cancel: Arc<AtomicBool>,
+    request_id: u64,
+    prompts_dir: String,
+}
+
+fn build_request_state(app: &mut App) -> RequestState {
+    let (messages, idx, request_id, cancel) = setup_request_state(app);
+    RequestState {
         messages,
-        prompts_dir,
+        idx,
+        cancel,
+        request_id,
+        prompts_dir: app.prompts_dir.clone(),
+    }
+}
+
+fn build_spawn_params(
+    params: StartRequestCommonParams<'_>,
+    state: RequestState,
+) -> SpawnLlmRequestParams {
+    SpawnLlmRequestParams {
+        base_url: params.base_url.trim_end_matches('/').to_string(),
+        api_key: params.api_key.to_string(),
+        model: params.model.to_string(),
+        messages: state.messages,
+        prompts_dir: state.prompts_dir,
         enable_web_search: params.enable_web_search,
         enable_code_exec: params.enable_code_exec,
         enable_read_file: params.enable_read_file,
@@ -157,12 +178,12 @@ fn start_request_common(params: StartRequestCommonParams<'_>) {
         enable_modify_file: params.enable_modify_file,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
-        idx,
-        cancel,
-        tx,
+        idx: state.idx,
+        cancel: state.cancel,
+        tx: params.tx.clone(),
         tab_id: params.tab_id,
-        request_id,
-    });
+        request_id: state.request_id,
+    }
 }
 
 struct SpawnLlmRequestParams {

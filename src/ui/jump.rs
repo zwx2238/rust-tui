@@ -89,36 +89,70 @@ pub struct JumpRedrawParams<'a> {
 }
 
 pub fn redraw_jump(params: JumpRedrawParams<'_>) -> Result<(), Box<dyn std::error::Error>> {
-    params.terminal.draw(|f| {
-        draw_jump_layout(
-            f,
-            JumpLayoutParams {
-                theme: params.theme,
-                tab_labels: params.tab_labels,
-                active_tab_pos: params.active_tab_pos,
-                categories: params.categories,
-                active_category: params.active_category,
-                header_note: params.header_note,
-                startup_text: params.startup_text,
-                header_area: params.header_area,
-                category_area: params.category_area,
-                tabs_area: params.tabs_area,
-                footer_area: params.footer_area,
-            },
-        );
-        draw_jump_table(
-            f,
-            params.area,
-            params.rows,
-            params.selected,
-            params.theme,
-            params.scroll,
-        );
-        if let Some(tab) = params.tabs.get_mut(params.active_tab) {
-            draw_notice(f, f.area(), &mut tab.app, params.theme);
-        }
-    })?;
+    let (terminal, mut parts) = split_jump_params(params);
+    terminal.draw(|f| draw_jump_frame(f, &mut parts))?;
     Ok(())
+}
+
+fn split_jump_params<'a>(
+    params: JumpRedrawParams<'a>,
+) -> (&'a mut Terminal<CrosstermBackend<Stdout>>, JumpDrawParts<'a>) {
+    let JumpRedrawParams { terminal, theme, tabs, active_tab, tab_labels, active_tab_pos, categories, active_category, startup_text, header_note, rows, selected, area, header_area, category_area, tabs_area, footer_area, scroll } = params;
+    (
+        terminal,
+        JumpDrawParts { theme, tabs, active_tab, tab_labels, active_tab_pos, categories, active_category, startup_text, header_note, rows, selected, area, header_area, category_area, tabs_area, footer_area, scroll },
+    )
+}
+
+struct JumpDrawParts<'a> {
+    theme: &'a RenderTheme,
+    tabs: &'a mut [TabState],
+    active_tab: usize,
+    tab_labels: &'a [String],
+    active_tab_pos: usize,
+    categories: &'a [String],
+    active_category: usize,
+    startup_text: Option<&'a str>,
+    header_note: Option<&'a str>,
+    rows: &'a [JumpRow],
+    selected: usize,
+    area: Rect,
+    header_area: Rect,
+    category_area: Rect,
+    tabs_area: Rect,
+    footer_area: Rect,
+    scroll: usize,
+}
+
+fn draw_jump_frame(f: &mut ratatui::Frame<'_>, params: &mut JumpDrawParts<'_>) {
+    draw_jump_layout(f, jump_layout_params(params));
+    draw_jump_table(
+        f,
+        params.area,
+        params.rows,
+        params.selected,
+        params.theme,
+        params.scroll,
+    );
+    if let Some(tab) = params.tabs.get_mut(params.active_tab) {
+        draw_notice(f, f.area(), &mut tab.app, params.theme);
+    }
+}
+
+fn jump_layout_params<'a>(params: &'a JumpDrawParts<'a>) -> JumpLayoutParams<'a> {
+    JumpLayoutParams {
+        theme: params.theme,
+        tab_labels: params.tab_labels,
+        active_tab_pos: params.active_tab_pos,
+        categories: params.categories,
+        active_category: params.active_category,
+        header_note: params.header_note,
+        startup_text: params.startup_text,
+        header_area: params.header_area,
+        category_area: params.category_area,
+        tabs_area: params.tabs_area,
+        footer_area: params.footer_area,
+    }
 }
 
 struct JumpLayoutParams<'a> {
@@ -173,37 +207,53 @@ fn draw_jump_table(
 }
 
 fn build_jump_table<'a>(
-    rows: &[JumpRow],
+    rows: &'a [JumpRow],
     selected: usize,
     theme: &'a RenderTheme,
     scroll: usize,
 ) -> OverlayTable<'a> {
-    let header = Row::new(vec![
-        Cell::from("序号"),
-        Cell::from("角色"),
-        Cell::from("内容"),
-    ])
-    .style(header_style(theme));
-    let body = rows.iter().map(|row| {
-        Row::new(vec![
-            Cell::from(row.index.to_string()),
-            Cell::from(row.role.clone()),
-            Cell::from(row.preview.clone()),
-        ])
-    });
     OverlayTable {
-        title: Line::from("消息定位 · Enter/点击 跳转 · E 复制用户消息到新对话 · F2 退出"),
-        header,
-        rows: body.collect(),
-        widths: vec![
-            Constraint::Length(6),
-            Constraint::Length(10),
-            Constraint::Min(10),
-        ],
+        title: Line::from(jump_title()),
+        header: jump_header(theme),
+        rows: jump_body(rows),
+        widths: jump_widths(),
         selected,
         scroll,
         theme,
     }
+}
+
+fn jump_header(theme: &RenderTheme) -> Row<'static> {
+    Row::new(vec![
+        Cell::from("序号"),
+        Cell::from("角色"),
+        Cell::from("内容"),
+    ])
+    .style(header_style(theme))
+}
+
+fn jump_body<'a>(rows: &'a [JumpRow]) -> Vec<Row<'a>> {
+    rows.iter()
+        .map(|row| {
+            Row::new(vec![
+                Cell::from(row.index.to_string()),
+                Cell::from(row.role.clone()),
+                Cell::from(row.preview.clone()),
+            ])
+        })
+        .collect()
+}
+
+fn jump_widths() -> Vec<Constraint> {
+    vec![
+        Constraint::Length(6),
+        Constraint::Length(10),
+        Constraint::Min(10),
+    ]
+}
+
+fn jump_title() -> &'static str {
+    "消息定位 · Enter/点击 跳转 · E 复制用户消息到新对话 · F2 退出"
 }
 
 // text utilities are centralized in text_utils

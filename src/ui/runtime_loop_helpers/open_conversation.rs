@@ -1,5 +1,5 @@
-use super::push_assistant_message;
 use crate::args::Args;
+use crate::types::Message;
 use crate::ui::runtime_helpers::TabState;
 
 pub(super) fn open_conversation_in_tab(
@@ -64,6 +64,17 @@ fn load_conversation_or_report(
             None
         }
     }
+}
+
+fn push_assistant_message(tab_state: &mut TabState, content: String) {
+    let idx = tab_state.app.messages.len();
+    tab_state.app.messages.push(Message {
+        role: crate::types::ROLE_ASSISTANT.to_string(),
+        content,
+        tool_call_id: None,
+        tool_calls: None,
+    });
+    tab_state.app.dirty_indices.push(idx);
 }
 
 fn build_tab_from_conversation(

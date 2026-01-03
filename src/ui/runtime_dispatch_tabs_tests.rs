@@ -5,9 +5,10 @@ mod tests {
     use crate::model_registry::{ModelProfile, ModelRegistry};
     use crate::render::RenderTheme;
     use crate::test_support::{env_lock, restore_env, set_env};
-    use crate::ui::runtime_dispatch::{
-        DispatchContext, close_all_tabs, close_other_tabs, close_tab, new_tab, next_category,
-        next_tab, prev_category, prev_tab,
+    use crate::ui::runtime_dispatch::DispatchContext;
+    use crate::ui::runtime_dispatch::tabs::{
+        close_all_tabs, close_other_tabs, close_tab, new_tab, next_category, next_tab,
+        prev_category, prev_tab,
     };
     use crate::ui::runtime_helpers::TabState;
     use ratatui::style::Color;

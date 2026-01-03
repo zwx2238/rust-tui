@@ -9,9 +9,10 @@ use std::sync::{
 use std::time::Instant;
 use tui_textarea::TextArea;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub enum Focus {
     Chat,
+    #[default]
     Input,
 }
 
@@ -52,6 +53,7 @@ pub struct Notice {
     pub expires_at: Instant,
 }
 
+#[derive(Default)]
 pub struct App {
     pub input: TextArea<'static>,
     pub input_view_top_row: u16,
@@ -197,58 +199,11 @@ fn build_initial_messages(system_prompt: &str) -> Vec<Message> {
 
 fn base_app(messages: Vec<Message>, default_model: &str, default_prompt: &str) -> App {
     App {
-        input: TextArea::default(),
-        input_view_top_row: 0,
         messages,
-        scroll: 0,
-        follow: true,
-        focus: Focus::Input,
-        busy: false,
-        pending_send: None,
-        pending_command: None,
-        active_request: None,
-        next_request_id: 1,
-        busy_since: None,
-        pending_assistant: None,
-        pending_reasoning: None,
-        stream_buffer: String::new(),
-        assistant_stats: BTreeMap::new(),
-        scrollbar_dragging: false,
-        chat_selecting: false,
-        chat_selection: None,
-        input_selecting: false,
         model_key: default_model.to_string(),
         prompt_key: default_prompt.to_string(),
-        message_layouts: Vec::new(),
-        nav_mode: false,
-        tavily_api_key: String::new(),
-        prompts_dir: String::new(),
-        log_session_id: String::new(),
-        pending_code_exec: None,
-        code_exec_scroll: 0,
-        code_exec_stdout_scroll: 0,
-        code_exec_stderr_scroll: 0,
-        code_exec_live: None,
-        code_exec_result_ready: false,
-        code_exec_finished_output: None,
-        code_exec_cancel: None,
-        code_exec_hover: None,
-        code_exec_reason_target: None,
-        code_exec_reason_input: TextArea::default(),
-        code_exec_container_id: None,
-        code_exec_run_id: None,
-        pending_file_patch: None,
-        file_patch_scroll: 0,
-        file_patch_hover: None,
-        pending_category_name: None,
-        pending_open_conversation: None,
-        total_prompt_tokens: 0,
-        total_completion_tokens: 0,
-        total_tokens: 0,
-        dirty_indices: Vec::new(),
-        cache_shift: None,
-        notice: None,
-        command_suggestions: Vec::new(),
-        command_select: SelectionState::default(),
+        follow: true,
+        next_request_id: 1,
+        ..Default::default()
     }
 }

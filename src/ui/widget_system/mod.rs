@@ -1,19 +1,20 @@
 mod context;
 mod lifecycle;
-mod pipeline;
 mod render;
-mod root;
+mod widgets;
+#[cfg(test)]
+mod widget_system_tests;
 
 use std::error::Error;
 
 pub(crate) use context::{
     EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput,
 };
-pub(crate) use lifecycle::WidgetLifecycle;
+pub(crate) use lifecycle::Widget;
 use render::render_root;
 #[cfg(test)]
 use render::render_root_view;
-use root::RootWidget;
+use widgets::RootWidget;
 
 pub(crate) struct WidgetSystem {
     root: RootWidget,

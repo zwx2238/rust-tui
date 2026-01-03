@@ -1,0 +1,140 @@
+mod exec;
+mod helpers;
+mod pending;
+
+use crate::args::Args;
+use crate::ui::code_exec_container::ensure_container;
+use crate::ui::net::UiEvent;
+use crate::ui::runtime_code_exec_helpers::inject_requirements;
+use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
+use crate::ui::runtime_helpers::TabState;
+use crate::ui::runtime_requests::start_followup_request;
+use crate::ui::state::{CodeExecReasonTarget, PendingCodeExec};
+use crate::ui::tools::parse_code_exec_args;
+use std::sync::mpsc;
+use std::time::Instant;
+
+pub(crate) fn handle_code_exec_request(
+    tab_state: &mut TabState,
+    call: &crate::types::ToolCall,
+) -> Result<(), String> {
+    if tab_state.app.pending_code_exec.is_some() {
+        return Err("已有待审批的代码执行请求".to_string());
+    }
+    let request = parse_code_exec_args(&call.function.arguments)?;
+    tab_state.app.pending_code_exec = Some(PendingCodeExec {
+        call_id: call.id.clone(),
+        language: request.language,
+        code: request.code,
+        exec_code: None,
+        requested_at: Instant::now(),
+        stop_reason: None,
+    });
+    helpers::reset_code_exec_ui(&mut tab_state.app);
+    Ok(())
+}
+
+pub(crate) fn handle_code_exec_stop(tab_state: &mut TabState) {
+    let reason = take_code_exec_reason(tab_state, CodeExecReasonTarget::Stop)
+        .unwrap_or_else(|| "用户中止".to_string());
+    if let Some(pending) = tab_state.app.pending_code_exec.as_mut() {
+        pending.stop_reason = Some(reason);
+    }
+    if let Some(cancel) = &tab_state.app.code_exec_cancel {
+        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    tab_state.app.code_exec_hover = None;
+}
+
+pub(crate) fn handle_code_exec_exit(
+    tab_state: &mut TabState,
+    tab_id: usize,
+    registry: &crate::model_registry::ModelRegistry,
+    args: &Args,
+    tx: &mpsc::Sender<UiEvent>,
+) {
+    let Some((pending, content)) = helpers::take_pending_and_output(&mut tab_state.app) else {
+        return;
+    };
+    helpers::push_tool_message(&mut tab_state.app, content, pending.call_id);
+    helpers::reset_code_exec_after_exit(&mut tab_state.app);
+    start_followup(tab_state, tab_id, registry, args, tx);
+}
+
+pub(crate) fn handle_code_exec_approve(
+    tab_state: &mut TabState,
+    _tab_id: usize,
+    _registry: &crate::model_registry::ModelRegistry,
+    _args: &Args,
+    _tx: &mpsc::Sender<UiEvent>,
+) {
+    let Some(mut pending) = pending::clone_pending_or_notify(&mut tab_state.app) else {
+        return;
+    };
+    if tab_state.app.code_exec_live.is_some() {
+        return;
+    }
+    let live = helpers::init_code_exec_live(&mut tab_state.app);
+    let cancel = helpers::init_cancel_flag(&mut tab_state.app);
+    let run_id = helpers::init_run_id(&mut tab_state.app);
+    let exec_code = inject_requirements(&pending.code);
+    helpers::store_exec_code(&mut tab_state.app, &mut pending, exec_code);
+    let container_id = match ensure_container(&mut tab_state.app.code_exec_container_id) {
+        Ok(id) => id,
+        Err(err) => {
+            helpers::mark_exec_error(&live, err);
+            return;
+        }
+    };
+    exec::spawn_exec(container_id, run_id, pending, live, cancel);
+}
+
+pub(crate) fn handle_code_exec_deny(
+    tab_state: &mut TabState,
+    tab_id: usize,
+    registry: &crate::model_registry::ModelRegistry,
+    args: &Args,
+    tx: &mpsc::Sender<UiEvent>,
+) {
+    let Some(pending) = pending::take_pending_or_notify(&mut tab_state.app) else {
+        return;
+    };
+    helpers::reset_code_exec_after_deny(&mut tab_state.app);
+    let reason = take_code_exec_reason(tab_state, CodeExecReasonTarget::Deny)
+        .unwrap_or_else(|| "用户取消".to_string());
+    let content = format!(
+        r#"{{"error":"用户拒绝执行","reason":"{}"}}"#,
+        escape_json_string(&reason)
+    );
+    helpers::push_tool_message(&mut tab_state.app, content, pending.call_id);
+    start_followup(tab_state, tab_id, registry, args, tx);
+}
+
+fn start_followup(
+    tab_state: &mut TabState,
+    tab_id: usize,
+    registry: &crate::model_registry::ModelRegistry,
+    args: &Args,
+    tx: &mpsc::Sender<UiEvent>,
+) {
+    let model = registry
+        .get(&tab_state.app.model_key)
+        .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
+    let log_session_id = tab_state.app.log_session_id.clone();
+    start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
+        tab_state,
+        base_url: &model.base_url,
+        api_key: &model.api_key,
+        model: &model.model,
+        _show_reasoning: args.show_reasoning,
+        tx,
+        tab_id,
+        enable_web_search: args.web_search_enabled(),
+        enable_code_exec: args.code_exec_enabled(),
+        enable_read_file: args.read_file_enabled(),
+        enable_read_code: args.read_code_enabled(),
+        enable_modify_file: args.modify_file_enabled(),
+        log_requests: args.log_requests.clone(),
+        log_session_id,
+    });
+}

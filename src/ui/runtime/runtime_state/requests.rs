@@ -57,24 +57,9 @@ fn start_tab_request_for_question(
         return;
     };
     let model = model_for_tab(tab_state, registry);
-    let log_session_id = tab_state.app.log_session_id.clone();
-    start_tab_request(crate::ui::runtime_requests::StartTabRequestParams {
-        tab_state,
-        question,
-        base_url: &model.base_url,
-        api_key: &model.api_key,
-        model: &model.model,
-        _show_reasoning: args.show_reasoning,
-        tx,
-        tab_id: tab_idx,
-        enable_web_search: args.web_search_enabled(),
-        enable_code_exec: args.code_exec_enabled(),
-        enable_read_file: args.read_file_enabled(),
-        enable_read_code: args.read_code_enabled(),
-        enable_modify_file: args.modify_file_enabled(),
-        log_requests: args.log_requests.clone(),
-        log_session_id,
-    });
+    let flags = request_flags(args);
+    let params = build_request_params(tab_state, tab_idx, question, model, args, tx, flags);
+    start_tab_request(params);
 }
 
 fn model_for_tab<'a>(
@@ -84,4 +69,53 @@ fn model_for_tab<'a>(
     registry
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"))
+}
+
+struct RequestFlags {
+    enable_web_search: bool,
+    enable_code_exec: bool,
+    enable_read_file: bool,
+    enable_read_code: bool,
+    enable_modify_file: bool,
+    log_requests: Option<String>,
+}
+
+fn request_flags(args: &Args) -> RequestFlags {
+    RequestFlags {
+        enable_web_search: args.web_search_enabled(),
+        enable_code_exec: args.code_exec_enabled(),
+        enable_read_file: args.read_file_enabled(),
+        enable_read_code: args.read_code_enabled(),
+        enable_modify_file: args.modify_file_enabled(),
+        log_requests: args.log_requests.clone(),
+    }
+}
+
+fn build_request_params<'a>(
+    tab_state: &'a mut TabState,
+    tab_idx: usize,
+    question: &'a str,
+    model: &'a crate::model_registry::ModelProfile,
+    args: &'a Args,
+    tx: &'a mpsc::Sender<UiEvent>,
+    flags: RequestFlags,
+) -> crate::ui::runtime_requests::StartTabRequestParams<'a> {
+    let log_session_id = tab_state.app.log_session_id.clone();
+    crate::ui::runtime_requests::StartTabRequestParams {
+        tab_state,
+        question,
+        base_url: &model.base_url,
+        api_key: &model.api_key,
+        model: &model.model,
+        _show_reasoning: args.show_reasoning,
+        tx,
+        tab_id: tab_idx,
+        enable_web_search: flags.enable_web_search,
+        enable_code_exec: flags.enable_code_exec,
+        enable_read_file: flags.enable_read_file,
+        enable_read_code: flags.enable_read_code,
+        enable_modify_file: flags.enable_modify_file,
+        log_requests: flags.log_requests,
+        log_session_id,
+    }
 }

@@ -10,23 +10,18 @@ use crate::ui::runtime_requests::start_tab_request;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
-mod fork;
+pub(crate) mod fork;
 mod key;
+mod key_helpers;
 mod mouse;
 mod mouse_overlay;
-mod nav;
-mod tabs;
+pub(crate) mod nav;
+pub(crate) mod tabs;
 
 const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新建对话。";
 
-pub(crate) use fork::{fork_message_by_index, fork_message_into_new_tab};
 pub(crate) use key::handle_key_event_loop;
 pub(crate) use mouse::handle_mouse_event_loop;
-pub(crate) use nav::handle_nav_key;
-pub(crate) use tabs::{
-    close_all_tabs, close_other_tabs, close_tab, new_tab, next_category, next_tab, prev_category,
-    prev_tab,
-};
 
 pub(crate) struct DispatchContext<'a> {
     pub(crate) tabs: &'a mut Vec<TabState>,

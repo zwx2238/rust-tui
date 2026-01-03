@@ -44,38 +44,70 @@ mod tests {
 
     #[test]
     fn draw_messages_and_input() {
-        let text = Text::from(vec![Line::from("line1"), Line::from("line2")]);
-        let selection = Selection {
+        let text = sample_text();
+        let selection = sample_selection();
+        let mut input = sample_input();
+        with_terminal(|f| {
+            draw_messages_and_input_frame(f, &text, selection, &mut input);
+        });
+    }
+
+    fn sample_text() -> Text<'static> {
+        Text::from(vec![Line::from("line1"), Line::from("line2")])
+    }
+
+    fn sample_selection() -> Selection {
+        Selection {
             start: (0, 1),
             end: (0, 3),
-        };
+        }
+    }
+
+    fn sample_input() -> tui_textarea::TextArea<'static> {
         let mut input = tui_textarea::TextArea::default();
         input.insert_str("hello");
-        with_terminal(|f| {
-            draw_messages(
-                f,
-                crate::ui::draw::MessagesDrawParams {
-                    area: Rect::new(0, 4, 80, 15),
-                    text: &text,
-                    scroll: 0,
-                    theme: &theme(),
-                    focused: true,
-                    total_lines: 2,
-                    selection: Some(selection),
-                },
-            );
-            draw_input(
-                f,
-                crate::ui::draw_input::InputDrawParams {
-                    area: Rect::new(0, 20, 80, 3),
-                    input: &mut input,
-                    theme: &theme(),
-                    focused: true,
-                    busy: false,
-                    model_key: "model",
-                    prompt_key: "prompt",
-                },
-            );
-        });
+        input
+    }
+
+    fn draw_messages_and_input_frame(
+        f: &mut ratatui::Frame<'_>,
+        text: &Text<'_>,
+        selection: Selection,
+        input: &mut tui_textarea::TextArea<'static>,
+    ) {
+        let theme = theme();
+        draw_messages(f, messages_params(text, selection, &theme));
+        draw_input(f, input_params(input, &theme));
+    }
+
+    fn messages_params<'a>(
+        text: &'a Text<'a>,
+        selection: Selection,
+        theme: &'a RenderTheme,
+    ) -> crate::ui::draw::MessagesDrawParams<'a> {
+        crate::ui::draw::MessagesDrawParams {
+            area: Rect::new(0, 4, 80, 15),
+            text,
+            scroll: 0,
+            theme,
+            focused: true,
+            total_lines: 2,
+            selection: Some(selection),
+        }
+    }
+
+    fn input_params<'a>(
+        input: &'a mut tui_textarea::TextArea<'static>,
+        theme: &'a RenderTheme,
+    ) -> crate::ui::draw_input::InputDrawParams<'a, 'static> {
+        crate::ui::draw_input::InputDrawParams {
+            area: Rect::new(0, 20, 80, 3),
+            input,
+            theme,
+            focused: true,
+            busy: false,
+            model_key: "model",
+            prompt_key: "prompt",
+        }
     }
 }

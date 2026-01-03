@@ -1,3 +1,4 @@
+use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_helpers::{
     HandlePendingCommandIfAnyParams, handle_pending_command_if_any,
 };
@@ -9,49 +10,55 @@ use crate::ui::runtime_loop_steps::{
 use crate::ui::runtime_tick::{ActiveFrameData, drain_preheat_results};
 use std::error::Error;
 
-use super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput};
+use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput};
 
-pub(crate) fn layout_root(ctx: &mut LayoutCtx<'_>) -> Result<FrameLayout, Box<dyn Error>> {
+pub(crate) fn layout_base(ctx: &mut LayoutCtx<'_>) -> Result<FrameLayout, Box<dyn Error>> {
     frame_layout(ctx.terminal, ctx.view, ctx.tabs, ctx.active_tab, ctx.categories)
 }
 
-pub(crate) fn update_root(
+pub(crate) fn update_base(
     ctx: &mut UpdateCtx<'_>,
     layout: &FrameLayout,
 ) -> Result<UpdateOutput, Box<dyn Error>> {
     drain_preheat_results(ctx.preheat_res_rx, ctx.tabs);
-    let (tab_labels, active_tab_pos) = prepare_tabs(ctx);
+    let tabs = prepare_tabs(ctx);
     run_stream_updates(ctx, layout)?;
     let active_data = build_active_data(ctx, layout);
     let header_note = header_note(ctx.tabs, ctx.categories);
     handle_pending_actions(ctx, &active_data);
     Ok(UpdateOutput {
         active_data,
-        tab_labels,
-        active_tab_pos,
+        tab_labels: tabs.labels,
+        active_tab_pos: tabs.active_pos,
         header_note,
     })
 }
 
-pub(crate) fn event_root(
+pub(crate) fn event_base(
     ctx: &mut EventCtx<'_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: &[JumpRow],
 ) -> Result<bool, Box<dyn Error>> {
     let mut dispatch = prepare_event_dispatch(ctx, layout);
     let layout_params = build_layout_params(layout, update);
     poll_and_dispatch_event(&mut dispatch.params, layout_params, dispatch.view, jump_rows)
 }
 
-fn prepare_tabs(ctx: &mut UpdateCtx<'_>) -> (Vec<String>, usize) {
+struct TabMeta {
+    labels: Vec<String>,
+    active_pos: usize,
+}
+
+fn prepare_tabs(ctx: &mut UpdateCtx<'_>) -> TabMeta {
     let active_category_name = prepare_categories(
         ctx.tabs,
         *ctx.active_tab,
         ctx.categories,
         ctx.active_category,
     );
-    tab_labels_and_pos(ctx.tabs, *ctx.active_tab, &active_category_name)
+    let (labels, active_pos) = tab_labels_and_pos(ctx.tabs, *ctx.active_tab, &active_category_name);
+    TabMeta { labels, active_pos }
 }
 
 fn run_stream_updates(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> Result<(), Box<dyn Error>> {
@@ -121,10 +128,7 @@ struct EventDispatch<'a> {
     view: &'a mut crate::ui::runtime_view::ViewState,
 }
 
-fn prepare_event_dispatch<'a>(
-    ctx: &'a mut EventCtx<'_>,
-    layout: &FrameLayout,
-) -> EventDispatch<'a> {
+fn prepare_event_dispatch<'a>(ctx: &'a mut EventCtx<'_>, layout: &FrameLayout) -> EventDispatch<'a> {
     let EventCtx {
         tabs,
         active_tab,

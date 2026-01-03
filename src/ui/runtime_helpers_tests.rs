@@ -74,6 +74,15 @@ mod tests {
 
     #[test]
     fn stop_and_edit_resets_state() {
+        let mut tab = stop_and_edit_tab();
+        let changed = stop_and_edit(&mut tab);
+        assert!(changed);
+        assert_eq!(tab.app.focus, Focus::Input);
+        assert!(!tab.app.messages.iter().any(|m| m.content == "reply"));
+        assert!(input_contains(&tab, "hello"));
+    }
+
+    fn stop_and_edit_tab() -> TabState {
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
         tab.app.messages.push(crate::types::Message {
             role: crate::types::ROLE_USER.to_string(),
@@ -92,17 +101,15 @@ mod tests {
             id: 1,
             cancel: Arc::new(AtomicBool::new(false)),
         });
-        let changed = stop_and_edit(&mut tab);
-        assert!(changed);
-        assert_eq!(tab.app.focus, Focus::Input);
-        assert!(!tab.app.messages.iter().any(|m| m.content == "reply"));
-        assert!(
-            tab.app
-                .input
-                .lines()
-                .first()
-                .unwrap_or(&String::new())
-                .contains("hello")
-        );
+        tab
+    }
+
+    fn input_contains(tab: &TabState, needle: &str) -> bool {
+        tab.app
+            .input
+            .lines()
+            .first()
+            .unwrap_or(&String::new())
+            .contains(needle)
     }
 }

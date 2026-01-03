@@ -132,24 +132,32 @@ mod tests {
         let mut view = ViewState::new();
         sync_code_exec_overlay(&mut tabs, 0, &mut view);
         assert!(view.overlay.is_chat());
-        tabs[0].app.pending_code_exec = Some(PendingCodeExec {
+        tabs[0].app.pending_code_exec = Some(pending_code_exec());
+        sync_code_exec_overlay(&mut tabs, 0, &mut view);
+        assert!(view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec));
+        tabs[0].app.pending_file_patch = Some(pending_file_patch());
+        sync_file_patch_overlay(&mut tabs, 0, &mut view);
+        assert!(view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec));
+    }
+
+    fn pending_code_exec() -> PendingCodeExec {
+        PendingCodeExec {
             call_id: "c".to_string(),
             language: "python".to_string(),
             code: "print(1)".to_string(),
             exec_code: None,
             requested_at: Instant::now(),
             stop_reason: None,
-        });
-        sync_code_exec_overlay(&mut tabs, 0, &mut view);
-        assert!(view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec));
-        tabs[0].app.pending_file_patch = Some(crate::ui::state::PendingFilePatch {
+        }
+    }
+
+    fn pending_file_patch() -> crate::ui::state::PendingFilePatch {
+        crate::ui::state::PendingFilePatch {
             call_id: "f".to_string(),
             path: None,
             diff: String::new(),
             preview: String::new(),
-        });
-        sync_file_patch_overlay(&mut tabs, 0, &mut view);
-        assert!(view.overlay.is(crate::ui::overlay::OverlayKind::CodeExec));
+        }
     }
 
     #[test]

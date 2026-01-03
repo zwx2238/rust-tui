@@ -119,31 +119,37 @@ mod tests {
             registry,
             prompt_registry,
         } = state;
+        let areas = render_areas(*full_area);
         let ctx = RenderContext {
-            terminal,
-            tabs,
-            active_tab: 0,
-            tab_labels,
-            active_tab_pos: 0,
-            categories,
-            active_category: 0,
-            theme,
-            startup_text: None,
-            full_area: *full_area,
-            input_height: 3,
-            msg_area: msg_area(*full_area),
+            terminal, tabs,
+            active_tab: 0, tab_labels, active_tab_pos: 0,
+            categories, active_category: 0,
+            theme, startup_text: None,
+            full_area: *full_area, input_height: 3,
+            msg_area: areas.msg_area, tabs_area: areas.tabs_area, category_area: areas.category_area,
+            header_area: areas.header_area, footer_area: areas.footer_area, msg_width: 40,
+            text, total_lines: 1, header_note: None,
+            models: &registry.models, prompts: &prompt_registry.prompts,
+        };
+        (ctx, view)
+    }
+
+    struct RenderAreas {
+        msg_area: Rect,
+        tabs_area: Rect,
+        category_area: Rect,
+        header_area: Rect,
+        footer_area: Rect,
+    }
+
+    fn render_areas(full_area: Rect) -> RenderAreas {
+        RenderAreas {
+            msg_area: msg_area(full_area),
             tabs_area: Rect::new(0, 1, full_area.width, 1),
             category_area: Rect::new(0, 1, 10, 5),
             header_area: Rect::new(0, 0, full_area.width, 1),
-            footer_area: footer_area(*full_area),
-            msg_width: 40,
-            text,
-            total_lines: 1,
-            header_note: None,
-            models: &registry.models,
-            prompts: &prompt_registry.prompts,
-        };
-        (ctx, view)
+            footer_area: footer_area(full_area),
+        }
     }
 
     #[test]

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::ui::runtime_dispatch::handle_nav_key;
+    use crate::ui::runtime_dispatch::nav::handle_nav_key;
     use crate::ui::state::{App, Focus};
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 

@@ -7,8 +7,8 @@ use crate::ui::shortcut_help::help_rows_len;
 use std::error::Error;
 
 use super::context::{RenderCtx, UpdateOutput, WidgetFrame};
-use super::lifecycle::WidgetRender;
-use super::root::RootWidget;
+use super::lifecycle::Widget;
+use super::widgets::RootWidget;
 
 pub(crate) fn render_root<'a>(
     ctx: &'a mut RenderCtx<'a>,

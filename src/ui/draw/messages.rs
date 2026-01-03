@@ -24,27 +24,15 @@ pub(crate) struct MessagesDrawParams<'a> {
 
 pub(crate) fn draw_messages(f: &mut ratatui::Frame<'_>, params: MessagesDrawParams<'_>) {
     let style = base_style(params.theme);
-    let inner = inner_area(params.area, PADDING_X, PADDING_Y);
-    let content_height = inner.height;
+    let content_height = inner_area(params.area, PADDING_X, PADDING_Y).height;
     let right_title = build_right_title(
         params.area,
         params.scroll,
         params.total_lines,
         content_height,
     );
-    let block = build_block(
-        params.area,
-        params.theme,
-        params.focused,
-        right_title,
-        style,
-    );
-    let display_text = apply_selection(params.text, params.scroll, params.selection);
-    let paragraph = Paragraph::new(display_text)
-        .block(block)
-        .style(style)
-        .wrap(Wrap { trim: false })
-        .scroll((0, 0));
+    let block = build_block(params.theme, params.focused, right_title, style);
+    let paragraph = build_paragraph(params.text, params.scroll, params.selection, block, style);
     f.render_widget(paragraph, params.area);
     render_scrollbar(
         f,
@@ -82,7 +70,6 @@ fn build_right_title(
 }
 
 fn build_block(
-    _area: Rect,
     theme: &RenderTheme,
     focused: bool,
     right_title: Line<'static>,
@@ -96,6 +83,21 @@ fn build_block(
         .padding(Padding::new(PADDING_X, PADDING_X, PADDING_Y, PADDING_Y))
         .style(style)
         .border_style(border_style)
+}
+
+fn build_paragraph<'a>(
+    text: &'a Text<'a>,
+    scroll: u16,
+    selection: Option<Selection>,
+    block: Block<'static>,
+    style: Style,
+) -> Paragraph<'a> {
+    let display_text = apply_selection(text, scroll, selection);
+    Paragraph::new(display_text)
+        .block(block)
+        .style(style)
+        .wrap(Wrap { trim: false })
+        .scroll((0, 0))
 }
 
 fn apply_selection<'a>(text: &'a Text<'a>, scroll: u16, selection: Option<Selection>) -> Text<'a> {

@@ -46,7 +46,7 @@ fn run_with_context(
     question_set: Option<&Vec<String>>,
     tavily_api_key: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut state = init_run_state(
+    let mut state = init_state(
         args,
         cfg,
         registry,
@@ -55,16 +55,7 @@ fn run_with_context(
         tavily_api_key,
     )?;
     let channels = init_and_spawn_preheat();
-    let auto_retry = maybe_fork_retry(args, &mut state, registry, prompt_registry);
-    sync_active_category(&mut state);
-    run_initial_requests(
-        question_set,
-        auto_retry,
-        &mut state,
-        registry,
-        args,
-        &channels.tx,
-    );
+    prepare_requests(question_set, &mut state, registry, prompt_registry, args, &channels);
     run_ui_loop(
         &mut state,
         &channels,
@@ -75,6 +66,44 @@ fn run_with_context(
     )?;
     finalize_session(&mut state)?;
     Ok(())
+}
+
+fn init_state(
+    args: &Args,
+    cfg: &crate::config::Config,
+    registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry,
+    question_set: Option<&Vec<String>>,
+    tavily_api_key: &str,
+) -> Result<RunState, Box<dyn std::error::Error>> {
+    init_run_state(
+        args,
+        cfg,
+        registry,
+        prompt_registry,
+        question_set,
+        tavily_api_key,
+    )
+}
+
+fn prepare_requests(
+    question_set: Option<&Vec<String>>,
+    state: &mut RunState,
+    registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry,
+    args: &Args,
+    channels: &Channels,
+) {
+    let auto_retry = maybe_fork_retry(args, state, registry, prompt_registry);
+    sync_active_category(state);
+    run_initial_requests(
+        question_set,
+        auto_retry,
+        state,
+        registry,
+        args,
+        &channels.tx,
+    );
 }
 
 fn run_ui_loop(

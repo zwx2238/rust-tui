@@ -9,32 +9,10 @@ pub(crate) fn handle_command_line(
     if is_exit_cmd(line) {
         return Ok(true);
     }
-    if is_reset_cmd(line) {
-        reset_app(app);
+    if handle_simple_commands(line, app)? {
         return Ok(false);
     }
-    if line == "/save" {
-        app.pending_command = Some(PendingCommand::SaveSession);
-        return Ok(false);
-    }
-    if line == "/help" {
-        push_help(app);
-        return Ok(false);
-    }
-    let (cmd, arg) = split_cmd(line);
-    if cmd == "/category" {
-        handle_category(app, arg);
-        return Ok(false);
-    }
-    if cmd == "/open" {
-        handle_open(app, arg);
-        return Ok(false);
-    }
-    if cmd == "/list-conv" {
-        handle_list_conv(app)?;
-        return Ok(false);
-    }
-    push_unknown(app, line);
+    handle_command_action(line, app)?;
     Ok(false)
 }
 
@@ -51,6 +29,36 @@ fn split_cmd(line: &str) -> (&str, &str) {
     let cmd = parts.next().unwrap_or("");
     let arg = parts.next().unwrap_or("").trim();
     (cmd, arg)
+}
+
+fn handle_simple_commands(line: &str, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
+    if is_reset_cmd(line) {
+        reset_app(app);
+        return Ok(true);
+    }
+    if line == "/save" {
+        app.pending_command = Some(PendingCommand::SaveSession);
+        return Ok(true);
+    }
+    if line == "/help" {
+        push_help(app);
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+fn handle_command_action(
+    line: &str,
+    app: &mut App,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (cmd, arg) = split_cmd(line);
+    match cmd {
+        "/category" => handle_category(app, arg),
+        "/open" => handle_open(app, arg),
+        "/list-conv" => handle_list_conv(app)?,
+        _ => push_unknown(app, line),
+    }
+    Ok(())
 }
 
 fn reset_app(app: &mut App) {

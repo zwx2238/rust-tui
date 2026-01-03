@@ -6,9 +6,10 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::runtime_dispatch::{
         DispatchContext, apply_model_selection, apply_prompt_selection, can_change_prompt,
-        cycle_model, fork_message_by_index, fork_message_into_new_tab, resolve_model,
-        start_pending_request, sync_model_selection, sync_prompt_selection,
+        cycle_model, resolve_model, start_pending_request, sync_model_selection,
+        sync_prompt_selection,
     };
+    use crate::ui::runtime_dispatch::fork::{fork_message_by_index, fork_message_into_new_tab};
     use crate::ui::runtime_helpers::TabState;
     use ratatui::style::Color;
 

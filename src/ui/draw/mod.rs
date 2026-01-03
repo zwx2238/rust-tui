@@ -154,19 +154,7 @@ struct BaseFrameParams<'a> {
 }
 
 fn draw_base_frame(f: &mut ratatui::Frame<'_>, params: BaseFrameParams<'_>, areas: &DrawAreas) {
-    draw_base_header(
-        f,
-        BaseHeaderParams {
-            theme: params.theme,
-            tab_labels: params.tab_labels,
-            active_tab_pos: params.active_tab_pos,
-            categories: params.categories,
-            active_category: params.active_category,
-            startup_text: params.startup_text,
-            header_note: params.header_note,
-        },
-        areas,
-    );
+    draw_base_header(f, base_header_params(&params), areas);
     draw_base_messages(
         f,
         params.app,
@@ -184,6 +172,18 @@ fn draw_base_frame(f: &mut ratatui::Frame<'_>, params: BaseFrameParams<'_>, area
         params.theme,
     );
     header_footer::draw_footer(f, areas.footer_area, params.theme, params.app.nav_mode);
+}
+
+fn base_header_params<'a>(params: &BaseFrameParams<'a>) -> BaseHeaderParams<'a> {
+    BaseHeaderParams {
+        theme: params.theme,
+        tab_labels: params.tab_labels,
+        active_tab_pos: params.active_tab_pos,
+        categories: params.categories,
+        active_category: params.active_category,
+        startup_text: params.startup_text,
+        header_note: params.header_note,
+    }
 }
 
 struct BaseHeaderParams<'a> {

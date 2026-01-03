@@ -155,7 +155,7 @@ fn handle_chat_mouse(
         theme: ctx.theme,
     });
     if let Some(idx) = msg_idx {
-        let _ = super::fork_message_by_index(ctx, idx);
+        let _ = super::fork::fork_message_by_index(ctx, idx);
         if !view.is_chat() {
             view.overlay.close();
         }

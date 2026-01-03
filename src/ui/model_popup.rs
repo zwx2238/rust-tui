@@ -21,37 +21,54 @@ pub fn draw_model_popup(
 }
 
 fn build_model_table<'a>(
-    models: &[ModelProfile],
+    models: &'a [ModelProfile],
     selected: usize,
     scroll: usize,
     theme: &'a RenderTheme,
 ) -> OverlayTable<'a> {
-    let header = Row::new(vec![
-        Cell::from("名称"),
-        Cell::from("模型"),
-        Cell::from("Base URL"),
-    ])
-    .style(header_style(theme));
-    let body = models.iter().map(|m| {
-        Row::new(vec![
-            Cell::from(m.key.clone()),
-            Cell::from(m.model.clone()),
-            Cell::from(m.base_url.clone()),
-        ])
-    });
     OverlayTable {
-        title: Line::from("模型切换 · Enter 确认 · Esc 取消 · F3 快速切换"),
-        header,
-        rows: body.collect(),
-        widths: vec![
-            Constraint::Length(12),
-            Constraint::Length(22),
-            Constraint::Min(10),
-        ],
+        title: Line::from(model_title()),
+        header: model_header(theme),
+        rows: model_body(models),
+        widths: model_widths(),
         selected,
         scroll,
         theme,
     }
+}
+
+fn model_header(theme: &RenderTheme) -> Row<'static> {
+    Row::new(vec![
+        Cell::from("名称"),
+        Cell::from("模型"),
+        Cell::from("Base URL"),
+    ])
+    .style(header_style(theme))
+}
+
+fn model_body<'a>(models: &'a [ModelProfile]) -> Vec<Row<'a>> {
+    models
+        .iter()
+        .map(|m| {
+            Row::new(vec![
+                Cell::from(m.key.clone()),
+                Cell::from(m.model.clone()),
+                Cell::from(m.base_url.clone()),
+            ])
+        })
+        .collect()
+}
+
+fn model_widths() -> Vec<Constraint> {
+    vec![
+        Constraint::Length(12),
+        Constraint::Length(22),
+        Constraint::Min(10),
+    ]
+}
+
+fn model_title() -> &'static str {
+    "模型切换 · Enter 确认 · Esc 取消 · F3 快速切换"
 }
 
 pub fn model_popup_area(area: Rect, rows: usize) -> Rect {

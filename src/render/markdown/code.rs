@@ -14,26 +14,10 @@ pub(crate) fn render_code_block_lines(
     let (ss, syn_theme, syntax) = load_syntax(theme, lang);
     let mut highlighter = HighlightLines::new(syntax, syn_theme);
     let lines: Vec<&str> = text.lines().collect();
-    let show_line_numbers = lang != "math";
-    let max_digits = if show_line_numbers {
-        lines.len().max(1).to_string().len()
-    } else {
-        0
-    };
-    let code_fg = theme.fg.unwrap_or(Color::White);
-    let code_bg = theme.bg;
-    let bg_luma = color_luma(code_bg);
+    let config = build_highlight_config(theme, lang, lines.len());
     let mut out = Vec::new();
     for (i, raw) in lines.iter().enumerate() {
-        let config = HighlightConfig {
-            show_line_numbers,
-            max_digits,
-            line_idx: i,
-            code_fg,
-            code_bg,
-            bg_luma,
-        };
-        let spans = highlight_spans(raw, &mut highlighter, ss, config);
+        let spans = highlight_spans(raw, &mut highlighter, ss, &config, i);
         out.push(Line::from(spans));
     }
     out
@@ -60,7 +44,6 @@ fn load_syntax(
 struct HighlightConfig {
     show_line_numbers: bool,
     max_digits: usize,
-    line_idx: usize,
     code_fg: Color,
     code_bg: Color,
     bg_luma: u8,
@@ -70,23 +53,52 @@ fn highlight_spans(
     raw: &str,
     highlighter: &mut HighlightLines<'_>,
     ss: &SyntaxSet,
-    config: HighlightConfig,
+    config: &HighlightConfig,
+    line_idx: usize,
 ) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
+    add_line_number(&mut spans, config, line_idx);
+    append_highlighted_spans(
+        &mut spans,
+        highlight_line_ranges(raw, highlighter, ss),
+        config,
+    );
+    spans
+}
+
+fn highlight_line_ranges(
+    raw: &str,
+    highlighter: &mut HighlightLines<'_>,
+    ss: &SyntaxSet,
+) -> Vec<(syntect::highlighting::Style, String)> {
     let mut line_with_nl = String::with_capacity(raw.len() + 1);
     line_with_nl.push_str(raw);
     line_with_nl.push('\n');
-    let ranges = highlighter
+    highlighter
         .highlight_line(&line_with_nl, ss)
-        .unwrap_or_default();
-    let mut spans = Vec::new();
-    if config.show_line_numbers {
-        spans.push(line_no_span(
-            config.line_idx + 1,
-            config.max_digits,
-            config.code_fg,
-            config.code_bg,
-        ));
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(style, part)| (style, part.to_string()))
+        .collect()
+}
+
+fn add_line_number(spans: &mut Vec<Span<'static>>, config: &HighlightConfig, line_idx: usize) {
+    if !config.show_line_numbers {
+        return;
     }
+    spans.push(line_no_span(
+        line_idx + 1,
+        config.max_digits,
+        config.code_fg,
+        config.code_bg,
+    ));
+}
+
+fn append_highlighted_spans(
+    spans: &mut Vec<Span<'static>>,
+    ranges: Vec<(syntect::highlighting::Style, String)>,
+    config: &HighlightConfig,
+) {
     for (style, part) in ranges {
         let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
         let span_fg = if (color_luma(fg) as i16 - config.bg_luma as i16).abs() < 80 {
@@ -95,11 +107,29 @@ fn highlight_spans(
             fg
         };
         spans.push(Span::styled(
-            part.to_string(),
+            part,
             Style::default().fg(span_fg).bg(config.code_bg),
         ));
     }
-    spans
+}
+
+fn build_highlight_config(theme: &RenderTheme, lang: &str, lines_len: usize) -> HighlightConfig {
+    let show_line_numbers = lang != "math";
+    let max_digits = if show_line_numbers {
+        lines_len.max(1).to_string().len()
+    } else {
+        0
+    };
+    let code_fg = theme.fg.unwrap_or(Color::White);
+    let code_bg = theme.bg;
+    let bg_luma = color_luma(code_bg);
+    HighlightConfig {
+        show_line_numbers,
+        max_digits,
+        code_fg,
+        code_bg,
+        bg_luma,
+    }
 }
 
 fn line_no_span(line_no: usize, width: usize, code_fg: Color, code_bg: Color) -> Span<'static> {

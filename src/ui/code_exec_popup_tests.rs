@@ -61,32 +61,46 @@ mod tests {
         let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut input = tui_textarea::TextArea::default();
-        let live = CodeExecLive {
+        let live = finished_live();
+        terminal
+            .draw(|f| {
+                draw_popup(f, &mut input, Some(&live), Some(CodeExecHover::Exit), None);
+            })
+            .unwrap();
+    }
+
+    fn draw_popup(
+        f: &mut ratatui::Frame<'_>,
+        input: &mut tui_textarea::TextArea<'static>,
+        live: Option<&CodeExecLive>,
+        hover: Option<CodeExecHover>,
+        reason_target: Option<CodeExecReasonTarget>,
+    ) {
+        draw_code_exec_popup(
+            f,
+            crate::ui::code_exec_popup::CodeExecPopupParams {
+                area: Rect::new(0, 0, 120, 40),
+                pending: &pending(),
+                scroll: 0,
+                stdout_scroll: 0,
+                stderr_scroll: 0,
+                hover,
+                reason_target,
+                reason_input: input,
+                live,
+                theme: &theme(),
+            },
+        );
+    }
+
+    fn finished_live() -> CodeExecLive {
+        CodeExecLive {
             started_at: Instant::now(),
             finished_at: Some(Instant::now()),
             stdout: "ok".to_string(),
             stderr: String::new(),
             exit_code: Some(0),
             done: true,
-        };
-        terminal
-            .draw(|f| {
-                draw_code_exec_popup(
-                    f,
-                    crate::ui::code_exec_popup::CodeExecPopupParams {
-                        area: Rect::new(0, 0, 120, 40),
-                        pending: &pending(),
-                        scroll: 0,
-                        stdout_scroll: 0,
-                        stderr_scroll: 0,
-                        hover: Some(CodeExecHover::Exit),
-                        reason_target: None,
-                        reason_input: &mut input,
-                        live: Some(&live),
-                        theme: &theme(),
-                    },
-                );
-            })
-            .unwrap();
+        }
     }
 }

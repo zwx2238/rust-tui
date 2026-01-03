@@ -243,18 +243,7 @@ mod tests {
     #[test]
     fn code_exec_reason_escape_clears_target() {
         let mut state = base_state();
-        state.tabs[0].app.pending_code_exec = Some(crate::ui::state::PendingCodeExec {
-            call_id: "call".to_string(),
-            language: "python".to_string(),
-            code: "print(1)".to_string(),
-            exec_code: None,
-            requested_at: std::time::Instant::now(),
-            stop_reason: None,
-        });
-        state.tabs[0].app.code_exec_reason_target =
-            Some(crate::ui::state::CodeExecReasonTarget::Deny);
-        state.tabs[0].app.code_exec_reason_input = tui_textarea::TextArea::default();
-        state.tabs[0].app.code_exec_reason_input.insert_str("why");
+        prepare_code_exec_reason(&mut state.tabs[0]);
         state
             .view
             .overlay
@@ -263,13 +252,29 @@ mod tests {
         let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
         let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(ctx.tabs[0].app.code_exec_reason_target.is_none());
-        assert!(
-            ctx.tabs[0]
-                .app
-                .code_exec_reason_input
-                .lines()
-                .join("")
-                .is_empty()
-        );
+        assert!(reason_input_empty(&ctx.tabs[0]));
+    }
+
+    fn prepare_code_exec_reason(tab: &mut TabState) {
+        tab.app.pending_code_exec = Some(crate::ui::state::PendingCodeExec {
+            call_id: "call".to_string(),
+            language: "python".to_string(),
+            code: "print(1)".to_string(),
+            exec_code: None,
+            requested_at: std::time::Instant::now(),
+            stop_reason: None,
+        });
+        tab.app.code_exec_reason_target =
+            Some(crate::ui::state::CodeExecReasonTarget::Deny);
+        tab.app.code_exec_reason_input = tui_textarea::TextArea::default();
+        tab.app.code_exec_reason_input.insert_str("why");
+    }
+
+    fn reason_input_empty(tab: &TabState) -> bool {
+        tab.app
+            .code_exec_reason_input
+            .lines()
+            .join("")
+            .is_empty()
     }
 }

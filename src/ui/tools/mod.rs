@@ -132,6 +132,18 @@ fn format_read_file_output(
     total_lines: usize,
     slice: &[&str],
 ) -> String {
+    let mut out = format_read_file_header(path, with_line_numbers, start, end, total_lines);
+    append_read_file_content(&mut out, with_line_numbers, start, slice);
+    out
+}
+
+fn format_read_file_header(
+    path: &str,
+    with_line_numbers: bool,
+    start: usize,
+    end: usize,
+    total_lines: usize,
+) -> String {
     let mut out = String::new();
     out.push_str(if with_line_numbers {
         "[read_code]\n"
@@ -139,12 +151,18 @@ fn format_read_file_output(
         "[read_file]\n"
     });
     out.push_str(&format!("path: {}\n", path));
-    out.push_str(&format!(
-        "lines: {}-{} (total {})\n",
-        start, end, total_lines
-    ));
+    out.push_str(&format!("lines: {}-{} (total {})\n", start, end, total_lines));
     out.push_str("content:\n");
     out.push_str("```text\n");
+    out
+}
+
+fn append_read_file_content(
+    out: &mut String,
+    with_line_numbers: bool,
+    start: usize,
+    slice: &[&str],
+) {
     if with_line_numbers {
         for (idx, line) in slice.iter().enumerate() {
             let line_no = start + idx;
@@ -157,7 +175,6 @@ fn format_read_file_output(
         }
     }
     out.push_str("```\n");
-    out
 }
 
 pub(crate) fn parse_code_exec_args(args_json: &str) -> Result<CodeExecRequest, String> {

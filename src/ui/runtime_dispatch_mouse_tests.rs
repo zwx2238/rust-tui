@@ -99,41 +99,58 @@ mod tests {
         }
     }
 
-    #[test]
-    fn mouse_scroll_in_overlay_does_not_panic() {
-        let mut tabs = vec![TabState::new(
-            "id".into(),
-            "默认".into(),
-            "",
-            false,
-            "m1",
-            "p1",
-        )];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
+    struct OverlayScrollState {
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        categories: Vec<String>,
+        active_category: usize,
+        theme: RenderTheme,
+        registry: ModelRegistry,
+        prompt_registry: PromptRegistry,
+        args: Args,
+        view: ViewState,
+    }
+
+    fn overlay_scroll_state() -> OverlayScrollState {
         let mut view = ViewState::new();
         view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
-        let mut ctx = ctx(CtxParams {
-            tabs: &mut tabs,
-            active_tab: &mut active_tab,
-            categories: &mut categories,
-            active_category: &mut active_category,
-            theme: &theme,
-            registry: &registry,
-            prompt_registry: &prompt_registry,
-            args: &args,
+        OverlayScrollState {
+            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            categories: vec!["默认".to_string()],
+            active_category: 0,
+            theme: theme(),
+            registry: registry(),
+            prompt_registry: prompt_registry(),
+            args: args(),
+            view,
+        }
+    }
+
+    fn ctx_and_view<'a>(state: &'a mut OverlayScrollState) -> (DispatchContext<'a>, &'a mut ViewState) {
+        let ctx = ctx(CtxParams {
+            tabs: &mut state.tabs,
+            active_tab: &mut state.active_tab,
+            categories: &mut state.categories,
+            active_category: &mut state.active_category,
+            theme: &state.theme,
+            registry: &state.registry,
+            prompt_registry: &state.prompt_registry,
+            args: &state.args,
         });
+        (ctx, &mut state.view)
+    }
+
+    #[test]
+    fn mouse_scroll_in_overlay_does_not_panic() {
+        let mut state = overlay_scroll_state();
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let mouse = MouseEvent {
             kind: MouseEventKind::ScrollDown,
             column: 5,
             row: 5,
             modifiers: crossterm::event::KeyModifiers::NONE,
         };
-        handle_mouse_event_loop(mouse, &mut ctx, layout(), &mut view, &[]);
+        handle_mouse_event_loop(mouse, &mut ctx, layout(), view, &[]);
     }
 }

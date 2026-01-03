@@ -4,8 +4,14 @@ use crate::ui::code_exec_popup_text::{code_max_scroll, stderr_max_scroll, stdout
 use crate::ui::runtime_dispatch::{DispatchContext, LayoutContext};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
-use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCommand};
+use crate::ui::state::{CodeExecReasonTarget, PendingCommand};
 use crossterm::event::MouseEvent;
+
+mod mouse_overlay_code_exec_helpers;
+use mouse_overlay_code_exec_helpers::{
+    clear_code_exec_reason, code_exec_finished, code_exec_output, hover_at,
+    reset_code_exec_reason_input,
+};
 
 use super::{apply_scroll, is_mouse_down, is_mouse_moved, point_in_rect, scroll_delta};
 
@@ -61,28 +67,6 @@ fn handle_code_exec_hover(
     let reason_mode = tab_state.app.code_exec_reason_target.is_some();
     tab_state.app.code_exec_hover = hover_at(m, popup, reason_mode);
     true
-}
-
-fn hover_at(m: MouseEvent, popup: CodeExecPopupLayout, reason_mode: bool) -> Option<CodeExecHover> {
-    if point_in_rect(m.column, m.row, popup.approve_btn) {
-        Some(if reason_mode {
-            CodeExecHover::ReasonConfirm
-        } else {
-            CodeExecHover::Approve
-        })
-    } else if point_in_rect(m.column, m.row, popup.deny_btn) {
-        Some(if reason_mode {
-            CodeExecHover::ReasonBack
-        } else {
-            CodeExecHover::Deny
-        })
-    } else if point_in_rect(m.column, m.row, popup.stop_btn) {
-        Some(CodeExecHover::Stop)
-    } else if point_in_rect(m.column, m.row, popup.exit_btn) {
-        Some(CodeExecHover::Exit)
-    } else {
-        None
-    }
 }
 
 fn handle_code_exec_scroll(
@@ -172,19 +156,6 @@ fn handle_code_exec_stderr_scroll(
     true
 }
 
-fn code_exec_output(tab_state: &TabState) -> (String, String) {
-    tab_state
-        .app
-        .code_exec_live
-        .as_ref()
-        .and_then(|live| {
-            live.lock()
-                .ok()
-                .map(|live| (live.stdout.clone(), live.stderr.clone()))
-        })
-        .unwrap_or_else(|| (String::new(), String::new()))
-}
-
 fn handle_code_exec_click(
     m: MouseEvent,
     tab_state: &mut TabState,
@@ -205,19 +176,6 @@ fn handle_code_exec_click(
         return true;
     }
     handle_code_exec_action_click(m, tab_state, view, popup, running, finished)
-}
-
-fn code_exec_finished(tab_state: &TabState) -> bool {
-    tab_state
-        .app
-        .code_exec_live
-        .as_ref()
-        .and_then(|live| {
-            live.lock()
-                .ok()
-                .map(|live| live.done || live.exit_code.is_some())
-        })
-        .unwrap_or(false)
 }
 
 fn handle_code_exec_reason_click(
@@ -273,16 +231,6 @@ fn handle_code_exec_action_click(
         return true;
     }
     false
-}
-
-fn reset_code_exec_reason_input(tab_state: &mut TabState) {
-    tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
-    tab_state.app.code_exec_hover = None;
-}
-
-fn clear_code_exec_reason(tab_state: &mut TabState) {
-    tab_state.app.code_exec_reason_target = None;
-    reset_code_exec_reason_input(tab_state);
 }
 
 fn handle_code_exec_fallback(
