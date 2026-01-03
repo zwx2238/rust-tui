@@ -1,4 +1,6 @@
 mod cache;
+#[cfg(test)]
+mod cache_tests;
 mod layout;
 mod markdown;
 mod theme;
