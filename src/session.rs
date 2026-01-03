@@ -154,24 +154,15 @@ pub fn save_session(
 #[cfg(test)]
 mod tests {
     use super::{load_session, save_session};
+    use crate::test_support::{env_lock, restore_env, set_env};
     use std::fs;
-    use std::sync::{Mutex, OnceLock};
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     fn set_home(temp: &std::path::Path) -> Option<String> {
-        let prev = std::env::var("HOME").ok();
-        unsafe { std::env::set_var("HOME", temp.to_string_lossy().to_string()) };
-        prev
+        set_env("HOME", &temp.to_string_lossy())
     }
 
     fn restore_home(prev: Option<String>) {
-        if let Some(val) = prev {
-            unsafe { std::env::set_var("HOME", val) };
-        }
+        restore_env("HOME", prev);
     }
 
     #[test]
@@ -206,7 +197,10 @@ mod tests {
             fs::create_dir_all(parent).unwrap();
         }
         fs::write(&path, r#"{"tabs":[{"id":1}]}"#).unwrap();
-        let err = load_session("legacy").unwrap_err().to_string();
+        let err = match load_session("legacy") {
+            Ok(_) => "expected error".to_string(),
+            Err(e) => e.to_string(),
+        };
         assert!(err.contains("tabs"));
         restore_home(prev);
         let _ = fs::remove_dir_all(&temp);

@@ -63,24 +63,15 @@ pub fn save_conversation(data: &ConversationData) -> Result<PathBuf, Box<dyn std
 #[cfg(test)]
 mod tests {
     use super::{ConversationData, conversation_path, load_conversation, save_conversation};
+    use crate::test_support::{env_lock, restore_env, set_env};
     use std::fs;
-    use std::sync::{Mutex, OnceLock};
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     fn set_home(temp: &std::path::Path) -> Option<String> {
-        let prev = std::env::var("HOME").ok();
-        unsafe { std::env::set_var("HOME", temp.to_string_lossy().to_string()) };
-        prev
+        set_env("HOME", &temp.to_string_lossy())
     }
 
     fn restore_home(prev: Option<String>) {
-        if let Some(val) = prev {
-            unsafe { std::env::set_var("HOME", val) };
-        }
+        restore_env("HOME", prev);
     }
 
     #[test]

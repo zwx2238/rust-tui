@@ -45,6 +45,6 @@ mod tests {
     #[test]
     fn truncate_to_width_adds_ellipsis() {
         let out = truncate_to_width("hello world", 6);
-        assert_eq!(out, "he...");
+        assert_eq!(out, "hel...");
     }
 }

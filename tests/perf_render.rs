@@ -1,4 +1,5 @@
-use rust_tui::render::{RenderCacheEntry, messages_to_viewport_text_cached, theme_from_config};
+use ratatui::style::Color;
+use rust_tui::render::{RenderCacheEntry, RenderTheme, messages_to_viewport_text_cached};
 use rust_tui::types::Message;
 use std::fs::File;
 use std::io::Write;
@@ -23,6 +24,8 @@ fn build_long_messages(count: usize) -> Vec<Message> {
         out.push(Message {
             role: role.to_string(),
             content,
+            tool_call_id: None,
+            tool_calls: None,
         });
     }
     out
@@ -38,7 +41,13 @@ fn assert_duration_under(label: &str, d: Duration, limit: Duration) {
 #[test]
 #[ignore]
 fn long_conversation_render_latency() {
-    let theme = theme_from_config(None);
+    let theme = RenderTheme {
+        bg: Color::Black,
+        fg: None,
+        code_bg: Color::Black,
+        code_theme: "base16-ocean.dark",
+        heading_fg: None,
+    };
     let messages = build_long_messages(50);
     let width = 100;
     let mut cache: Vec<RenderCacheEntry> = Vec::new();

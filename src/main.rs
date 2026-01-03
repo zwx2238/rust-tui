@@ -6,6 +6,8 @@ mod model_registry;
 mod question_set;
 mod render;
 mod session;
+#[cfg(test)]
+mod test_support;
 mod types;
 mod ui;
 

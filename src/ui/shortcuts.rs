@@ -11,22 +11,6 @@ pub(crate) enum ShortcutScope {
     Help,
 }
 
-impl ShortcutScope {
-    pub(crate) fn label(&self) -> &'static str {
-        match self {
-            ShortcutScope::Global => "全局",
-            ShortcutScope::Chat => "聊天",
-            ShortcutScope::Nav => "导航",
-            ShortcutScope::Summary => "汇总",
-            ShortcutScope::Jump => "跳转",
-            ShortcutScope::Model => "模型",
-            ShortcutScope::Prompt => "提示",
-            ShortcutScope::CodeExec => "执行",
-            ShortcutScope::Help => "帮助",
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Shortcut {
     pub(crate) scope: ShortcutScope,

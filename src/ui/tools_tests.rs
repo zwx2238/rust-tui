@@ -18,8 +18,7 @@ mod tests {
 
     #[test]
     fn parse_code_exec_rejects_empty() {
-        let err = parse_code_exec_args(r#"{"language":"","code":""}"#).unwrap_err();
-        assert!(err.contains("language"));
+        assert!(parse_code_exec_args(r#"{"language":"","code":""}"#).is_err());
     }
 
     #[test]

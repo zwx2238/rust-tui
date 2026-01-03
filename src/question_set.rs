@@ -41,24 +41,15 @@ fn resolve_question_set_path(spec: &str) -> Result<(PathBuf, bool), String> {
 #[cfg(test)]
 mod tests {
     use super::load_question_set;
+    use crate::test_support::{env_lock, restore_env, set_env};
     use std::fs;
-    use std::sync::{Mutex, OnceLock};
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     fn set_home(temp: &std::path::Path) -> Option<String> {
-        let prev = std::env::var("HOME").ok();
-        unsafe { std::env::set_var("HOME", temp.to_string_lossy().to_string()) };
-        prev
+        set_env("HOME", &temp.to_string_lossy())
     }
 
     fn restore_home(prev: Option<String>) {
-        if let Some(val) = prev {
-            unsafe { std::env::set_var("HOME", val) };
-        }
+        restore_env("HOME", prev);
     }
 
     #[test]
