@@ -121,9 +121,10 @@ mod runtime_loop_helpers_tests;
 mod runtime_loop_steps;
 #[cfg(test)]
 mod runtime_loop_tests;
-mod runtime_render;
 #[cfg(test)]
 mod runtime_render_tests;
+#[cfg(test)]
+mod runtime_render;
 mod runtime_requests;
 #[cfg(test)]
 mod runtime_requests_tests;

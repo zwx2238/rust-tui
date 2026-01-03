@@ -7,10 +7,12 @@ mod root;
 use std::error::Error;
 
 pub(crate) use context::{
-    EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+    EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput,
 };
-pub(crate) use lifecycle::{WidgetLifecycle, WidgetRender};
-use render::{render_root, render_root_view};
+pub(crate) use lifecycle::WidgetLifecycle;
+use render::render_root;
+#[cfg(test)]
+use render::render_root_view;
 use root::RootWidget;
 
 pub(crate) struct WidgetSystem {
@@ -39,11 +41,11 @@ impl WidgetSystem {
         self.root.update(ctx, layout)
     }
 
-    pub(crate) fn render(
+    pub(crate) fn render<'a>(
         &mut self,
-        ctx: &mut RenderCtx<'_>,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
-        update: &UpdateOutput,
+        ctx: &'a mut RenderCtx<'a>,
+        layout: &'a crate::ui::runtime_loop_steps::FrameLayout,
+        update: &'a UpdateOutput,
     ) -> Result<Vec<crate::ui::jump::JumpRow>, Box<dyn Error>> {
         render_root(ctx, layout, update, &mut self.root)
     }
@@ -58,6 +60,7 @@ impl WidgetSystem {
         self.root.event(ctx, layout, update, jump_rows)
     }
 
+    #[cfg(test)]
     pub(crate) fn render_view<'a>(
         &mut self,
         ctx: &mut crate::ui::render_context::RenderContext<'a>,

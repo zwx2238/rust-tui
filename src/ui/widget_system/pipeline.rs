@@ -39,9 +39,9 @@ pub(crate) fn event_root(
     update: &UpdateOutput,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) -> Result<bool, Box<dyn Error>> {
-    let mut dispatch_params = build_dispatch_params(ctx, layout);
+    let mut dispatch = prepare_event_dispatch(ctx, layout);
     let layout_params = build_layout_params(layout, update);
-    poll_and_dispatch_event(&mut dispatch_params, layout_params, ctx.view, jump_rows)
+    poll_and_dispatch_event(&mut dispatch.params, layout_params, dispatch.view, jump_rows)
 }
 
 fn prepare_tabs(ctx: &mut UpdateCtx<'_>) -> (Vec<String>, usize) {
@@ -104,23 +104,6 @@ fn handle_pending_actions(ctx: &mut UpdateCtx<'_>, active_data: &ActiveFrameData
     });
 }
 
-fn build_dispatch_params<'a>(
-    ctx: &'a mut EventCtx<'_>,
-    layout: &FrameLayout,
-) -> DispatchContextParams<'a> {
-    DispatchContextParams {
-        tabs: ctx.tabs,
-        active_tab: ctx.active_tab,
-        categories: ctx.categories,
-        active_category: ctx.active_category,
-        msg_width: layout.layout.msg_width,
-        theme: ctx.theme,
-        registry: ctx.registry,
-        prompt_registry: ctx.prompt_registry,
-        args: ctx.args,
-    }
-}
-
 fn build_layout_params(layout: &FrameLayout, update: &UpdateOutput) -> LayoutContextParams {
     LayoutContextParams {
         size: layout.size,
@@ -131,4 +114,38 @@ fn build_layout_params(layout: &FrameLayout, update: &UpdateOutput) -> LayoutCon
         view_height: layout.layout.view_height,
         total_lines: update.active_data.total_lines,
     }
+}
+
+struct EventDispatch<'a> {
+    params: DispatchContextParams<'a>,
+    view: &'a mut crate::ui::runtime_view::ViewState,
+}
+
+fn prepare_event_dispatch<'a>(
+    ctx: &'a mut EventCtx<'_>,
+    layout: &FrameLayout,
+) -> EventDispatch<'a> {
+    let EventCtx {
+        tabs,
+        active_tab,
+        categories,
+        active_category,
+        theme,
+        registry,
+        prompt_registry,
+        args,
+        view,
+    } = ctx;
+    let params = DispatchContextParams {
+        tabs,
+        active_tab,
+        categories,
+        active_category,
+        msg_width: layout.layout.msg_width,
+        theme,
+        registry,
+        prompt_registry,
+        args,
+    };
+    EventDispatch { params, view }
 }
