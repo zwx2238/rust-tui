@@ -4,14 +4,68 @@ use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
 use crate::ui::runtime_tick::ActiveFrameData;
 use crate::ui::runtime_view::ViewState;
+use crate::ui::state::App;
 use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::layout::Rect;
 use std::sync::mpsc;
 use std::time::Instant;
 
-pub(crate) struct WidgetFrame<'a, 'b> {
-    pub(crate) ctx: &'a mut crate::ui::render_context::RenderContext<'b>,
-    pub(crate) view: &'a mut ViewState,
-    pub(crate) jump_rows: &'a mut Vec<crate::ui::jump::JumpRow>,
+pub(crate) struct RenderState<'a> {
+    pub(crate) tabs: &'a mut Vec<TabState>,
+    pub(crate) active_tab: usize,
+    pub(crate) tab_labels: &'a [String],
+    pub(crate) active_tab_pos: usize,
+    pub(crate) categories: &'a [String],
+    pub(crate) active_category: usize,
+    pub(crate) theme: &'a RenderTheme,
+    pub(crate) startup_text: Option<&'a str>,
+    pub(crate) full_area: Rect,
+    pub(crate) input_height: u16,
+    pub(crate) msg_area: Rect,
+    pub(crate) tabs_area: Rect,
+    pub(crate) category_area: Rect,
+    pub(crate) header_area: Rect,
+    pub(crate) footer_area: Rect,
+    pub(crate) input_area: Rect,
+    pub(crate) msg_width: usize,
+    pub(crate) text: &'a ratatui::text::Text<'a>,
+    pub(crate) total_lines: usize,
+    pub(crate) header_note: Option<&'a str>,
+    pub(crate) models: &'a [crate::model_registry::ModelProfile],
+    pub(crate) prompts: &'a [crate::llm::prompts::SystemPrompt],
+}
+
+impl RenderState<'_> {
+    pub(crate) fn with_active_tab_mut<T>(&mut self, f: impl FnOnce(&mut TabState) -> T) -> Option<T> {
+        self.tabs.get_mut(self.active_tab).map(f)
+    }
+
+    pub(crate) fn with_active_tab<T>(&self, f: impl FnOnce(&TabState) -> T) -> Option<T> {
+        self.tabs.get(self.active_tab).map(f)
+    }
+
+    pub(crate) fn active_app(&self) -> Option<&App> {
+        self.tabs.get(self.active_tab).map(|tab| &tab.app)
+    }
+
+    pub(crate) fn active_app_mut(&mut self) -> Option<&mut App> {
+        self.tabs.get_mut(self.active_tab).map(|tab| &mut tab.app)
+    }
+
+    pub(crate) fn tabs(&self) -> &[TabState] {
+        self.tabs
+    }
+
+    pub(crate) fn tabs_mut(&mut self) -> &mut [TabState] {
+        self.tabs
+    }
+}
+
+pub(crate) struct WidgetFrame<'frame, 'state, 'data, 'buf> {
+    pub(crate) frame: &'frame mut ratatui::Frame<'buf>,
+    pub(crate) state: &'state mut RenderState<'data>,
+    pub(crate) view: &'state mut ViewState,
+    pub(crate) jump_rows: &'state mut Vec<crate::ui::jump::JumpRow>,
 }
 
 pub(crate) struct LayoutCtx<'a> {

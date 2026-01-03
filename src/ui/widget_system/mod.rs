@@ -1,7 +1,8 @@
 mod context;
-mod events;
+pub(crate) mod events;
 mod lifecycle;
 mod render;
+mod widget_pod;
 mod widgets;
 #[cfg(test)]
 mod widget_system_tests;
@@ -11,19 +12,19 @@ use std::error::Error;
 pub(crate) use context::{
     EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput,
 };
-pub(crate) use lifecycle::Widget;
+pub(crate) use lifecycle::{EventResult, Widget};
 use render::render_root;
-#[cfg(test)]
-use render::render_root_view;
-use widgets::RootWidget;
+use widgets::{FrameLifecycle, RootWidget};
 
 pub(crate) struct WidgetSystem {
+    frame: FrameLifecycle,
     root: RootWidget,
 }
 
 impl WidgetSystem {
     pub(crate) fn new() -> Self {
         Self {
+            frame: FrameLifecycle,
             root: RootWidget::new(),
         }
     }
@@ -32,7 +33,9 @@ impl WidgetSystem {
         &mut self,
         ctx: &mut LayoutCtx<'_>,
     ) -> Result<crate::ui::runtime_loop_steps::FrameLayout, Box<dyn Error>> {
-        self.root.layout(ctx)
+        let layout = self.frame.layout(ctx)?;
+        self.root.layout(ctx, &layout, layout.size)?;
+        Ok(layout)
     }
 
     pub(crate) fn update(
@@ -40,7 +43,9 @@ impl WidgetSystem {
         ctx: &mut UpdateCtx<'_>,
         layout: &crate::ui::runtime_loop_steps::FrameLayout,
     ) -> Result<UpdateOutput, Box<dyn Error>> {
-        self.root.update(ctx, layout)
+        let update = self.frame.update(ctx, layout)?;
+        self.root.update(ctx, layout, &update)?;
+        Ok(update)
     }
 
     pub(crate) fn render<'a>(
@@ -58,17 +63,12 @@ impl WidgetSystem {
         layout: &crate::ui::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
         jump_rows: &[crate::ui::jump::JumpRow],
+        event: &crossterm::event::Event,
     ) -> Result<bool, Box<dyn Error>> {
-        self.root.event(ctx, layout, update, jump_rows)
+        let result = self.root.event(ctx, event, layout, update, jump_rows, layout.size)?;
+        Ok(result.quit)
     }
 
-    #[cfg(test)]
-    pub(crate) fn render_view<'a>(
-        &mut self,
-        ctx: &mut crate::ui::render_context::RenderContext<'a>,
-        view: &mut crate::ui::runtime_view::ViewState,
-    ) -> Result<Vec<crate::ui::jump::JumpRow>, Box<dyn Error>> {
-        render_root_view(ctx, view, &mut self.root)
-    }
+    // render_view is no longer supported with the new render pipeline.
 }
 mod bindings;

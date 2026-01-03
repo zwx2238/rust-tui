@@ -1,6 +1,6 @@
-mod layout;
+pub(crate) mod layout;
 mod rows;
-mod table;
+pub(crate) mod table;
 
 use crate::render::RenderTheme;
 use crate::ui::notice::draw_notice;

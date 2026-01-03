@@ -155,21 +155,21 @@ fn jump_layout_params<'a>(params: &'a JumpDrawParts<'a>) -> JumpLayoutParams<'a>
     }
 }
 
-struct JumpLayoutParams<'a> {
-    theme: &'a RenderTheme,
-    tab_labels: &'a [String],
-    active_tab_pos: usize,
-    categories: &'a [String],
-    active_category: usize,
-    header_note: Option<&'a str>,
-    startup_text: Option<&'a str>,
-    header_area: Rect,
-    category_area: Rect,
-    tabs_area: Rect,
-    footer_area: Rect,
+pub(crate) struct JumpLayoutParams<'a> {
+    pub(crate) theme: &'a RenderTheme,
+    pub(crate) tab_labels: &'a [String],
+    pub(crate) active_tab_pos: usize,
+    pub(crate) categories: &'a [String],
+    pub(crate) active_category: usize,
+    pub(crate) header_note: Option<&'a str>,
+    pub(crate) startup_text: Option<&'a str>,
+    pub(crate) header_area: Rect,
+    pub(crate) category_area: Rect,
+    pub(crate) tabs_area: Rect,
+    pub(crate) footer_area: Rect,
 }
 
-fn draw_jump_layout(f: &mut ratatui::Frame<'_>, params: JumpLayoutParams<'_>) {
+pub(crate) fn draw_jump_layout(f: &mut ratatui::Frame<'_>, params: JumpLayoutParams<'_>) {
     draw_header(f, params.header_area, params.theme, params.header_note);
     draw_categories(
         f,
@@ -194,7 +194,7 @@ pub fn max_preview_width(area: Rect) -> usize {
     inner_width.saturating_sub(PREVIEW_GUTTER).max(10)
 }
 
-fn draw_jump_table(
+pub(crate) fn draw_jump_table(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
     rows: &[JumpRow],

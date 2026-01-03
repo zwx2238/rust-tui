@@ -1,22 +1,66 @@
 use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crossterm::event::Event;
 use std::error::Error;
 
 use super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 
+#[derive(Copy, Clone, Debug, Default)]
+pub(crate) struct EventResult {
+    pub(crate) handled: bool,
+    pub(crate) quit: bool,
+}
+
+impl EventResult {
+    pub(crate) fn ignored() -> Self {
+        Self {
+            handled: false,
+            quit: false,
+        }
+    }
+
+    pub(crate) fn handled() -> Self {
+        Self {
+            handled: true,
+            quit: false,
+        }
+    }
+
+    pub(crate) fn quit() -> Self {
+        Self {
+            handled: true,
+            quit: true,
+        }
+    }
+}
+
 pub(crate) trait Widget {
-    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>) -> Result<FrameLayout, Box<dyn Error>>;
+    fn layout(
+        &mut self,
+        _ctx: &mut LayoutCtx<'_>,
+        _layout: &FrameLayout,
+        _rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>>;
     fn update(
         &mut self,
         _ctx: &mut UpdateCtx<'_>,
         _layout: &FrameLayout,
-    ) -> Result<UpdateOutput, Box<dyn Error>>;
+        _update: &UpdateOutput,
+    ) -> Result<(), Box<dyn Error>>;
     fn event(
         &mut self,
         _ctx: &mut EventCtx<'_>,
+        _event: &Event,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
         _jump_rows: &[JumpRow],
-    ) -> Result<bool, Box<dyn Error>>;
-    fn render(&mut self, frame: &mut WidgetFrame<'_, '_>) -> Result<(), Box<dyn Error>>;
+        _rect: ratatui::layout::Rect,
+    ) -> Result<EventResult, Box<dyn Error>>;
+    fn render(
+        &mut self,
+        frame: &mut WidgetFrame<'_, '_, '_, '_>,
+        _layout: &FrameLayout,
+        _update: &UpdateOutput,
+        _rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>>;
 }

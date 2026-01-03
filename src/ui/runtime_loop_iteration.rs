@@ -7,6 +7,7 @@ use crate::ui::runtime_view::ViewState;
 use crate::ui::widget_system::{
     EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput, WidgetSystem,
 };
+use crate::ui::widget_system::events::poll_event;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::sync::mpsc;
 use std::time::Instant;
@@ -114,6 +115,9 @@ fn run_event(
     update: &UpdateOutput,
     jump_rows: &[crate::ui::jump::JumpRow],
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    let Some(event) = poll_event()? else {
+        return Ok(false);
+    };
     let mut ctx = EventCtx {
         tabs: params.tabs,
         active_tab: params.active_tab,
@@ -127,5 +131,5 @@ fn run_event(
     };
     params
         .widget_system
-        .event(&mut ctx, layout, update, jump_rows)
+        .event(&mut ctx, layout, update, jump_rows, &event)
 }

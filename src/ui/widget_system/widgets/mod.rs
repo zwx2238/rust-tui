@@ -1,12 +1,15 @@
-mod chat;
+mod base_frame;
 mod code_exec;
-mod overlay_update;
+mod frame;
 mod file_patch;
 mod help;
 mod jump;
 mod model;
+mod overlay_table;
 mod prompt;
 mod root;
 mod summary;
+mod overlay_root;
 
 pub(crate) use root::RootWidget;
+pub(crate) use frame::FrameLifecycle;
