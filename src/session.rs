@@ -150,3 +150,65 @@ pub fn save_session(
         custom_path,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{load_session, save_session};
+    use std::fs;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn set_home(temp: &std::path::Path) -> Option<String> {
+        let prev = std::env::var("HOME").ok();
+        unsafe { std::env::set_var("HOME", temp.to_string_lossy().to_string()) };
+        prev
+    }
+
+    fn restore_home(prev: Option<String>) {
+        if let Some(val) = prev {
+            unsafe { std::env::set_var("HOME", val) };
+        }
+    }
+
+    #[test]
+    fn save_then_load_session() {
+        let _guard = env_lock().lock().unwrap();
+        let temp = std::env::temp_dir().join("deepchat-session-test");
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+        let prev = set_home(&temp);
+        let loc = save_session(&[], &[], None, None, None).unwrap();
+        let loaded = load_session(&loc.id).unwrap();
+        assert!(!loaded.data.categories.is_empty());
+        assert!(!loaded.data.active_category.trim().is_empty());
+        restore_home(prev);
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn load_session_rejects_legacy_tabs() {
+        let _guard = env_lock().lock().unwrap();
+        let temp = std::env::temp_dir().join("deepchat-session-legacy");
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+        let prev = set_home(&temp);
+        let path = temp
+            .join(".local")
+            .join("share")
+            .join("deepseek")
+            .join("sessions")
+            .join("legacy.json");
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(&path, r#"{"tabs":[{"id":1}]}"#).unwrap();
+        let err = load_session("legacy").unwrap_err().to_string();
+        assert!(err.contains("tabs"));
+        restore_home(prev);
+        let _ = fs::remove_dir_all(&temp);
+    }
+}

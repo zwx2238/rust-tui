@@ -66,3 +66,66 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Config, ModelItem, load_config};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_path(name: &str) -> PathBuf {
+        let id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!("deepchat-{name}-{id}.json"))
+    }
+
+    fn write_config(path: &PathBuf, cfg: &Config) {
+        let text = serde_json::to_string(cfg).unwrap();
+        fs::write(path, text).unwrap();
+    }
+
+    #[test]
+    fn load_config_ok() {
+        let path = temp_path("ok");
+        let cfg = Config {
+            theme: "dark".to_string(),
+            models: vec![ModelItem {
+                key: "m1".to_string(),
+                base_url: "https://api.test/".to_string(),
+                api_key: "k".to_string(),
+                model: "m".to_string(),
+            }],
+            default_model: "m1".to_string(),
+            prompts_dir: "/tmp/prompts".to_string(),
+            tavily_api_key: "key".to_string(),
+        };
+        write_config(&path, &cfg);
+        let loaded = load_config(&path).unwrap();
+        assert_eq!(loaded.default_model, "m1");
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn load_config_missing_default_model() {
+        let path = temp_path("bad");
+        let cfg = Config {
+            theme: "dark".to_string(),
+            models: vec![ModelItem {
+                key: "m1".to_string(),
+                base_url: "https://api.test/".to_string(),
+                api_key: "k".to_string(),
+                model: "m".to_string(),
+            }],
+            default_model: "missing".to_string(),
+            prompts_dir: "/tmp/prompts".to_string(),
+            tavily_api_key: "key".to_string(),
+        };
+        write_config(&path, &cfg);
+        let err = load_config(&path).unwrap_err().to_string();
+        assert!(err.contains("default_model"));
+        let _ = fs::remove_file(path);
+    }
+}

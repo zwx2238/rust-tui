@@ -83,3 +83,28 @@ impl SelectionState {
         self.ensure_visible(viewport_rows);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SelectionState;
+
+    #[test]
+    fn clamp_with_viewport_bounds() {
+        let mut s = SelectionState {
+            selected: 10,
+            scroll: 5,
+        };
+        s.clamp_with_viewport(3, 2);
+        assert_eq!(s.selected, 2);
+        assert!(s.scroll <= 1);
+    }
+
+    #[test]
+    fn move_and_page() {
+        let mut s = SelectionState::default();
+        s.move_down();
+        assert_eq!(s.selected, 1);
+        s.page_down(5);
+        assert!(s.scroll >= 5);
+    }
+}

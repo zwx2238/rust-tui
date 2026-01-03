@@ -119,3 +119,36 @@ impl Args {
         (web_search, code_exec, read_file, read_code, modify_file)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Args;
+    use clap::Parser;
+
+    #[test]
+    fn default_flags() {
+        let args = Args::parse_from(["bin"]);
+        assert!(!args.web_search_enabled());
+        assert!(args.code_exec_enabled());
+        assert!(args.read_file_enabled());
+        assert!(args.read_code_enabled());
+        assert!(args.modify_file_enabled());
+        assert!(!args.yolo_enabled());
+        assert!(!args.read_only_enabled());
+    }
+
+    #[test]
+    fn enable_expression_toggles() {
+        let args = Args::parse_from(["bin", "--enable", "web_search,-read_file"]);
+        assert!(args.web_search_enabled());
+        assert!(!args.read_file_enabled());
+        assert!(args.code_exec_enabled());
+    }
+
+    #[test]
+    fn read_only_disables_modify_file_only() {
+        let args = Args::parse_from(["bin", "--read-only"]);
+        assert!(args.code_exec_enabled());
+        assert!(!args.modify_file_enabled());
+    }
+}

@@ -59,5 +59,7 @@ mod summary;
 mod text_utils;
 mod tool_service;
 mod tools;
+#[cfg(test)]
+mod tools_tests;
 
 pub use runtime::run;

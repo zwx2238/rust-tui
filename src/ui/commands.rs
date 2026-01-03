@@ -284,3 +284,15 @@ fn byte_index_from_char(line: &str, char_idx: usize) -> usize {
         .map(|(idx, _)| idx)
         .unwrap_or(line.len())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::command_suggestions_for_input;
+
+    #[test]
+    fn command_suggestions_rank_exact_prefix() {
+        let items = command_suggestions_for_input("/he", 3);
+        assert!(!items.is_empty());
+        assert!(items[0].insert.starts_with("/help"));
+    }
+}

@@ -111,3 +111,23 @@ pub fn build_history_and_prompt(
         Ok((history, templates.render_followup()?))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::augment_system;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn augment_system_adds_read_only_note() {
+        let _guard = env_lock().lock().unwrap();
+        unsafe { std::env::set_var("DEEPCHAT_READ_ONLY", "1") };
+        let out = augment_system("base");
+        assert!(out.contains("只读模式"));
+        unsafe { std::env::remove_var("DEEPCHAT_READ_ONLY") };
+    }
+}

@@ -26,3 +26,25 @@ pub fn truncate_to_width(text: &str, max_width: usize) -> String {
     out.push_str(ellipsis);
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{collapse_text, truncate_to_width};
+
+    #[test]
+    fn collapse_text_merges_whitespace() {
+        let input = "a  b\nc\t d";
+        assert_eq!(collapse_text(input), "a b c d");
+    }
+
+    #[test]
+    fn truncate_to_width_keeps_short() {
+        assert_eq!(truncate_to_width("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_to_width_adds_ellipsis() {
+        let out = truncate_to_width("hello world", 6);
+        assert_eq!(out, "he...");
+    }
+}

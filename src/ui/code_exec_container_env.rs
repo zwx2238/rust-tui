@@ -113,3 +113,24 @@ pub(crate) fn pip_extra_index_url() -> Option<String> {
         Err(_) => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{read_only_enabled, work_dir};
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn read_only_changes_work_dir() {
+        let _guard = env_lock().lock().unwrap();
+        unsafe { std::env::set_var("DEEPCHAT_READ_ONLY", "1") };
+        assert!(read_only_enabled());
+        assert_eq!(work_dir(), "/opt/deepchat/work");
+        unsafe { std::env::remove_var("DEEPCHAT_READ_ONLY") };
+        assert_eq!(work_dir(), "/opt/deepchat");
+    }
+}
