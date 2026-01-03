@@ -22,7 +22,7 @@ use crossterm::terminal::{
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use std::io::{self};
+use std::io::{self, IsTerminal};
 use std::sync::mpsc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -173,6 +173,11 @@ pub fn run(
         }
     }
 
+    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+        return Err("未检测到终端 TTY。请在真实终端运行，或在 CLion 运行/调试配置中勾选 \"Emulate terminal in output console\"。".into());
+    }
+    ensure_controlling_tty()?;
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(
@@ -240,5 +245,18 @@ pub fn run(
         println!("恢复指令：deepchat --resume {}", loc.display_hint());
     }
 
+    Ok(())
+}
+
+#[cfg(unix)]
+fn ensure_controlling_tty() -> Result<(), Box<dyn std::error::Error>> {
+    if std::fs::File::open("/dev/tty").is_err() {
+        return Err("未检测到控制终端 (无法打开 /dev/tty)。CLion Debug 可能未分配 TTY，请改用外部终端运行或启用 \"Run in terminal\"。".into());
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn ensure_controlling_tty() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }

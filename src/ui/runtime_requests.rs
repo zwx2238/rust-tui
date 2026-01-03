@@ -84,6 +84,10 @@ pub(crate) fn start_tab_request(
     let model = model.to_string();
     let prompts_dir = app.prompts_dir.clone();
     let tx = tx.clone();
+    #[cfg(test)]
+    if std::env::var("DEEPCHAT_TEST_SKIP_REQUEST").is_ok() {
+        return;
+    }
     thread::spawn(move || {
         request_llm_stream(
             &base_url,
@@ -165,6 +169,10 @@ pub(crate) fn start_followup_request(
     let model = model.to_string();
     let prompts_dir = app.prompts_dir.clone();
     let tx = tx.clone();
+    #[cfg(test)]
+    if std::env::var("DEEPCHAT_TEST_SKIP_REQUEST").is_ok() {
+        return;
+    }
     thread::spawn(move || {
         request_llm_stream(
             &base_url,

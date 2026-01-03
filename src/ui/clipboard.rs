@@ -86,3 +86,23 @@ fn write_clip_utf16le(text: &str) -> bool {
     }
     child.wait().map(|s| s.success()).unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{is_wsl, normalize};
+    use crate::test_support::{env_lock, restore_env, set_env};
+
+    #[test]
+    fn normalize_rewrites_newlines() {
+        let out = normalize("a\r\nb\rc".to_string());
+        assert_eq!(out, "a\nb\nc");
+    }
+
+    #[test]
+    fn is_wsl_checks_env_var() {
+        let _guard = env_lock().lock().unwrap();
+        let prev = set_env("WSL_DISTRO_NAME", "Ubuntu");
+        assert!(is_wsl());
+        restore_env("WSL_DISTRO_NAME", prev);
+    }
+}

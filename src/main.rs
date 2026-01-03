@@ -19,8 +19,7 @@ use render::theme_from_config;
 use std::env;
 use std::path::PathBuf;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
+fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     if (args.yolo_enabled() || args.read_only_enabled())
         && env::var("DEEPCHAT_CODE_EXEC_NETWORK").is_err()
     {
@@ -59,4 +58,66 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     ui::run(args, cfg, &theme)?;
     Ok(())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+    run_with_args(args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::run_with_args;
+    use crate::args::Args;
+    use crate::test_support::{env_lock, restore_env, set_env};
+    use clap::Parser;
+
+    #[test]
+    fn run_with_args_sets_network_env_for_yolo() {
+        let _guard = env_lock().lock().unwrap();
+        let prev = std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok();
+        restore_env("DEEPCHAT_CODE_EXEC_NETWORK", None);
+        let args = Args::parse_from(["bin", "--question-set", "list", "--yolo"]);
+        let result = run_with_args(args);
+        assert!(result.is_ok());
+        assert_eq!(
+            std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok().as_deref(),
+            Some("none")
+        );
+        restore_env("DEEPCHAT_CODE_EXEC_NETWORK", prev);
+    }
+
+    #[test]
+    fn run_with_args_sets_read_only_env() {
+        let _guard = env_lock().lock().unwrap();
+        let prev = std::env::var("DEEPCHAT_READ_ONLY").ok();
+        restore_env("DEEPCHAT_READ_ONLY", None);
+        let args = Args::parse_from(["bin", "--question-set", "list", "--read-only"]);
+        let result = run_with_args(args);
+        assert!(result.is_ok());
+        assert_eq!(
+            std::env::var("DEEPCHAT_READ_ONLY").ok().as_deref(),
+            Some("1")
+        );
+        restore_env("DEEPCHAT_READ_ONLY", prev);
+    }
+
+    #[test]
+    fn run_with_args_reports_config_error() {
+        let args = Args::parse_from(["bin", "--config", "/tmp/deepchat-missing-config.json"]);
+        let result = run_with_args(args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_with_args_question_set_list_is_ok() {
+        let _guard = env_lock().lock().unwrap();
+        let temp = std::env::temp_dir().join("deepchat-question-set");
+        let _ = std::fs::create_dir_all(&temp);
+        let prev = set_env("HOME", &temp.to_string_lossy());
+        let args = Args::parse_from(["bin", "--question-set", "list"]);
+        let result = run_with_args(args);
+        assert!(result.is_ok());
+        restore_env("HOME", prev);
+    }
 }

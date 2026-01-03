@@ -217,6 +217,10 @@ pub(crate) fn run_loop(
                 _ => {}
             }
         }
+        #[cfg(test)]
+        if std::env::var("DEEPCHAT_TEST_RUN_LOOP_ONCE").is_ok() {
+            break;
+        }
     }
 
     Ok(())

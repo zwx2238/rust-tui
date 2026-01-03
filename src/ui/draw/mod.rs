@@ -16,6 +16,8 @@ mod tabs;
 
 pub(crate) use categories::draw_categories;
 pub(crate) use header_footer::{draw_footer, draw_header};
+#[allow(unused_imports)]
+pub(crate) use messages::draw_messages;
 pub use layout::{
     inner_area, inner_height, inner_width, input_inner_area, layout_chunks, scrollbar_area,
 };
