@@ -58,6 +58,7 @@ mod tests {
             question_set: None,
             yolo: false,
             read_only: false,
+            wait_gdb: false,
         }
     }
 

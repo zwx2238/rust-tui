@@ -13,6 +13,17 @@ mod tests {
     use ratatui::style::Color;
     use std::fs;
 
+    struct TabsState {
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        categories: Vec<String>,
+        active_category: usize,
+        theme: RenderTheme,
+        registry: ModelRegistry,
+        prompt_registry: PromptRegistry,
+        args: Args,
+    }
+
     fn theme() -> RenderTheme {
         RenderTheme {
             bg: Color::Black,
@@ -60,6 +71,20 @@ mod tests {
             question_set: None,
             yolo: false,
             read_only: false,
+            wait_gdb: false,
+        }
+    }
+
+    fn base_state() -> TabsState {
+        TabsState {
+            tabs: vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            categories: vec!["默认".to_string()],
+            active_category: 0,
+            theme: theme(),
+            registry: registry(),
+            prompt_registry: prompt_registry(),
+            args: args(),
         }
     }
 
@@ -86,6 +111,19 @@ mod tests {
         }
     }
 
+    fn ctx_from_state<'a>(state: &'a mut TabsState) -> DispatchContext<'a> {
+        ctx(
+            &mut state.tabs,
+            &mut state.active_tab,
+            &mut state.categories,
+            &mut state.active_category,
+            &state.theme,
+            &state.registry,
+            &state.prompt_registry,
+            &state.args,
+        )
+    }
+
     fn set_home(temp: &std::path::Path) -> Option<String> {
         set_env("HOME", &temp.to_string_lossy())
     }
@@ -94,111 +132,68 @@ mod tests {
         restore_env("HOME", prev);
     }
 
-    #[test]
-    fn new_tab_adds_category_and_inherits_app_fields() {
-        let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-tabs-new");
+    fn setup_temp_home(name: &str) -> (std::path::PathBuf, Option<String>) {
+        let temp = std::env::temp_dir().join(name);
         let _ = fs::remove_dir_all(&temp);
         fs::create_dir_all(&temp).unwrap();
         let prev = set_home(&temp);
+        (temp, prev)
+    }
 
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        tabs[0].app.prompts_dir = "/tmp/prompts".to_string();
-        tabs[0].app.tavily_api_key = "key".to_string();
-        tabs[0].app.set_log_session_id("session");
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+    fn cleanup_temp_home(path: std::path::PathBuf, prev: Option<String>) {
+        restore_home(prev);
+        let _ = fs::remove_dir_all(&path);
+    }
+
+    #[test]
+    fn new_tab_adds_category_and_inherits_app_fields() {
+        let _guard = env_lock().lock().unwrap();
+        let (temp, prev) = setup_temp_home("deepchat-tabs-new");
+        let mut state = base_state();
+        state.tabs[0].app.prompts_dir = "/tmp/prompts".to_string();
+        state.tabs[0].app.tavily_api_key = "key".to_string();
+        state.tabs[0].app.set_log_session_id("session");
+        let mut ctx = ctx_from_state(&mut state);
         new_tab(&mut ctx);
         assert_eq!(ctx.tabs.len(), 2);
         assert_eq!(ctx.tabs[1].app.prompts_dir, "/tmp/prompts");
         assert_eq!(ctx.tabs[1].app.tavily_api_key, "key");
         assert_eq!(ctx.tabs[1].app.log_session_id, "session");
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
     fn close_tab_updates_active_tab() {
         let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-tabs-close");
-        let _ = fs::remove_dir_all(&temp);
-        fs::create_dir_all(&temp).unwrap();
-        let prev = set_home(&temp);
-
-        let mut tabs = vec![
+        let (temp, prev) = setup_temp_home("deepchat-tabs-close");
+        let mut state = base_state();
+        state.tabs = vec![
             TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
             TabState::new("id2".into(), "默认".into(), "", false, "m1", "p1"),
         ];
-        let mut active_tab = 1usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.active_tab = 1;
+        let mut ctx = ctx_from_state(&mut state);
         close_tab(&mut ctx);
         assert_eq!(ctx.tabs.len(), 1);
         assert_eq!(*ctx.active_tab, 0);
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
     fn close_other_tabs_keeps_active_only() {
         let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-tabs-close-other");
-        let _ = fs::remove_dir_all(&temp);
-        fs::create_dir_all(&temp).unwrap();
-        let prev = set_home(&temp);
-
-        let mut tabs = vec![
+        let (temp, prev) = setup_temp_home("deepchat-tabs-close-other");
+        let mut state = base_state();
+        state.tabs = vec![
             TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
             TabState::new("id2".into(), "分类 2".into(), "", false, "m1", "p1"),
         ];
-        let mut active_tab = 1usize;
-        let mut categories = vec!["默认".to_string(), "分类 2".to_string()];
-        let mut active_category = 1usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.active_tab = 1;
+        state.categories = vec!["默认".to_string(), "分类 2".to_string()];
+        state.active_category = 1;
+        let mut ctx = ctx_from_state(&mut state);
         close_other_tabs(&mut ctx);
         assert_eq!(ctx.tabs.len(), 1);
         assert_eq!(ctx.categories.len(), 1);
@@ -206,72 +201,38 @@ mod tests {
         assert_eq!(*ctx.active_tab, 0);
         assert_eq!(*ctx.active_category, 0);
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
     fn close_all_tabs_resets_to_single_tab() {
         let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-tabs-close-all");
-        let _ = fs::remove_dir_all(&temp);
-        fs::create_dir_all(&temp).unwrap();
-        let prev = set_home(&temp);
-
-        let mut tabs = vec![
+        let (temp, prev) = setup_temp_home("deepchat-tabs-close-all");
+        let mut state = base_state();
+        state.tabs = vec![
             TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
             TabState::new("id2".into(), "分类 2".into(), "", false, "m1", "p1"),
         ];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string(), "分类 2".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.categories = vec!["默认".to_string(), "分类 2".to_string()];
+        let mut ctx = ctx_from_state(&mut state);
         close_all_tabs(&mut ctx);
         assert_eq!(ctx.tabs.len(), 1);
         assert_eq!(ctx.categories.len(), 1);
         assert_eq!(*ctx.active_tab, 0);
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
     fn tab_navigation_respects_category_visibility() {
-        let mut tabs = vec![
+        let mut state = base_state();
+        state.tabs = vec![
             TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
             TabState::new("id2".into(), "分类 2".into(), "", false, "m1", "p1"),
             TabState::new("id3".into(), "默认".into(), "", false, "m1", "p1"),
         ];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string(), "分类 2".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.categories = vec!["默认".to_string(), "分类 2".to_string()];
+        let mut ctx = ctx_from_state(&mut state);
         next_tab(&mut ctx);
         assert_eq!(*ctx.active_tab, 2);
         prev_tab(&mut ctx);

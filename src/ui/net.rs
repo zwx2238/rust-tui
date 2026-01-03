@@ -1,14 +1,20 @@
-use crate::llm::rig::{RigOutcome, prepare_rig_context, rig_complete};
+use crate::llm::rig::{build_completion_request, openai_completion_model, prepare_rig_context};
 use crate::types::{Message, ToolCall, ToolFunctionCall, Usage};
-use std::fs;
-use std::path::{Path, PathBuf};
+use futures::StreamExt;
+use rig::completion::{AssistantContent, GetTokenUsage};
+use rig::streaming::StreamedAssistantContent;
 use std::sync::mpsc::Sender;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
-use std::time::Duration;
 use tokio::runtime::Runtime;
+
+mod net_logging;
+use net_logging::{build_enabled_tools, stream_chunks, write_request_log, write_response_log};
+
+type OpenAiStreamResponse = rig::providers::openai::completion::streaming::StreamingCompletionResponse;
+type RigStream = rig::streaming::StreamingCompletionResponse<OpenAiStreamResponse>;
 
 pub enum LlmEvent {
     Chunk(String),
@@ -29,31 +35,24 @@ pub struct UiEvent {
 }
 
 pub fn request_llm_stream(
-    base_url: &str,
-    api_key: &str,
-    model: &str,
-    messages: &[Message],
-    prompts_dir: &str,
-    enable_web_search: bool,
-    enable_code_exec: bool,
-    enable_read_file: bool,
-    enable_read_code: bool,
-    enable_modify_file: bool,
-    log_dir: Option<String>,
-    log_session_id: String,
-    message_index: usize,
-    cancel: Arc<AtomicBool>,
-    tx: Sender<UiEvent>,
-    tab: usize,
-    request_id: u64,
+    base_url: &str, api_key: &str, model: &str, messages: &[Message], prompts_dir: &str,
+    enable_web_search: bool, enable_code_exec: bool, enable_read_file: bool,
+    enable_read_code: bool, enable_modify_file: bool, log_dir: Option<String>,
+    log_session_id: String, message_index: usize, cancel: Arc<AtomicBool>,
+    tx: Sender<UiEvent>, tab: usize, request_id: u64,
 ) {
-    let messages = messages.to_vec();
-    let prompts_dir = prompts_dir.to_string();
-    let log_dir = log_dir.clone();
-    let log_session_id = log_session_id.clone();
-    let base_url = base_url.to_string();
-    let api_key = api_key.to_string();
-    let model = model.to_string();
+    let input = RequestInput::new(
+        base_url,
+        api_key,
+        model,
+        messages,
+        prompts_dir,
+        log_dir,
+        log_session_id,
+        message_index,
+        tab,
+        request_id,
+    );
     let enabled = build_enabled_tools(
         enable_web_search,
         enable_code_exec,
@@ -61,6 +60,66 @@ pub fn request_llm_stream(
         enable_read_code,
         enable_modify_file,
     );
+    run_llm_stream_with_input(input, enabled, cancel, tx);
+}
+
+fn run_llm_stream_with_input(
+    input: RequestInput,
+    enabled: Vec<&'static str>,
+    cancel: Arc<AtomicBool>,
+    tx: Sender<UiEvent>,
+) {
+    let Some(rt) = init_runtime(&tx, input.tab, input.request_id) else {
+        return;
+    };
+    let result = rt.block_on(stream_request(&input, &enabled, &cancel, &tx));
+    if let Err(err) = result {
+        handle_request_error(&err, &input, &tx);
+    }
+}
+
+struct RequestInput {
+    base_url: String,
+    api_key: String,
+    model: String,
+    messages: Vec<Message>,
+    prompts_dir: String,
+    log_dir: Option<String>,
+    log_session_id: String,
+    message_index: usize,
+    tab: usize,
+    request_id: u64,
+}
+
+impl RequestInput {
+    fn new(
+        base_url: &str,
+        api_key: &str,
+        model: &str,
+        messages: &[Message],
+        prompts_dir: &str,
+        log_dir: Option<String>,
+        log_session_id: String,
+        message_index: usize,
+        tab: usize,
+        request_id: u64,
+    ) -> Self {
+        Self {
+            base_url: base_url.to_string(),
+            api_key: api_key.to_string(),
+            model: model.to_string(),
+            messages: messages.to_vec(),
+            prompts_dir: prompts_dir.to_string(),
+            log_dir,
+            log_session_id,
+            message_index,
+            tab,
+            request_id,
+        }
+    }
+}
+
+fn init_runtime(tx: &Sender<UiEvent>, tab: usize, request_id: u64) -> Option<Runtime> {
     let rt = Runtime::new();
     if rt.is_err() {
         let _ = tx.send(UiEvent {
@@ -68,325 +127,276 @@ pub fn request_llm_stream(
             request_id,
             event: LlmEvent::Error("初始化 Tokio 失败".to_string()),
         });
-        return;
+        return None;
     }
-    let rt = rt.unwrap();
-    let result = rt.block_on(async {
-        let (ctx, _templates) = prepare_rig_context(&messages, &prompts_dir, &enabled)?;
-        if let Some(dir) = log_dir.as_deref() {
-            let _ = write_request_log(
-                dir,
-                &log_session_id,
-                tab,
-                message_index,
-                &base_url,
-                &model,
-                &ctx,
-            );
-        }
-        rig_complete(&base_url, &api_key, &model, ctx).await
-    });
-    match result {
-        Ok(RigOutcome::Message { content, usage }) => {
-            if cancel.load(Ordering::Relaxed) {
-                return;
-            }
-            if let Some(dir) = log_dir.as_deref() {
-                let _ = write_response_log(dir, &log_session_id, tab, message_index, &content);
-            }
-            stream_chunks(&content, &cancel, &tx, tab, request_id);
-            let _ = tx.send(UiEvent {
-                tab,
-                request_id,
-                event: LlmEvent::Done { usage },
-            });
-        }
-        Ok(RigOutcome::ToolCall { name, args, usage }) => {
-            if cancel.load(Ordering::Relaxed) {
-                return;
-            }
-            if let Some(dir) = log_dir.as_deref() {
-                let payload = format!(
-                    "tool_call: {name}\nargs: {}",
-                    serde_json::to_string_pretty(&args).unwrap_or_default()
-                );
-                let _ = write_response_log(dir, &log_session_id, tab, message_index, &payload);
-            }
-            let _ = tx.send(UiEvent {
-                tab,
-                request_id,
-                event: LlmEvent::Chunk(format!("调用工具：{name}\n")),
-            });
-            let call = ToolCall {
-                id: format!("rig-{}-{}", tab, request_id),
-                kind: "function".to_string(),
-                function: ToolFunctionCall {
-                    name,
-                    arguments: serde_json::to_string(&args).unwrap_or_default(),
-                },
-            };
-            let _ = tx.send(UiEvent {
-                tab,
-                request_id,
-                event: LlmEvent::ToolCalls {
-                    calls: vec![call],
-                    usage,
-                },
-            });
-        }
-        Err(e) => {
-            if let Some(dir) = log_dir.as_deref() {
-                let payload = format!("error: {e}");
-                let _ = write_response_log(dir, &log_session_id, tab, message_index, &payload);
-            }
-            let _ = tx.send(UiEvent {
-                tab,
-                request_id,
-                event: LlmEvent::Error(e),
-            });
-        }
-    }
+    rt.ok()
 }
 
-fn build_enabled_tools(
-    enable_web_search: bool,
-    enable_code_exec: bool,
-    enable_read_file: bool,
-    enable_read_code: bool,
-    enable_modify_file: bool,
-) -> Vec<&'static str> {
-    let mut out = Vec::new();
-    if enable_web_search {
-        out.push("web_search");
-    }
-    if enable_code_exec {
-        out.push("code_exec");
-    }
-    if enable_read_file {
-        out.push("read_file");
-    }
-    if enable_read_code {
-        out.push("read_code");
-    }
-    if enable_modify_file {
-        out.push("modify_file");
-    }
-    out
-}
-
-fn write_request_log(
-    dir: &str,
-    session_id: &str,
-    tab: usize,
-    message_index: usize,
-    base_url: &str,
-    model: &str,
-    ctx: &crate::llm::rig::RigRequestContext,
-) -> std::io::Result<()> {
-    let path = build_log_path(dir, session_id, tab, message_index, "input.txt")?;
-    let mut out = String::new();
-    out.push_str("base_url: ");
-    out.push_str(base_url);
-    out.push('\n');
-    out.push_str("model: ");
-    out.push_str(model);
-    out.push('\n');
-    out.push_str("--- preamble ---\n");
-    out.push_str(&ctx.preamble);
-    out.push('\n');
-    out.push_str("--- history ---\n");
-    for msg in &ctx.history {
-        out.push('[');
-        out.push_str(&msg.role);
-        out.push_str("]\n");
-        out.push_str(&msg.content);
-        out.push('\n');
-    }
-    out.push_str("--- prompt ---\n");
-    out.push_str(&ctx.prompt);
-    out.push('\n');
-    fs::write(path, out)
-}
-
-fn write_response_log(
-    dir: &str,
-    session_id: &str,
-    tab: usize,
-    message_index: usize,
-    content: &str,
-) -> std::io::Result<()> {
-    let path = build_log_path(dir, session_id, tab, message_index, "output.txt")?;
-    fs::write(path, content)
-}
-
-fn build_log_path(
-    dir: &str,
-    session_id: &str,
-    tab: usize,
-    message_index: usize,
-    suffix: &str,
-) -> std::io::Result<PathBuf> {
-    let dir = Path::new(dir);
-    fs::create_dir_all(dir)?;
-    let session = sanitize_log_part(session_id);
-    let tab = tab + 1;
-    let msg = message_index + 1;
-    let filename = format!("{session}_tab{tab}_msg{msg}_{suffix}");
-    Ok(dir.join(filename))
-}
-
-fn sanitize_log_part(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    for ch in input.chars() {
-        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
-            out.push(ch);
-        } else {
-            out.push('_');
-        }
-    }
-    if out.is_empty() {
-        "session".to_string()
-    } else {
-        out
-    }
-}
-
-fn stream_chunks(
-    text: &str,
+async fn stream_request(
+    input: &RequestInput,
+    enabled: &[&'static str],
     cancel: &Arc<AtomicBool>,
     tx: &Sender<UiEvent>,
-    tab: usize,
-    request_id: u64,
-) {
-    let mut buf: Vec<char> = Vec::new();
-    for ch in text.chars() {
-        if cancel.load(Ordering::Relaxed) {
-            return;
+) -> Result<(), String> {
+    let (ctx, _templates) = prepare_rig_context(&input.messages, &input.prompts_dir, enabled)?;
+    log_request(input, &ctx);
+    let model = openai_completion_model(&input.base_url, &input.api_key, &input.model)?;
+    let stream = match build_completion_request(&model, &ctx).stream().await {
+        Ok(stream) => stream,
+        Err(_) => {
+            return run_non_stream_request(&model, &ctx, input, cancel, tx).await;
         }
-        buf.push(ch);
-        if buf.len() >= 32 {
-            let chunk: String = buf.drain(..).collect();
-            let _ = tx.send(UiEvent {
-                tab,
-                request_id,
-                event: LlmEvent::Chunk(chunk),
-            });
-            std::thread::sleep(Duration::from_millis(8));
+    };
+    process_stream(stream, input, cancel, tx).await
+}
+
+async fn process_stream(
+    mut stream: RigStream,
+    input: &RequestInput,
+    cancel: &Arc<AtomicBool>,
+    tx: &Sender<UiEvent>,
+) -> Result<(), String> {
+    let mut state = StreamState::new();
+    while let Some(item) = stream.next().await {
+        if cancel.load(Ordering::Relaxed) {
+            stream.cancel();
+            return Ok(());
+        }
+        match handle_stream_item(item, &mut state, input, tx)? {
+            StreamStep::Continue => {}
+            StreamStep::ToolCalls(calls) => {
+                send_tool_calls(input, tx, calls, state.usage.take());
+                return Ok(());
+            }
         }
     }
-    if !buf.is_empty() {
-        let chunk: String = buf.drain(..).collect();
-        let _ = tx.send(UiEvent {
-            tab,
-            request_id,
-            event: LlmEvent::Chunk(chunk),
-        });
+    finalize_stream(input, tx, state);
+    Ok(())
+}
+
+fn handle_stream_item(
+    item: Result<StreamedAssistantContent<OpenAiStreamResponse>, rig::completion::CompletionError>,
+    state: &mut StreamState,
+    input: &RequestInput,
+    tx: &Sender<UiEvent>,
+) -> Result<StreamStep, String> {
+    match item {
+        Ok(content) => handle_stream_ok(content, state, input, tx),
+        Err(err) => Err(format!("请求失败：{err}")),
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{
-        build_enabled_tools, build_log_path, sanitize_log_part, stream_chunks, write_request_log,
-        write_response_log,
-    };
-    use crate::llm::rig::RigRequestContext;
-    use crate::test_support::{env_lock, restore_env, set_env};
-    use rig::completion::Message;
-    use std::fs;
-    use std::sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-        mpsc,
-    };
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(name: &str) -> std::path::PathBuf {
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        let dir = std::env::temp_dir().join(format!("deepchat_net_{name}_{ts}"));
-        let _ = fs::create_dir_all(&dir);
-        dir
-    }
-
-    #[test]
-    fn build_enabled_tools_collects_flags() {
-        let tools = build_enabled_tools(true, false, true, false, true);
-        assert!(tools.contains(&"web_search"));
-        assert!(tools.contains(&"read_file"));
-        assert!(tools.contains(&"modify_file"));
-        assert!(!tools.contains(&"code_exec"));
-    }
-
-    #[test]
-    fn sanitize_log_part_replaces_invalid() {
-        assert_eq!(sanitize_log_part("a/b c"), "a_b_c");
-        assert_eq!(sanitize_log_part(""), "session");
-    }
-
-    #[test]
-    fn build_log_path_creates_dir_and_sanitizes() {
-        let dir = temp_dir("path");
-        let path =
-            build_log_path(dir.to_string_lossy().as_ref(), "a/b", 0, 1, "input.txt").unwrap();
-        assert!(path.exists() || path.parent().is_some());
-        assert!(path.to_string_lossy().contains("a_b_tab1_msg2_input.txt"));
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn write_request_and_response_log_outputs_files() {
-        let _guard = env_lock().lock().unwrap();
-        let dir = temp_dir("log");
-        let ctx = RigRequestContext {
-            preamble: "PRE".to_string(),
-            history: vec![Message {
-                role: "user".to_string(),
-                content: "hi".to_string(),
-            }],
-            prompt: "PROMPT".to_string(),
-            tools: Vec::new(),
-        };
-        write_request_log(
-            dir.to_string_lossy().as_ref(),
-            "sess",
-            0,
-            0,
-            "http://example.com",
-            "model",
-            &ctx,
-        )
-        .unwrap();
-        write_response_log(
-            dir.to_string_lossy().as_ref(),
-            "sess",
-            0,
-            0,
-            "output",
-        )
-        .unwrap();
-        let input = fs::read_to_string(dir.join("sess_tab1_msg1_input.txt")).unwrap();
-        assert!(input.contains("base_url: http://example.com"));
-        assert!(input.contains("--- preamble ---"));
-        let output = fs::read_to_string(dir.join("sess_tab1_msg1_output.txt")).unwrap();
-        assert_eq!(output, "output");
-        let _ = fs::remove_dir_all(&dir);
-        let _ = set_env("DUMMY", "1");
-        restore_env("DUMMY", None);
-    }
-
-    #[test]
-    fn stream_chunks_sends_events() {
-        let (tx, rx) = mpsc::channel();
-        let cancel = Arc::new(AtomicBool::new(false));
-        stream_chunks("hello", &cancel, &tx, 1, 2);
-        let msg = rx.recv_timeout(Duration::from_millis(50)).unwrap();
-        match msg.event {
-            super::LlmEvent::Chunk(text) => assert!(!text.is_empty()),
-            _ => panic!("unexpected event"),
+fn handle_stream_ok(
+    content: StreamedAssistantContent<OpenAiStreamResponse>,
+    state: &mut StreamState,
+    input: &RequestInput,
+    tx: &Sender<UiEvent>,
+) -> Result<StreamStep, String> {
+    match content {
+        StreamedAssistantContent::Text(text) => {
+            state.text.push_str(&text.text);
+            send_chunk(tx, input, text.text);
+            Ok(StreamStep::Continue)
         }
-        cancel.store(true, Ordering::Relaxed);
+        StreamedAssistantContent::ToolCall(call) => {
+            log_tool_call(input, &call.function.name, &call.function.arguments);
+            send_chunk(tx, input, format!("调用工具：{}\n", call.function.name));
+            let calls = vec![convert_tool_call(&call, input.tab, input.request_id)];
+            Ok(StreamStep::ToolCalls(calls))
+        }
+        StreamedAssistantContent::Final(res) => {
+            state.usage = usage_from_stream(&res);
+            Ok(StreamStep::Continue)
+        }
+        _ => Ok(StreamStep::Continue),
     }
+}
+
+async fn run_non_stream_request(
+    model: &rig::providers::openai::completion::CompletionModel,
+    ctx: &crate::llm::rig::RigRequestContext,
+    input: &RequestInput,
+    cancel: &Arc<AtomicBool>,
+    tx: &Sender<UiEvent>,
+) -> Result<(), String> {
+    let response = build_completion_request(model, ctx)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败：{e}"))?;
+    if cancel.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+    let (text, calls) = split_choice(&response.choice);
+    let usage = Some(map_usage(response.usage));
+    if calls.is_empty() {
+        handle_non_stream_text(input, cancel, tx, &text, usage);
+        return Ok(());
+    }
+    handle_non_stream_tools(input, tx, &calls, usage);
+    Ok(())
+}
+
+fn handle_non_stream_text(
+    input: &RequestInput,
+    cancel: &Arc<AtomicBool>,
+    tx: &Sender<UiEvent>,
+    text: &str,
+    usage: Option<Usage>,
+) {
+    log_response_text(input, text);
+    stream_chunks(text, cancel, tx, input.tab, input.request_id);
+    send_done(input, tx, usage);
+}
+
+fn handle_non_stream_tools(
+    input: &RequestInput,
+    tx: &Sender<UiEvent>,
+    calls: &[rig::message::ToolCall],
+    usage: Option<Usage>,
+) {
+    for call in calls {
+        log_tool_call(input, &call.function.name, &call.function.arguments);
+    }
+    let mapped = calls
+        .iter()
+        .map(|call| convert_tool_call(call, input.tab, input.request_id))
+        .collect();
+    send_tool_calls(input, tx, mapped, usage);
+}
+
+fn split_choice(
+    choice: &rig::OneOrMany<AssistantContent>,
+) -> (String, Vec<rig::message::ToolCall>) {
+    let mut text = String::new();
+    let mut calls = Vec::new();
+    for item in choice.iter() {
+        match item {
+            AssistantContent::Text(t) => text.push_str(&t.text),
+            AssistantContent::ToolCall(call) => calls.push(call.clone()),
+            _ => {}
+        }
+    }
+    (text, calls)
+}
+
+fn finalize_stream(input: &RequestInput, tx: &Sender<UiEvent>, state: StreamState) {
+    log_response_text(input, &state.text);
+    send_done(input, tx, state.usage);
+}
+
+fn log_request(input: &RequestInput, ctx: &crate::llm::rig::RigRequestContext) {
+    if let Some(dir) = input.log_dir.as_deref() {
+        let _ = write_request_log(
+            dir,
+            &input.log_session_id,
+            input.tab,
+            input.message_index,
+            &input.base_url,
+            &input.model,
+            ctx,
+        );
+    }
+}
+
+fn log_response_text(input: &RequestInput, text: &str) {
+    if let Some(dir) = input.log_dir.as_deref() {
+        let _ = write_response_log(dir, &input.log_session_id, input.tab, input.message_index, text);
+    }
+}
+
+fn send_chunk(tx: &Sender<UiEvent>, input: &RequestInput, chunk: String) {
+    let _ = tx.send(UiEvent {
+        tab: input.tab,
+        request_id: input.request_id,
+        event: LlmEvent::Chunk(chunk),
+    });
+}
+
+fn send_done(input: &RequestInput, tx: &Sender<UiEvent>, usage: Option<Usage>) {
+    let _ = tx.send(UiEvent {
+        tab: input.tab,
+        request_id: input.request_id,
+        event: LlmEvent::Done { usage },
+    });
+}
+
+fn send_tool_calls(
+    input: &RequestInput,
+    tx: &Sender<UiEvent>,
+    calls: Vec<ToolCall>,
+    usage: Option<Usage>,
+) {
+    let _ = tx.send(UiEvent {
+        tab: input.tab,
+        request_id: input.request_id,
+        event: LlmEvent::ToolCalls { calls, usage },
+    });
+}
+
+fn convert_tool_call(
+    call: &rig::message::ToolCall,
+    tab: usize,
+    request_id: u64,
+) -> ToolCall {
+    ToolCall {
+        id: format!("rig-{}-{}", tab, request_id),
+        kind: "function".to_string(),
+        function: ToolFunctionCall {
+            name: call.function.name.clone(),
+            arguments: serde_json::to_string(&call.function.arguments).unwrap_or_default(),
+        },
+    }
+}
+
+fn map_usage(usage: rig::completion::Usage) -> Usage {
+    Usage {
+        prompt_tokens: Some(usage.input_tokens),
+        completion_tokens: Some(usage.output_tokens),
+        total_tokens: Some(usage.total_tokens),
+    }
+}
+
+fn usage_from_stream(res: &OpenAiStreamResponse) -> Option<Usage> {
+    res.token_usage().map(map_usage)
+}
+
+fn log_tool_call(input: &RequestInput, name: &str, args: &serde_json::Value) {
+    if let Some(dir) = input.log_dir.as_deref() {
+        let payload = format!(
+            "tool_call: {name}\nargs: {}",
+            serde_json::to_string_pretty(args).unwrap_or_default()
+        );
+        let _ = write_response_log(dir, &input.log_session_id, input.tab, input.message_index, &payload);
+    }
+}
+
+fn handle_request_error(error: &str, input: &RequestInput, tx: &Sender<UiEvent>) {
+    if let Some(dir) = input.log_dir.as_deref() {
+        let payload = format!("error: {error}");
+        let _ = write_response_log(dir, &input.log_session_id, input.tab, input.message_index, &payload);
+    }
+    let _ = tx.send(UiEvent {
+        tab: input.tab,
+        request_id: input.request_id,
+        event: LlmEvent::Error(error.to_string()),
+    });
+}
+
+struct StreamState {
+    text: String,
+    usage: Option<Usage>,
+}
+
+impl StreamState {
+    fn new() -> Self {
+        Self {
+            text: String::new(),
+            usage: None,
+        }
+    }
+}
+
+enum StreamStep {
+    Continue,
+    ToolCalls(Vec<ToolCall>),
 }

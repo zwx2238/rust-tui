@@ -31,23 +31,34 @@ pub(crate) fn write_tex_debug(raw: &str, sanitized: &str) {
 }
 
 pub(crate) fn write_math_trace(raw: &str, processed: Option<&str>, skipped: bool) {
-    let Ok(dir) = env::var("DEEPCHAT_TEX_TRACE_DIR") else {
+    let Some(dir) = trace_dir() else {
         return;
     };
+    let path = trace_file_path(&dir, "math");
+    let out = build_math_trace_output(raw, processed, skipped);
+    let _ = fs::write(path, out);
+}
+
+fn trace_dir() -> Option<String> {
+    let dir = env::var("DEEPCHAT_TEX_TRACE_DIR").ok()?;
     let dir = dir.trim();
-    if dir.is_empty() {
-        return;
+    if dir.is_empty() || fs::create_dir_all(dir).is_err() {
+        return None;
     }
-    if fs::create_dir_all(dir).is_err() {
-        return;
-    }
+    Some(dir.to_string())
+}
+
+fn trace_file_path(dir: &str, prefix: &str) -> String {
     static COUNTER: AtomicU64 = AtomicU64::new(1);
     let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(0);
-    let path = format!("{}/math_{}_{}.txt", dir, ts, seq);
+    format!("{}/{}_{}_{}.txt", dir, prefix, ts, seq)
+}
+
+fn build_math_trace_output(raw: &str, processed: Option<&str>, skipped: bool) -> String {
     let mut out = String::new();
     out.push_str("skipped: ");
     out.push_str(if skipped { "true" } else { "false" });
@@ -60,7 +71,7 @@ pub(crate) fn write_math_trace(raw: &str, processed: Option<&str>, skipped: bool
         out.push_str(text);
         out.push('\n');
     }
-    let _ = fs::write(path, out);
+    out
 }
 
 #[cfg(test)]

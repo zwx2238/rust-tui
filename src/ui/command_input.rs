@@ -6,83 +6,80 @@ pub(crate) fn handle_command_line(
     line: &str,
     app: &mut App,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    if is_exit_cmd(line) { return Ok(true); }
+    if is_reset_cmd(line) { reset_app(app); return Ok(false); }
+    if line == "/save" { app.pending_command = Some(PendingCommand::SaveSession); return Ok(false); }
+    if line == "/help" { push_help(app); return Ok(false); }
+    let (cmd, arg) = split_cmd(line);
+    if cmd == "/category" { handle_category(app, arg); return Ok(false); }
+    if cmd == "/open" { handle_open(app, arg); return Ok(false); }
+    if cmd == "/list-conv" { handle_list_conv(app)?; return Ok(false); }
+    push_unknown(app, line);
+    Ok(false)
+}
+
+fn is_exit_cmd(line: &str) -> bool {
+    matches!(line, "/exit" | "/quit")
+}
+
+fn is_reset_cmd(line: &str) -> bool {
+    matches!(line, "/reset" | "/clear")
+}
+
+fn split_cmd(line: &str) -> (&str, &str) {
     let mut parts = line.splitn(2, ' ');
     let cmd = parts.next().unwrap_or("");
     let arg = parts.next().unwrap_or("").trim();
-    match line {
-        "/exit" | "/quit" => return Ok(true),
-        "/reset" | "/clear" => {
-            let system = app.messages.iter().find(|m| m.role == ROLE_SYSTEM).cloned();
-            app.messages.clear();
-            app.assistant_stats.clear();
-            if let Some(sys) = system {
-                app.messages.push(sys);
-            }
-            app.follow = true;
-        }
-        "/save" => {
-            app.pending_command = Some(PendingCommand::SaveSession);
-        }
-        "/help" => {
-            app.messages.push(Message {
-                role: ROLE_ASSISTANT.to_string(),
-                content: commands_help_text(),
-                tool_call_id: None,
-                tool_calls: None,
-            });
-        }
-        _ if cmd == "/category" => {
-            app.pending_category_name = if arg.is_empty() {
-                None
-            } else {
-                Some(arg.to_string())
-            };
-            app.pending_command = Some(PendingCommand::NewCategory);
-        }
-        _ if cmd == "/open" => {
-            if arg.is_empty() {
-                app.messages.push(Message {
-                    role: ROLE_ASSISTANT.to_string(),
-                    content: "用法：/open <conversation_id>".to_string(),
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-            } else {
-                app.pending_open_conversation = Some(arg.to_string());
-                app.pending_command = Some(PendingCommand::OpenConversation);
-            }
-        }
-        _ if cmd == "/list-conv" => match list_conversation_ids() {
-            Ok(ids) => {
-                let content = if ids.is_empty() {
-                    "暂无对话文件。".to_string()
-                } else {
-                    format!("可用对话：\n{}", ids.join("\n"))
-                };
-                app.messages.push(Message {
-                    role: ROLE_ASSISTANT.to_string(),
-                    content,
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-            }
-            Err(e) => {
-                app.messages.push(Message {
-                    role: ROLE_ASSISTANT.to_string(),
-                    content: format!("读取对话目录失败：{e}"),
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-            }
-        },
-        _ => {
-            app.messages.push(Message {
-                role: ROLE_ASSISTANT.to_string(),
-                content: format!("未知命令：{line}"),
-                tool_call_id: None,
-                tool_calls: None,
-            });
-        }
+    (cmd, arg)
+}
+
+fn reset_app(app: &mut App) {
+    let system = app.messages.iter().find(|m| m.role == ROLE_SYSTEM).cloned();
+    app.messages.clear();
+    app.assistant_stats.clear();
+    if let Some(sys) = system { app.messages.push(sys); }
+    app.follow = true;
+}
+
+fn push_help(app: &mut App) {
+    app.messages.push(Message {
+        role: ROLE_ASSISTANT.to_string(),
+        content: commands_help_text(),
+        tool_call_id: None,
+        tool_calls: None,
+    });
+}
+
+fn handle_category(app: &mut App, arg: &str) {
+    app.pending_category_name = if arg.is_empty() { None } else { Some(arg.to_string()) };
+    app.pending_command = Some(PendingCommand::NewCategory);
+}
+
+fn handle_open(app: &mut App, arg: &str) {
+    if arg.is_empty() {
+        push_notice(app, "用法：/open <conversation_id>");
+        return;
     }
-    Ok(false)
+    app.pending_open_conversation = Some(arg.to_string());
+    app.pending_command = Some(PendingCommand::OpenConversation);
+}
+
+fn handle_list_conv(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+    let ids = list_conversation_ids()?;
+    let content = if ids.is_empty() { "暂无对话文件。".to_string() } else { format!("可用对话：\n{}", ids.join("\n")) };
+    app.messages.push(Message { role: ROLE_ASSISTANT.to_string(), content, tool_call_id: None, tool_calls: None });
+    Ok(())
+}
+
+fn push_unknown(app: &mut App, line: &str) {
+    app.messages.push(Message {
+        role: ROLE_ASSISTANT.to_string(),
+        content: format!("未知命令：{line}"),
+        tool_call_id: None,
+        tool_calls: None,
+    });
+}
+
+fn push_notice(app: &mut App, content: &str) {
+    app.messages.push(Message { role: ROLE_ASSISTANT.to_string(), content: content.to_string(), tool_call_id: None, tool_calls: None });
 }

@@ -2,60 +2,19 @@ use crate::ui::runtime_code_exec_helpers::filter_pip_output;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 
-pub(crate) fn build_code_exec_tool_output(
-    pending: &PendingCodeExec,
-    live: &CodeExecLive,
-) -> String {
+pub(crate) fn build_code_exec_tool_output(pending: &PendingCodeExec, live: &CodeExecLive) -> String {
     let stdout_filtered = filter_pip_output(&live.stdout, live.exit_code);
     let stdout_empty = stdout_filtered.trim().is_empty();
     let stderr_empty = live.stderr.trim().is_empty();
     let mut text = String::new();
     text.push_str("[code_exec]\n");
     text.push_str(&format!("language: {}\n", pending.language));
-    text.push_str("code:\n");
-    if pending.code.trim().is_empty() {
-        text.push_str("(空)\n");
-    } else {
-        text.push_str("```python\n");
-        text.push_str(&pending.code);
-        if !pending.code.ends_with('\n') {
-            text.push('\n');
-        }
-        text.push_str("```\n");
-    }
-    if let Some(code) = live.exit_code {
-        text.push_str(&format!("exit_code: {}\n", code));
-    } else {
-        text.push_str("exit_code: (执行中)\n");
-    }
-    text.push_str("stdout:\n");
-    if stdout_empty {
-        text.push_str("(空)\n");
-    } else {
-        text.push_str("```text\n");
-        text.push_str(&stdout_filtered);
-        if !stdout_filtered.ends_with('\n') {
-            text.push('\n');
-        }
-        text.push_str("```\n");
-    }
-    text.push_str("stderr:\n");
-    if stderr_empty {
-        text.push_str("(空)\n");
-    } else {
-        text.push_str("```text\n");
-        text.push_str(&live.stderr);
-        if !live.stderr.ends_with('\n') {
-            text.push('\n');
-        }
-        text.push_str("```\n");
-    }
-    if live.done && live.exit_code == Some(0) && stdout_empty && stderr_empty {
-        text.push_str("note: 程序正常执行但没有输出。\n");
-    }
-    if let Some(reason) = pending.stop_reason.as_ref() {
-        text.push_str(&format!("stop_reason: {}\n", reason));
-    }
+    append_code_block(&mut text, &pending.code);
+    append_exit_code(&mut text, live.exit_code);
+    append_output_block(&mut text, "stdout", &stdout_filtered, stdout_empty);
+    append_output_block(&mut text, "stderr", &live.stderr, stderr_empty);
+    append_empty_note(&mut text, live, stdout_empty, stderr_empty);
+    append_stop_reason(&mut text, pending);
     text
 }
 
@@ -70,11 +29,7 @@ pub(crate) fn take_code_exec_reason(
     tab_state.app.code_exec_reason_target = None;
     tab_state.app.code_exec_reason_input = tui_textarea::TextArea::default();
     let trimmed = reason.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
+    if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
 }
 
 pub(crate) fn escape_json_string(input: &str) -> String {
@@ -84,4 +39,40 @@ pub(crate) fn escape_json_string(input: &str) -> String {
         .replace('\n', "\\n")
         .replace('\r', "\\r")
         .replace('\t', "\\t")
+}
+
+fn append_code_block(out: &mut String, code: &str) {
+    out.push_str("code:\n");
+    if code.trim().is_empty() { out.push_str("(空)\n"); return; }
+    out.push_str("```python\n");
+    out.push_str(code);
+    if !code.ends_with('\n') { out.push('\n'); }
+    out.push_str("```\n");
+}
+
+fn append_exit_code(out: &mut String, exit_code: Option<i32>) {
+    if let Some(code) = exit_code { out.push_str(&format!("exit_code: {}\n", code)); }
+    else { out.push_str("exit_code: (执行中)\n"); }
+}
+
+fn append_output_block(out: &mut String, label: &str, content: &str, empty: bool) {
+    out.push_str(label);
+    out.push_str(":\n");
+    if empty { out.push_str("(空)\n"); return; }
+    out.push_str("```text\n");
+    out.push_str(content);
+    if !content.ends_with('\n') { out.push('\n'); }
+    out.push_str("```\n");
+}
+
+fn append_empty_note(out: &mut String, live: &CodeExecLive, stdout_empty: bool, stderr_empty: bool) {
+    if live.done && live.exit_code == Some(0) && stdout_empty && stderr_empty {
+        out.push_str("note: 程序正常执行但没有输出。\n");
+    }
+}
+
+fn append_stop_reason(out: &mut String, pending: &PendingCodeExec) {
+    if let Some(reason) = pending.stop_reason.as_ref() {
+        out.push_str(&format!("stop_reason: {}\n", reason));
+    }
 }

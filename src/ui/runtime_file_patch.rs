@@ -46,58 +46,11 @@ pub(crate) fn handle_file_patch_apply(
     args: &Args,
     tx: &mpsc::Sender<UiEvent>,
 ) {
-    let Some(pending) = tab_state.app.pending_file_patch.take() else {
-        return;
-    };
-    let apply_result = apply_patch(&pending.diff);
-    let idx = tab_state.app.messages.len();
-    match apply_result {
-        Ok(()) => {
-            tab_state.app.messages.push(Message {
-                role: crate::types::ROLE_TOOL.to_string(),
-                content: format!(
-                    r#"{{"ok":true,"message":"已应用补丁{}"}}"#,
-                    pending
-                        .path
-                        .as_ref()
-                        .map(|p| format!(" ({p})"))
-                        .unwrap_or_default()
-                ),
-                tool_call_id: Some(pending.call_id),
-                tool_calls: None,
-            });
-        }
-        Err(err) => {
-            tab_state.app.messages.push(Message {
-                role: crate::types::ROLE_TOOL.to_string(),
-                content: format!(r#"{{"error":"{}"}}"#, escape_json_string(&err)),
-                tool_call_id: Some(pending.call_id),
-                tool_calls: None,
-            });
-        }
-    }
-    tab_state.app.dirty_indices.push(idx);
-    tab_state.app.file_patch_scroll = 0;
-    tab_state.app.file_patch_hover = None;
-    let model = registry
-        .get(&tab_state.app.model_key)
-        .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
-    start_followup_request(
-        tab_state,
-        &model.base_url,
-        &model.api_key,
-        &model.model,
-        args.show_reasoning,
-        tx,
-        tab_id,
-        args.web_search_enabled(),
-        args.code_exec_enabled(),
-        args.read_file_enabled(),
-        args.read_code_enabled(),
-        args.modify_file_enabled(),
-        args.log_requests.clone(),
-        tab_state.app.log_session_id.clone(),
-    );
+    let Some(pending) = tab_state.app.pending_file_patch.take() else { return; };
+    let message = build_apply_message(&pending, apply_patch(&pending.diff));
+    push_tool_message(&mut tab_state.app, message, pending.call_id);
+    reset_patch_ui(&mut tab_state.app);
+    start_followup(tab_state, tab_id, registry, args, tx);
 }
 
 pub(crate) fn handle_file_patch_cancel(
@@ -107,19 +60,45 @@ pub(crate) fn handle_file_patch_cancel(
     args: &Args,
     tx: &mpsc::Sender<UiEvent>,
 ) {
-    let Some(pending) = tab_state.app.pending_file_patch.take() else {
-        return;
-    };
-    let idx = tab_state.app.messages.len();
-    tab_state.app.messages.push(Message {
+    let Some(pending) = tab_state.app.pending_file_patch.take() else { return; };
+    push_tool_message(&mut tab_state.app, r#"{"error":"用户取消"}"#.to_string(), pending.call_id);
+    reset_patch_ui(&mut tab_state.app);
+    start_followup(tab_state, tab_id, registry, args, tx);
+}
+
+fn build_apply_message(pending: &PendingFilePatch, result: Result<(), String>) -> String {
+    match result {
+        Ok(()) => format!(
+            r#"{{"ok":true,"message":"已应用补丁{}"}}"#,
+            pending.path.as_ref().map(|p| format!(" ({p})")).unwrap_or_default()
+        ),
+        Err(err) => format!(r#"{{"error":"{}"}}"#, escape_json_string(&err)),
+    }
+}
+
+fn push_tool_message(app: &mut crate::ui::state::App, content: String, call_id: String) {
+    let idx = app.messages.len();
+    app.messages.push(Message {
         role: crate::types::ROLE_TOOL.to_string(),
-        content: r#"{"error":"用户取消"}"#.to_string(),
-        tool_call_id: Some(pending.call_id),
+        content,
+        tool_call_id: Some(call_id),
         tool_calls: None,
     });
-    tab_state.app.dirty_indices.push(idx);
-    tab_state.app.file_patch_scroll = 0;
-    tab_state.app.file_patch_hover = None;
+    app.dirty_indices.push(idx);
+}
+
+fn reset_patch_ui(app: &mut crate::ui::state::App) {
+    app.file_patch_scroll = 0;
+    app.file_patch_hover = None;
+}
+
+fn start_followup(
+    tab_state: &mut TabState,
+    tab_id: usize,
+    registry: &crate::model_registry::ModelRegistry,
+    args: &Args,
+    tx: &mpsc::Sender<UiEvent>,
+) {
     let model = registry
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));

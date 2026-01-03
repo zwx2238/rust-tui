@@ -15,149 +15,182 @@ pub fn handle_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::err
         return Ok(true);
     }
 
-    if app.focus == Focus::Input && !app.busy {
-        if key.modifiers.contains(KeyModifiers::CONTROL) {
-            match key.code {
-                KeyCode::Char('a') => {
-                    app.input.select_all();
-                    return Ok(false);
-                }
-                KeyCode::Char('c') => {
-                    if app.input.is_selecting() {
-                        app.input.copy();
-                        let text = app.input.yank_text();
-                        clipboard::set(&text);
-                    }
-                    return Ok(false);
-                }
-                KeyCode::Char('x') => {
-                    if app.input.is_selecting() && app.input.cut() {
-                        let text = app.input.yank_text();
-                        clipboard::set(&text);
-                    }
-                    refresh_command_suggestions(app);
-                    return Ok(false);
-                }
-                KeyCode::Char('v') => {
-                    if let Some(text) = clipboard::get() {
-                        app.input.set_yank_text(text);
-                        app.input.paste();
-                    }
-                    refresh_command_suggestions(app);
-                    return Ok(false);
-                }
-                _ => {}
-            }
-        }
-        if command_suggestions_active(app) {
-            match key.code {
-                KeyCode::Up => {
-                    app.command_select.move_up();
-                    return Ok(false);
-                }
-                KeyCode::Down => {
-                    app.command_select.move_down();
-                    return Ok(false);
-                }
-                KeyCode::PageUp => {
-                    app.command_select.page_up(5);
-                    return Ok(false);
-                }
-                KeyCode::PageDown => {
-                    app.command_select.page_down(5);
-                    return Ok(false);
-                }
-                KeyCode::BackTab => {
-                    app.command_select.move_up();
-                    return Ok(false);
-                }
-                _ => {}
-            }
-        }
-        match key.code {
-            KeyCode::Tab => {
-                if !command_suggestions_active(app) {
-                    refresh_command_suggestions(app);
-                }
-                if command_suggestions_active(app) && apply_command_suggestion(app) {
-                    refresh_command_suggestions(app);
-                    return Ok(false);
-                }
-                let _ = app.input.input(key);
-                refresh_command_suggestions(app);
-                return Ok(false);
-            }
-            KeyCode::Enter => {
-                let line = app.input.lines().join("\n");
-                let line = line.trim_end().to_string();
-                app.input = TextArea::default();
-                refresh_command_suggestions(app);
-                if line.trim().is_empty() {
-                    return Ok(false);
-                }
-                if line.starts_with('/') {
-                    return handle_command_line(&line, app);
-                }
-                app.pending_send = Some(line);
-                return Ok(false);
-            }
-            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                app.input.insert_newline();
-                return Ok(false);
-            }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                app.input = TextArea::default();
-                refresh_command_suggestions(app);
-                return Ok(false);
-            }
-            _ => {
-                let _ = app.input.input(key);
-                refresh_command_suggestions(app);
-                return Ok(false);
-            }
-        }
+    if is_input_ready(app) {
+        return handle_input_key(key, app);
     }
 
+    handle_scroll_key(key, app);
+    Ok(false)
+}
+
+fn is_input_ready(app: &App) -> bool {
+    app.focus == Focus::Input && !app.busy
+}
+
+fn handle_input_key(
+    key: KeyEvent,
+    app: &mut App,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    if handle_ctrl_shortcuts(key, app) {
+        return Ok(false);
+    }
+    if handle_command_suggestion_nav(key, app) {
+        return Ok(false);
+    }
+    handle_input_editing(key, app)
+}
+
+fn handle_ctrl_shortcuts(key: KeyEvent, app: &mut App) -> bool {
+    if !key.modifiers.contains(KeyModifiers::CONTROL) {
+        return false;
+    }
     match key.code {
-        KeyCode::Home => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                app.scroll = 0;
-                app.follow = false;
-            } else if app.focus == Focus::Chat {
-                app.scroll = 0;
-                app.follow = false;
-            }
+        KeyCode::Char('a') => {
+            app.input.select_all();
+            true
         }
-        KeyCode::End => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                app.scroll = u16::MAX;
-                app.follow = true;
-            } else if app.focus == Focus::Chat {
-                app.scroll = u16::MAX;
-                app.follow = false;
-            }
+        KeyCode::Char('c') => {
+            copy_selection(app);
+            true
         }
+        KeyCode::Char('x') => {
+            cut_selection(app);
+            true
+        }
+        KeyCode::Char('v') => {
+            paste_clipboard(app);
+            true
+        }
+        _ => false,
+    }
+}
+
+fn copy_selection(app: &mut App) {
+    if app.input.is_selecting() {
+        app.input.copy();
+        let text = app.input.yank_text();
+        clipboard::set(&text);
+    }
+}
+
+fn cut_selection(app: &mut App) {
+    if app.input.is_selecting() && app.input.cut() {
+        let text = app.input.yank_text();
+        clipboard::set(&text);
+    }
+    refresh_command_suggestions(app);
+}
+
+fn paste_clipboard(app: &mut App) {
+    if let Some(text) = clipboard::get() {
+        app.input.set_yank_text(text);
+        app.input.paste();
+    }
+    refresh_command_suggestions(app);
+}
+
+fn handle_command_suggestion_nav(key: KeyEvent, app: &mut App) -> bool {
+    if !command_suggestions_active(app) {
+        return false;
+    }
+    match key.code {
+        KeyCode::Up => app.command_select.move_up(),
+        KeyCode::Down => app.command_select.move_down(),
+        KeyCode::PageUp => app.command_select.page_up(5),
+        KeyCode::PageDown => app.command_select.page_down(5),
+        KeyCode::BackTab => app.command_select.move_up(),
+        _ => return false,
+    }
+    true
+}
+
+fn handle_input_editing(
+    key: KeyEvent,
+    app: &mut App,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    match key.code {
+        KeyCode::Tab => handle_tab_key(key, app),
+        KeyCode::Enter => handle_enter_key(app),
+        KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.input.insert_newline();
+            Ok(false)
+        }
+        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.input = TextArea::default();
+            refresh_command_suggestions(app);
+            Ok(false)
+        }
+        _ => {
+            let _ = app.input.input(key);
+            refresh_command_suggestions(app);
+            Ok(false)
+        }
+    }
+}
+
+fn handle_tab_key(key: KeyEvent, app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
+    if !command_suggestions_active(app) {
+        refresh_command_suggestions(app);
+    }
+    if command_suggestions_active(app) && apply_command_suggestion(app) {
+        refresh_command_suggestions(app);
+        return Ok(false);
+    }
+    let _ = app.input.input(key);
+    refresh_command_suggestions(app);
+    Ok(false)
+}
+
+fn handle_enter_key(app: &mut App) -> Result<bool, Box<dyn std::error::Error>> {
+    let line = app.input.lines().join("\n");
+    let line = line.trim_end().to_string();
+    app.input = TextArea::default();
+    refresh_command_suggestions(app);
+    if line.trim().is_empty() {
+        return Ok(false);
+    }
+    if line.starts_with('/') {
+        return handle_command_line(&line, app);
+    }
+    app.pending_send = Some(line);
+    Ok(false)
+}
+
+fn handle_scroll_key(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Home => scroll_home(app, key.modifiers.contains(KeyModifiers::CONTROL)),
+        KeyCode::End => scroll_end(app, key.modifiers.contains(KeyModifiers::CONTROL)),
         KeyCode::F(12) => {
             app.scroll = u16::MAX;
             app.follow = true;
         }
-        KeyCode::Up => {
-            app.scroll = app.scroll.saturating_sub(1);
-            app.follow = false;
-        }
-        KeyCode::Down => {
-            app.scroll = app.scroll.saturating_add(1);
-            app.follow = false;
-        }
-        KeyCode::PageUp => {
-            app.scroll = app.scroll.saturating_sub(10);
-            app.follow = false;
-        }
-        KeyCode::PageDown => {
-            app.scroll = app.scroll.saturating_add(10);
-            app.follow = false;
-        }
+        KeyCode::Up => scroll_by(app, -1),
+        KeyCode::Down => scroll_by(app, 1),
+        KeyCode::PageUp => scroll_by(app, -10),
+        KeyCode::PageDown => scroll_by(app, 10),
         _ => {}
     }
-    Ok(false)
+}
+
+fn scroll_home(app: &mut App, ctrl: bool) {
+    if ctrl || app.focus == Focus::Chat {
+        app.scroll = 0;
+        app.follow = false;
+    }
+}
+
+fn scroll_end(app: &mut App, ctrl: bool) {
+    if ctrl || app.focus == Focus::Chat {
+        app.scroll = u16::MAX;
+        app.follow = ctrl;
+    }
+}
+
+fn scroll_by(app: &mut App, delta: i32) {
+    if delta < 0 {
+        app.scroll = app.scroll.saturating_sub((-delta) as u16);
+    } else {
+        app.scroll = app.scroll.saturating_add(delta as u16);
+    }
+    app.follow = false;
 }

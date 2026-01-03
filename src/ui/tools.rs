@@ -1,6 +1,8 @@
 use crate::types::ToolCall;
-use serde_json::json;
 use std::path::{Path, PathBuf};
+
+mod web_search;
+use web_search::run_web_search;
 
 pub(crate) struct ToolResult {
     pub content: String,
@@ -28,116 +30,7 @@ pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str, root: Option<&Path
     }
 }
 
-fn run_web_search(args_json: &str, tavily_api_key: &str) -> ToolResult {
-    #[derive(serde::Deserialize)]
-    struct Args {
-        query: String,
-        top_k: Option<usize>,
-    }
-    let args: Args = match serde_json::from_str(args_json) {
-        Ok(val) => val,
-        Err(e) => return tool_err(format!("web_search 参数解析失败：{e}")),
-    };
-    let query = args.query.trim();
-    if query.is_empty() {
-        return ToolResult {
-            content: "web_search 参数 query 不能为空".to_string(),
-            has_results: false,
-        };
-    }
-    let top_k = args.top_k.unwrap_or(5).clamp(1, 10);
-    if tavily_api_key.trim().is_empty() {
-        return tool_err("缺少配置：tavily_api_key".to_string());
-    }
-
-    let client = match reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .user_agent("deepchat/0.1")
-        .build()
-    {
-        Ok(val) => val,
-        Err(e) => return tool_err(format!("web_search 初始化失败：{e}")),
-    };
-
-    let payload = json!({
-        "api_key": tavily_api_key,
-        "query": query,
-        "max_results": top_k,
-        "search_depth": "basic"
-    });
-
-    let body = match client
-        .post("https://api.tavily.com/search")
-        .json(&payload)
-        .send()
-    {
-        Ok(resp) => match resp.text() {
-            Ok(text) => text,
-            Err(e) => return tool_err(format!("web_search 读取失败：{e}")),
-        },
-        Err(e) => return tool_err(format!("web_search 请求失败：{e}")),
-    };
-
-    let results = parse_tavily_results(&body);
-    let content = format_web_search_output(query, &results);
-    ToolResult {
-        content,
-        has_results: !results.is_empty(),
-    }
-}
-
-fn parse_tavily_results(body: &str) -> Vec<serde_json::Value> {
-    #[derive(serde::Deserialize)]
-    struct TavilyResult {
-        title: String,
-        url: String,
-        content: String,
-    }
-    #[derive(serde::Deserialize)]
-    struct TavilyResponse {
-        #[serde(default)]
-        results: Vec<TavilyResult>,
-    }
-
-    let parsed: TavilyResponse = match serde_json::from_str(body) {
-        Ok(val) => val,
-        Err(_) => return Vec::new(),
-    };
-    parsed
-        .results
-        .into_iter()
-        .map(|item| {
-            json!({
-                "title": item.title,
-                "url": item.url,
-                "snippet": item.content,
-            })
-        })
-        .collect()
-}
-
-fn format_web_search_output(query: &str, results: &[serde_json::Value]) -> String {
-    let mut out = String::new();
-    out.push_str(&format!("[web_search] query: {query}\n"));
-    out.push_str("请仅基于下列结果回答，并使用 [1] [2] 形式引用。若结果为空，必须回答“未找到可靠结果，无法确认”。\n");
-    if results.is_empty() {
-        out.push_str("结果为空。\n");
-        return out;
-    }
-    for (idx, item) in results.iter().enumerate() {
-        let title = item.get("title").and_then(|v| v.as_str()).unwrap_or("-");
-        let url = item.get("url").and_then(|v| v.as_str()).unwrap_or("-");
-        let snippet = item.get("snippet").and_then(|v| v.as_str()).unwrap_or("");
-        out.push_str(&format!("[{}] {}\n", idx + 1, title));
-        out.push_str(&format!("    {}\n", url));
-        if !snippet.trim().is_empty() {
-            out.push_str(&format!("    {}\n", snippet.trim()));
-        }
-    }
-    out
-}
-
-fn tool_err(msg: String) -> ToolResult {
+pub(super) fn tool_err(msg: String) -> ToolResult {
     ToolResult {
         content: msg,
         has_results: false,
@@ -145,6 +38,43 @@ fn tool_err(msg: String) -> ToolResult {
 }
 
 fn run_read_file(args_json: &str, with_line_numbers: bool, root: Option<&Path>) -> ToolResult {
+    let args = match parse_read_file_args(args_json) {
+        Ok(val) => val,
+        Err(err) => return err,
+    };
+    if let Some(root) = root {
+        if let Err(err) = enforce_root(&args.path, root) {
+            return tool_err(format!("read_file 读取失败：{err}"));
+        }
+    }
+    let content = match read_file_content(&args.path, args.max_bytes) {
+        Ok(val) => val,
+        Err(err) => return err,
+    };
+    let lines = content.lines().collect::<Vec<_>>();
+    let (start, end, total_lines, slice) = slice_lines(&lines, args.start_line, args.end_line);
+    let out = format_read_file_output(
+        &args.path,
+        with_line_numbers,
+        start,
+        end,
+        total_lines,
+        &slice,
+    );
+    ToolResult {
+        content: out,
+        has_results: true,
+    }
+}
+
+struct ReadFileArgs {
+    path: String,
+    start_line: Option<usize>,
+    end_line: Option<usize>,
+    max_bytes: usize,
+}
+
+fn parse_read_file_args(args_json: &str) -> Result<ReadFileArgs, ToolResult> {
     #[derive(serde::Deserialize)]
     struct Args {
         path: String,
@@ -152,53 +82,58 @@ fn run_read_file(args_json: &str, with_line_numbers: bool, root: Option<&Path>) 
         end_line: Option<usize>,
         max_bytes: Option<usize>,
     }
-    let args: Args = match serde_json::from_str(args_json) {
-        Ok(val) => val,
-        Err(e) => return tool_err(format!("read_file 参数解析失败：{e}")),
-    };
-    let path = args.path.trim();
+    let args: Args = serde_json::from_str(args_json)
+        .map_err(|e| tool_err(format!("read_file 参数解析失败：{e}")))?;
+    let path = args.path.trim().to_string();
     if path.is_empty() {
-        return tool_err("read_file 参数 path 不能为空".to_string());
-    }
-    if let Some(root) = root {
-        match enforce_root(path, root) {
-            Ok(()) => {}
-            Err(err) => return tool_err(format!("read_file 读取失败：{err}")),
-        }
+        return Err(tool_err("read_file 参数 path 不能为空".to_string()));
     }
     let max_bytes = args.max_bytes.unwrap_or(200_000).clamp(1, 2_000_000);
-    let meta = match std::fs::metadata(path) {
-        Ok(m) => m,
-        Err(e) => return tool_err(format!("read_file 读取失败：{e}")),
-    };
+    Ok(ReadFileArgs {
+        path,
+        start_line: args.start_line,
+        end_line: args.end_line,
+        max_bytes,
+    })
+}
+
+fn read_file_content(path: &str, max_bytes: usize) -> Result<String, ToolResult> {
+    let meta = std::fs::metadata(path)
+        .map_err(|e| tool_err(format!("read_file 读取失败：{e}")))?;
     if meta.is_file() && meta.len() as usize > max_bytes {
-        return tool_err(format!("read_file 文件过大：{} bytes", meta.len()));
+        return Err(tool_err(format!("read_file 文件过大：{} bytes", meta.len())));
     }
-    let content = match std::fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(e) => return tool_err(format!("read_file 读取失败：{e}")),
-    };
-    let lines: Vec<&str> = content.lines().collect();
+    std::fs::read_to_string(path).map_err(|e| tool_err(format!("read_file 读取失败：{e}")))
+}
+
+fn slice_lines<'a>(
+    lines: &'a [&'a str],
+    start_line: Option<usize>,
+    end_line: Option<usize>,
+) -> (usize, usize, usize, Vec<&'a str>) {
     let total_lines = lines.len().max(1);
-    let start = args.start_line.unwrap_or(1).max(1);
-    let end = args.end_line.unwrap_or(total_lines).max(start);
-    let end = end.min(total_lines);
+    let start = start_line.unwrap_or(1).max(1);
+    let end = end_line.unwrap_or(total_lines).max(start).min(total_lines);
     let slice = if lines.is_empty() {
         Vec::new()
     } else {
         lines[start - 1..end].to_vec()
     };
+    (start, end, total_lines, slice)
+}
+
+fn format_read_file_output(
+    path: &str,
+    with_line_numbers: bool,
+    start: usize,
+    end: usize,
+    total_lines: usize,
+    slice: &[&str],
+) -> String {
     let mut out = String::new();
-    out.push_str(if with_line_numbers {
-        "[read_code]\n"
-    } else {
-        "[read_file]\n"
-    });
+    out.push_str(if with_line_numbers { "[read_code]\n" } else { "[read_file]\n" });
     out.push_str(&format!("path: {}\n", path));
-    out.push_str(&format!(
-        "lines: {}-{} (total {})\n",
-        start, end, total_lines
-    ));
+    out.push_str(&format!("lines: {}-{} (total {})\n", start, end, total_lines));
     out.push_str("content:\n");
     out.push_str("```text\n");
     if with_line_numbers {
@@ -213,10 +148,7 @@ fn run_read_file(args_json: &str, with_line_numbers: bool, root: Option<&Path>) 
         }
     }
     out.push_str("```\n");
-    ToolResult {
-        content: out,
-        has_results: true,
-    }
+    out
 }
 
 pub(crate) fn parse_code_exec_args(args_json: &str) -> Result<CodeExecRequest, String> {

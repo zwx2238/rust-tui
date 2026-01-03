@@ -68,31 +68,53 @@ pub(crate) fn close_other_tabs(ctx: &mut DispatchContext<'_>) {
 }
 
 pub(crate) fn close_all_tabs(ctx: &mut DispatchContext<'_>) {
-    let (prompts_dir, tavily_api_key, log_session_id) = ctx
-        .tabs
-        .get(*ctx.active_tab)
-        .map(|tab| {
-            (
-                tab.app.prompts_dir.clone(),
-                tab.app.tavily_api_key.clone(),
-                tab.app.log_session_id.clone(),
-            )
-        })
-        .unwrap_or_else(|| (String::new(), String::new(), String::new()));
-    let keep_category = ctx
-        .tabs
-        .get(*ctx.active_tab)
-        .map(|t| t.category.clone())
-        .unwrap_or_else(|| "默认".to_string());
+    let keep = active_tab_keep_config(ctx);
+    save_all_tabs(ctx);
+    reset_tabs_and_categories(ctx, &keep.category);
+    let mut tab = build_default_tab(ctx);
+    apply_keep_config(&mut tab, keep);
+    ctx.tabs.push(tab);
+    *ctx.active_tab = 0;
+}
+
+struct KeepConfig {
+    prompts_dir: String,
+    tavily_api_key: String,
+    log_session_id: String,
+    category: String,
+}
+
+fn active_tab_keep_config(ctx: &DispatchContext<'_>) -> KeepConfig {
+    let fallback = KeepConfig {
+        prompts_dir: String::new(),
+        tavily_api_key: String::new(),
+        log_session_id: String::new(),
+        category: "默认".to_string(),
+    };
+    ctx.tabs.get(*ctx.active_tab).map_or(fallback, |tab| KeepConfig {
+        prompts_dir: tab.app.prompts_dir.clone(),
+        tavily_api_key: tab.app.tavily_api_key.clone(),
+        log_session_id: tab.app.log_session_id.clone(),
+        category: tab.category.clone(),
+    })
+}
+
+fn save_all_tabs(ctx: &DispatchContext<'_>) {
     for tab in &*ctx.tabs {
         let _ = crate::conversation::save_conversation(&tab_to_conversation(tab));
     }
+}
+
+fn reset_tabs_and_categories(ctx: &mut DispatchContext<'_>, category: &str) {
     ctx.tabs.clear();
     ctx.categories.clear();
-    ctx.categories.push(keep_category);
+    ctx.categories.push(category.to_string());
     *ctx.active_category = 0;
+}
+
+fn build_default_tab(ctx: &mut DispatchContext<'_>) -> TabState {
     let conv_id = crate::conversation::new_conversation_id().unwrap_or_else(|_| "new".to_string());
-    let mut tab = TabState::new(
+    TabState::new(
         conv_id,
         active_category_name(ctx),
         ctx.prompt_registry
@@ -102,14 +124,15 @@ pub(crate) fn close_all_tabs(ctx: &mut DispatchContext<'_>) {
         ctx.args.perf,
         &ctx.registry.default_key,
         &ctx.prompt_registry.default_key,
-    );
-    tab.app.prompts_dir = prompts_dir;
-    tab.app.tavily_api_key = tavily_api_key;
-    if !log_session_id.is_empty() {
-        tab.app.set_log_session_id(&log_session_id);
+    )
+}
+
+fn apply_keep_config(tab: &mut TabState, keep: KeepConfig) {
+    tab.app.prompts_dir = keep.prompts_dir;
+    tab.app.tavily_api_key = keep.tavily_api_key;
+    if !keep.log_session_id.is_empty() {
+        tab.app.set_log_session_id(&keep.log_session_id);
     }
-    ctx.tabs.push(tab);
-    *ctx.active_tab = 0;
 }
 
 pub(crate) fn prev_tab(ctx: &mut DispatchContext<'_>) {

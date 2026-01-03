@@ -39,41 +39,55 @@ pub(crate) fn command_suggestions_active(app: &App) -> bool {
 }
 
 pub(crate) fn apply_command_suggestion(app: &mut App) -> bool {
+    let suggestion = match selected_suggestion(app) {
+        Some(suggestion) => suggestion,
+        None => return false,
+    };
+    let (row, line, mut lines) = match current_input_line(app) {
+        Some(data) => data,
+        None => return false,
+    };
+    let (new_line, new_col) = match build_suggestion_line(&suggestion, &line) {
+        Some(data) => data,
+        None => return false,
+    };
+    apply_suggestion_line(app, row, &mut lines, new_line, new_col);
+    true
+}
+
+fn selected_suggestion(app: &App) -> Option<CommandSuggestion> {
     if app.command_suggestions.is_empty() {
-        return false;
+        return None;
     }
     let idx = app
         .command_select
         .selected
         .min(app.command_suggestions.len().saturating_sub(1));
-    let suggestion = app.command_suggestions[idx].clone();
+    app.command_suggestions.get(idx).cloned()
+}
+
+fn current_input_line(app: &App) -> Option<(usize, String, Vec<String>)> {
     let (row, _) = app.input.cursor();
-    let mut lines = app.input.lines().to_vec();
-    if row >= lines.len() {
-        return false;
-    }
-    let line = lines[row].clone();
+    let lines = app.input.lines().to_vec();
+    let line = lines.get(row)?.clone();
     if !line.starts_with('/') {
-        return false;
+        return None;
     }
-    let cmd_end_char = find_first_whitespace(&line).unwrap_or(line.chars().count());
-    let cmd_end_byte = byte_index_from_char(&line, cmd_end_char);
+    Some((row, line, lines))
+}
+
+fn build_suggestion_line(
+    suggestion: &CommandSuggestion,
+    line: &str,
+) -> Option<(String, usize)> {
+    let cmd_end_char = find_first_whitespace(line).unwrap_or(line.chars().count());
+    let cmd_end_byte = byte_index_from_char(line, cmd_end_char);
     let mut new_line = match suggestion.kind {
-        CommandSuggestionKind::Command => {
-            let rest = &line[cmd_end_byte..];
-            let mut updated = format!("{}{}", suggestion.insert, rest);
-            if rest.is_empty() && command_has_args(&suggestion.insert) {
-                updated.push(' ');
-            }
-            updated
-        }
-        CommandSuggestionKind::Argument => {
-            let cmd = line[..cmd_end_byte].trim_end();
-            format!("{cmd} {}", suggestion.insert)
-        }
+        CommandSuggestionKind::Command => replace_command(line, cmd_end_byte, suggestion),
+        CommandSuggestionKind::Argument => replace_argument(line, cmd_end_byte, suggestion),
     };
     if new_line.trim().is_empty() {
-        return false;
+        return None;
     }
     let mut new_col = new_line.chars().count();
     if let CommandSuggestionKind::Command = suggestion.kind {
@@ -82,11 +96,34 @@ pub(crate) fn apply_command_suggestion(app: &mut App) -> bool {
             new_col += 1;
         }
     }
+    Some((new_line, new_col))
+}
+
+fn replace_command(line: &str, cmd_end_byte: usize, suggestion: &CommandSuggestion) -> String {
+    let rest = &line[cmd_end_byte..];
+    let mut updated = format!("{}{}", suggestion.insert, rest);
+    if rest.is_empty() && command_has_args(&suggestion.insert) {
+        updated.push(' ');
+    }
+    updated
+}
+
+fn replace_argument(line: &str, cmd_end_byte: usize, suggestion: &CommandSuggestion) -> String {
+    let cmd = line[..cmd_end_byte].trim_end();
+    format!("{cmd} {}", suggestion.insert)
+}
+
+fn apply_suggestion_line(
+    app: &mut App,
+    row: usize,
+    lines: &mut Vec<String>,
+    new_line: String,
+    new_col: usize,
+) {
     lines[row] = new_line;
-    app.input = tui_textarea::TextArea::from(lines);
+    app.input = tui_textarea::TextArea::from(lines.clone());
     app.input
         .move_cursor(tui_textarea::CursorMove::Jump(row as u16, new_col as u16));
-    true
 }
 
 pub(crate) fn draw_command_suggestions(
@@ -96,16 +133,26 @@ pub(crate) fn draw_command_suggestions(
     app: &mut App,
     theme: &RenderTheme,
 ) {
-    if app.command_suggestions.is_empty() {
-        return;
-    }
-    if app.focus != Focus::Input {
+    if !command_suggestions_visible(app) {
         return;
     }
     let area = command_suggestions_area(msg_area, input_area, app.command_suggestions.len());
+    clamp_command_suggestions(app, area);
+    let table = build_command_suggestions_table(app, theme);
+    draw_overlay_table(f, area, table);
+}
+
+fn command_suggestions_visible(app: &App) -> bool {
+    !app.command_suggestions.is_empty() && app.focus == Focus::Input
+}
+
+fn clamp_command_suggestions(app: &mut App, area: Rect) {
     let viewport = visible_rows(area);
     app.command_select
         .clamp_with_viewport(app.command_suggestions.len(), viewport);
+}
+
+fn build_command_suggestions_table<'a>(app: &'a App, theme: &'a RenderTheme) -> OverlayTable<'a> {
     let header = Row::new(vec![Cell::from("候选"), Cell::from("说明")]).style(header_style(theme));
     let rows = app.command_suggestions.iter().map(|item| {
         Row::new(vec![
@@ -113,7 +160,7 @@ pub(crate) fn draw_command_suggestions(
             Cell::from(item.description.clone()),
         ])
     });
-    let table = OverlayTable {
+    OverlayTable {
         title: Line::from("命令补全 · Tab 应用 · ↑↓ 选择"),
         header,
         rows: rows.collect(),
@@ -121,8 +168,7 @@ pub(crate) fn draw_command_suggestions(
         selected: app.command_select.selected,
         scroll: app.command_select.scroll,
         theme,
-    };
-    draw_overlay_table(f, area, table);
+    }
 }
 
 pub(crate) fn command_suggestions_area(msg_area: Rect, input_area: Rect, rows: usize) -> Rect {

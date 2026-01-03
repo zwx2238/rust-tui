@@ -154,70 +154,8 @@ pub enum FilePatchHover {
 
 impl App {
     pub fn new(system_prompt: &str, default_model: &str, default_prompt: &str) -> Self {
-        let mut messages = Vec::new();
-        if !system_prompt.trim().is_empty() {
-            messages.push(Message {
-                role: ROLE_SYSTEM.to_string(),
-                content: system_prompt.to_string(),
-                tool_call_id: None,
-                tool_calls: None,
-            });
-        }
-        Self {
-            input: TextArea::default(),
-            input_view_top_row: 0,
-            messages,
-            scroll: 0,
-            follow: true,
-            focus: Focus::Input,
-            busy: false,
-            pending_send: None,
-            pending_command: None,
-            active_request: None,
-            next_request_id: 1,
-            busy_since: None,
-            pending_assistant: None,
-            pending_reasoning: None,
-            stream_buffer: String::new(),
-            assistant_stats: BTreeMap::new(),
-            scrollbar_dragging: false,
-            chat_selecting: false,
-            chat_selection: None,
-            input_selecting: false,
-            model_key: default_model.to_string(),
-            prompt_key: default_prompt.to_string(),
-            message_layouts: Vec::new(),
-            nav_mode: false,
-            tavily_api_key: String::new(),
-            prompts_dir: String::new(),
-            log_session_id: String::new(),
-            pending_code_exec: None,
-            code_exec_scroll: 0,
-            code_exec_stdout_scroll: 0,
-            code_exec_stderr_scroll: 0,
-            code_exec_live: None,
-            code_exec_result_ready: false,
-            code_exec_finished_output: None,
-            code_exec_cancel: None,
-            code_exec_hover: None,
-            code_exec_reason_target: None,
-            code_exec_reason_input: TextArea::default(),
-            code_exec_container_id: None,
-            code_exec_run_id: None,
-            pending_file_patch: None,
-            file_patch_scroll: 0,
-            file_patch_hover: None,
-            pending_category_name: None,
-            pending_open_conversation: None,
-            total_prompt_tokens: 0,
-            total_completion_tokens: 0,
-            total_tokens: 0,
-            dirty_indices: Vec::new(),
-            cache_shift: None,
-            notice: None,
-            command_suggestions: Vec::new(),
-            command_select: SelectionState::default(),
-        }
+        let messages = build_initial_messages(system_prompt);
+        base_app(messages, default_model, default_prompt)
     }
 
     pub fn set_system_prompt(&mut self, key: &str, content: &str) {
@@ -242,5 +180,39 @@ impl App {
 
     pub fn set_log_session_id(&mut self, id: &str) {
         self.log_session_id = id.to_string();
+    }
+}
+
+fn build_initial_messages(system_prompt: &str) -> Vec<Message> {
+    if system_prompt.trim().is_empty() {
+        return Vec::new();
+    }
+    vec![Message {
+        role: ROLE_SYSTEM.to_string(),
+        content: system_prompt.to_string(),
+        tool_call_id: None,
+        tool_calls: None,
+    }]
+}
+
+fn base_app(messages: Vec<Message>, default_model: &str, default_prompt: &str) -> App {
+    App {
+        input: TextArea::default(), input_view_top_row: 0, messages, scroll: 0, follow: true,
+        focus: Focus::Input, busy: false, pending_send: None, pending_command: None,
+        active_request: None, next_request_id: 1, busy_since: None, pending_assistant: None,
+        pending_reasoning: None, stream_buffer: String::new(), assistant_stats: BTreeMap::new(),
+        scrollbar_dragging: false, chat_selecting: false, chat_selection: None,
+        input_selecting: false, model_key: default_model.to_string(),
+        prompt_key: default_prompt.to_string(), message_layouts: Vec::new(), nav_mode: false,
+        tavily_api_key: String::new(), prompts_dir: String::new(), log_session_id: String::new(),
+        pending_code_exec: None, code_exec_scroll: 0, code_exec_stdout_scroll: 0,
+        code_exec_stderr_scroll: 0, code_exec_live: None, code_exec_result_ready: false,
+        code_exec_finished_output: None, code_exec_cancel: None, code_exec_hover: None,
+        code_exec_reason_target: None, code_exec_reason_input: TextArea::default(),
+        code_exec_container_id: None, code_exec_run_id: None, pending_file_patch: None,
+        file_patch_scroll: 0, file_patch_hover: None, pending_category_name: None,
+        pending_open_conversation: None, total_prompt_tokens: 0, total_completion_tokens: 0,
+        total_tokens: 0, dirty_indices: Vec::new(), cache_shift: None, notice: None,
+        command_suggestions: Vec::new(), command_select: SelectionState::default(),
     }
 }

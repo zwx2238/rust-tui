@@ -17,33 +17,56 @@ pub(crate) fn draw_shortcut_help(
 ) {
     let rows = help_rows();
     let popup = help_popup_area(area, rows.len());
-    let header = Row::new(vec![
+    let table = build_help_table(&rows, selected, scroll, theme);
+    draw_overlay_table(f, popup, table);
+}
+
+fn build_help_table<'a>(
+    rows: &'a [HelpRow],
+    selected: usize,
+    scroll: usize,
+    theme: &'a RenderTheme,
+) -> OverlayTable<'a> {
+    let header = help_table_header(theme);
+    let body = help_table_rows(rows);
+    OverlayTable {
+        title: Line::from("帮助 · F10/Esc 退出"),
+        header,
+        rows: body,
+        widths: help_table_widths(),
+        selected,
+        scroll,
+        theme,
+    }
+}
+
+fn help_table_header(theme: &RenderTheme) -> Row<'static> {
+    Row::new(vec![
         Cell::from("类型"),
         Cell::from("触发"),
         Cell::from("说明"),
     ])
-    .style(header_style(theme));
-    let body = rows.iter().map(|row| {
-        Row::new(vec![
-            Cell::from(row.kind),
-            Cell::from(row.trigger.clone()),
-            Cell::from(row.description),
-        ])
-    });
-    let popup_spec = OverlayTable {
-        title: Line::from("帮助 · F10/Esc 退出"),
-        header,
-        rows: body.collect(),
-        widths: vec![
-            Constraint::Length(8),
-            Constraint::Length(20),
-            Constraint::Min(10),
-        ],
-        selected,
-        scroll,
-        theme,
-    };
-    draw_overlay_table(f, popup, popup_spec);
+    .style(header_style(theme))
+}
+
+fn help_table_rows(rows: &[HelpRow]) -> Vec<Row<'static>> {
+    rows.iter()
+        .map(|row| {
+            Row::new(vec![
+                Cell::from(row.kind),
+                Cell::from(row.trigger.clone()),
+                Cell::from(row.description),
+            ])
+        })
+        .collect()
+}
+
+fn help_table_widths() -> Vec<Constraint> {
+    vec![
+        Constraint::Length(8),
+        Constraint::Length(20),
+        Constraint::Min(10),
+    ]
 }
 
 pub(crate) fn help_rows_len() -> usize {

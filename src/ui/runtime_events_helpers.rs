@@ -40,25 +40,39 @@ pub(crate) fn hit_test_edit_button(
         return None;
     }
     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
-    if mouse_x < inner.x
-        || mouse_x >= inner.x + inner.width
-        || mouse_y < inner.y
-        || mouse_y >= inner.y + inner.height
-    {
+    if !mouse_in_rect(mouse_x, mouse_y, inner) {
         return None;
     }
     let text = selection_view_text(tab_state, msg_width, theme, view_height);
     let app = &tab_state.app;
     let (row, col) = chat_position_from_mouse(&text, app.scroll, inner, mouse_x, mouse_y);
+    find_edit_button_at(app, row, col)
+}
+
+fn mouse_in_rect(mouse_x: u16, mouse_y: u16, rect: Rect) -> bool {
+    mouse_x >= rect.x
+        && mouse_x < rect.x + rect.width
+        && mouse_y >= rect.y
+        && mouse_y < rect.y + rect.height
+}
+
+fn find_edit_button_at(app: &crate::ui::state::App, row: usize, col: usize) -> Option<usize> {
     for layout in &app.message_layouts {
         if layout.label_line == row {
-            if let Some((start, end)) = layout.button_range {
-                if col >= start && col < end {
-                    return Some(layout.index);
-                }
-            }
-            break;
+            return hit_test_layout_button(layout, col);
         }
     }
     None
+}
+
+fn hit_test_layout_button(
+    layout: &crate::render::MessageLayout,
+    col: usize,
+) -> Option<usize> {
+    let (start, end) = layout.button_range?;
+    if col >= start && col < end {
+        Some(layout.index)
+    } else {
+        None
+    }
 }

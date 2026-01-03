@@ -3,12 +3,11 @@ use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::ui::code_exec_container_env::{
-    code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url, pip_target_dir,
-    prepare_pip_cache_dir, run_dir, site_tmpfs_mb, tmp_dir, work_dir,
-};
+use crate::ui::code_exec_container_env::{pip_target_dir, run_dir, tmp_dir};
+
+mod container_start;
+use container_start::{is_container_running, start_container};
 
 pub(crate) fn ensure_container(container_id: &mut Option<String>) -> Result<String, String> {
     if let Some(id) = container_id.as_ref() {
@@ -30,6 +29,23 @@ pub(crate) fn run_python_in_container_stream(
 ) -> Result<(), String> {
     let finished = Arc::new(AtomicBool::new(false));
     write_code_file(container_id, run_id, code)?;
+    let mut child = spawn_python_exec(container_id, run_id)?;
+    let (stdout, stderr) = take_child_pipes(&mut child)?;
+    let t_out = spawn_stream_reader(stdout, Arc::clone(&live), OutputTarget::Stdout);
+    let t_err = spawn_stream_reader(stderr, Arc::clone(&live), OutputTarget::Stderr);
+    let killer = spawn_cancel_watcher(container_id, run_id, &live, &cancel, &finished);
+    let status = child.wait().map_err(|e| format!("Docker 执行失败：{e}"))?;
+    finalize_exec(status.code(), &live, &finished, t_out, t_err, killer);
+    let _ = remove_code_file(container_id, run_id);
+    Ok(())
+}
+
+enum OutputTarget {
+    Stdout,
+    Stderr,
+}
+
+fn spawn_python_exec(container_id: &str, run_id: &str) -> Result<std::process::Child, String> {
     let mut cmd = Command::new("docker");
     cmd.arg("exec")
         .arg("-i")
@@ -40,58 +56,63 @@ pub(crate) fn run_python_in_container_stream(
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    cmd.spawn().map_err(|e| format!("Docker 执行失败：{e}"))
+}
 
-    let mut child = cmd.spawn().map_err(|e| format!("Docker 执行失败：{e}"))?;
-    let mut stdout = child
+fn take_child_pipes(
+    child: &mut std::process::Child,
+) -> Result<(std::process::ChildStdout, std::process::ChildStderr), String> {
+    let stdout = child
         .stdout
         .take()
         .ok_or_else(|| "无法读取 stdout".to_string())?;
-    let mut stderr = child
+    let stderr = child
         .stderr
         .take()
         .ok_or_else(|| "无法读取 stderr".to_string())?;
+    Ok((stdout, stderr))
+}
 
-    let live_out = Arc::clone(&live);
-    let t_out = std::thread::spawn(move || {
+fn spawn_stream_reader(
+    mut stream: impl Read + Send + 'static,
+    live: Arc<Mutex<CodeExecLive>>,
+    target: OutputTarget,
+) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
         let mut buf = [0u8; 1024];
         loop {
-            match stdout.read(&mut buf) {
+            match stream.read(&mut buf) {
                 Ok(0) => break,
-                Ok(n) => {
-                    let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
-                    if let Ok(mut live) = live_out.lock() {
-                        live.stdout.push_str(&chunk);
-                    }
-                }
+                Ok(n) => append_live_output(&live, &buf[..n], &target),
                 Err(_) => break,
             }
         }
-    });
+    })
+}
 
-    let live_err = Arc::clone(&live);
-    let t_err = std::thread::spawn(move || {
-        let mut buf = [0u8; 1024];
-        loop {
-            match stderr.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
-                    if let Ok(mut live) = live_err.lock() {
-                        live.stderr.push_str(&chunk);
-                    }
-                }
-                Err(_) => break,
-            }
+fn append_live_output(live: &Arc<Mutex<CodeExecLive>>, data: &[u8], target: &OutputTarget) {
+    let chunk = String::from_utf8_lossy(data).to_string();
+    if let Ok(mut live) = live.lock() {
+        match target {
+            OutputTarget::Stdout => live.stdout.push_str(&chunk),
+            OutputTarget::Stderr => live.stderr.push_str(&chunk),
         }
-    });
+    }
+}
 
-    let live_kill = Arc::clone(&live);
-    let cancel_kill = Arc::clone(&cancel);
-    let finished_kill = Arc::clone(&finished);
+fn spawn_cancel_watcher(
+    container_id: &str,
+    run_id: &str,
+    live: &Arc<Mutex<CodeExecLive>>,
+    cancel: &Arc<AtomicBool>,
+    finished: &Arc<AtomicBool>,
+) -> std::thread::JoinHandle<()> {
+    let live_kill = Arc::clone(live);
+    let cancel_kill = Arc::clone(cancel);
+    let finished_kill = Arc::clone(finished);
     let cid = container_id.to_string();
-    let run_id = run_id.to_string();
-    let run_id_kill = run_id.clone();
-    let killer = std::thread::spawn(move || {
+    let run_id_kill = run_id.to_string();
+    std::thread::spawn(move || {
         while !cancel_kill.load(std::sync::atomic::Ordering::Relaxed)
             && !finished_kill.load(std::sync::atomic::Ordering::Relaxed)
         {
@@ -99,29 +120,39 @@ pub(crate) fn run_python_in_container_stream(
         }
         if cancel_kill.load(std::sync::atomic::Ordering::Relaxed) {
             let _ = stop_exec(&cid, &run_id_kill);
-            if let Ok(mut live) = live_kill.lock() {
-                live.stderr.push_str("已停止执行\n");
-                live.exit_code = Some(-1);
-                live.done = true;
-                live.finished_at = Some(std::time::Instant::now());
-            }
+            mark_cancelled(&live_kill);
         }
-    });
+    })
+}
 
-    let status = child.wait().map_err(|e| format!("Docker 执行失败：{e}"))?;
+fn mark_cancelled(live: &Arc<Mutex<CodeExecLive>>) {
+    if let Ok(mut live) = live.lock() {
+        live.stderr.push_str("已停止执行\n");
+        live.exit_code = Some(-1);
+        live.done = true;
+        live.finished_at = Some(std::time::Instant::now());
+    }
+}
+
+fn finalize_exec(
+    status_code: Option<i32>,
+    live: &Arc<Mutex<CodeExecLive>>,
+    finished: &Arc<AtomicBool>,
+    t_out: std::thread::JoinHandle<()>,
+    t_err: std::thread::JoinHandle<()>,
+    killer: std::thread::JoinHandle<()>,
+) {
     finished.store(true, std::sync::atomic::Ordering::Relaxed);
     let _ = t_out.join();
     let _ = t_err.join();
     let _ = killer.join();
     if let Ok(mut live) = live.lock() {
         if !live.done {
-            live.exit_code = Some(status.code().unwrap_or(-1));
+            live.exit_code = Some(status_code.unwrap_or(-1));
             live.done = true;
             live.finished_at = Some(std::time::Instant::now());
         }
     }
-    let _ = remove_code_file(container_id, &run_id);
-    Ok(())
 }
 
 pub(crate) fn stop_exec(container_id: &str, run_id: &str) -> bool {
@@ -137,111 +168,15 @@ pub(crate) fn stop_exec(container_id: &str, run_id: &str) -> bool {
     true
 }
 
-fn start_container() -> Result<String, String> {
-    prepare_pip_cache_dir();
-    let run_id = format!(
-        "deepchat-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos()
-    );
-    let mut cmd = Command::new("docker");
-    let work_dir = work_dir();
-    let tmp_dir = tmp_dir();
-    let site_dir = pip_target_dir();
-    cmd.arg("run")
-        .arg("-d")
-        .arg("--cpus=1")
-        .arg("--memory=512m")
-        .arg("--pids-limit=128")
-        .arg("--read-only")
-        .arg("--user=1000:1000")
-        .arg("--cap-drop=ALL")
-        .arg("--security-opt=no-new-privileges")
-        .arg("--tmpfs")
-        .arg(format!(
-            "{work_dir}:rw,exec,nosuid,size={}m,uid=1000,gid=1000,mode=755",
-            site_tmpfs_mb()
-        ))
-        .arg("-e")
-        .arg(format!("TMPDIR={tmp_dir}"))
-        .arg("-e")
-        .arg(format!("TMP={tmp_dir}"))
-        .arg("-e")
-        .arg(format!("TEMP={tmp_dir}"))
-        .arg("-e")
-        .arg(format!("HOME={work_dir}"))
-        .arg("-e")
-        .arg(format!("DEEPCHAT_WORKDIR={work_dir}"))
-        .arg("-e")
-        .arg(format!("PIP_TARGET={site_dir}"))
-        .arg("-e")
-        .arg(format!("PYTHONPATH={site_dir}"))
-        .arg("-e")
-        .arg("PIP_DISABLE_PIP_VERSION_CHECK=1")
-        .arg("--label")
-        .arg(format!("deepchat-container={run_id}"));
-    let cache_dir = pip_cache_dir();
-    cmd.arg("-v")
-        .arg(format!("{cache_dir}:{work_dir}/.cache/pip"));
-    if let Some(index_url) = pip_index_url() {
-        cmd.arg("-e").arg(format!("PIP_INDEX_URL={index_url}"));
-    }
-    if let Some(extra_url) = pip_extra_index_url() {
-        cmd.arg("-e")
-            .arg(format!("PIP_EXTRA_INDEX_URL={extra_url}"));
-    }
-    match code_exec_network_mode() {
-        crate::ui::code_exec_container_env::CodeExecNetwork::None => {
-            cmd.arg("--network=none");
-        }
-        crate::ui::code_exec_container_env::CodeExecNetwork::Host => {
-            cmd.arg("--network=host");
-        }
-        crate::ui::code_exec_container_env::CodeExecNetwork::Bridge => {}
-    }
-    let output = cmd
-        .arg("python:3.11-slim")
-        .arg("sleep")
-        .arg("infinity")
-        .output()
-        .map_err(|e| format!("Docker 启动失败：{e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Docker 启动失败：{}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    let id = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if id.is_empty() {
-        return Err("Docker 启动失败：未返回容器 ID".to_string());
-    }
-    Ok(id)
-}
-
-fn is_container_running(container_id: &str) -> bool {
-    if let Ok(output) = Command::new("docker")
-        .arg("inspect")
-        .arg("-f")
-        .arg("{{.State.Running}}")
-        .arg(container_id)
-        .output()
-    {
-        if !output.status.success() {
-            return false;
-        }
-        let text = String::from_utf8_lossy(&output.stdout);
-        return text.trim() == "true";
-    }
-    false
-}
-
 fn write_code_file(container_id: &str, run_id: &str, code: &str) -> Result<(), String> {
     let run_dir = run_dir();
     let tmp_dir = tmp_dir();
     let site_dir = pip_target_dir();
+    ensure_container_dirs(container_id, &run_dir, &tmp_dir, &site_dir);
+    write_code_via_stdin(container_id, run_id, code)
+}
+
+fn ensure_container_dirs(container_id: &str, run_dir: &str, tmp_dir: &str, site_dir: &str) {
     let _ = Command::new("docker")
         .arg("exec")
         .arg(container_id)
@@ -249,6 +184,9 @@ fn write_code_file(container_id: &str, run_id: &str, code: &str) -> Result<(), S
         .arg("-lc")
         .arg(format!("mkdir -p {run_dir} {tmp_dir} {site_dir}"))
         .status();
+}
+
+fn write_code_via_stdin(container_id: &str, run_id: &str, code: &str) -> Result<(), String> {
     let mut cmd = Command::new("docker");
     cmd.arg("exec")
         .arg("-i")

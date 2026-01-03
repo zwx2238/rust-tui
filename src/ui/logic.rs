@@ -12,65 +12,97 @@ pub enum StreamAction {
 
 pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> StreamAction {
     match event {
-        LlmEvent::Chunk(s) => {
-            app.stream_buffer.push_str(&s);
-            flush_completed_lines(app);
-            StreamAction::None
-        }
-        LlmEvent::Error(err) => {
-            set_pending_assistant_content(app, &err);
-            app.pending_assistant = None;
-            app.pending_reasoning = None;
-            app.stream_buffer.clear();
-            app.active_request = None;
-            app.busy = false;
-            app.busy_since = None;
-            StreamAction::Done
-        }
-        LlmEvent::Done { usage } => {
-            flush_remaining_buffer(app);
-            let stats = format_stats(usage.as_ref(), elapsed_ms);
-            if let Some(idx) = app.pending_assistant.take() {
-                app.assistant_stats.insert(idx, stats);
-            }
-            if let Some(u) = usage.as_ref() {
-                let p = u.prompt_tokens.unwrap_or(0);
-                let c = u.completion_tokens.unwrap_or(0);
-                let t = u.total_tokens.unwrap_or(p + c);
-                app.total_prompt_tokens = app.total_prompt_tokens.saturating_add(p);
-                app.total_completion_tokens = app.total_completion_tokens.saturating_add(c);
-                app.total_tokens = app.total_tokens.saturating_add(t);
-            }
-            app.pending_reasoning = None;
-            app.active_request = None;
-            app.busy = false;
-            app.busy_since = None;
-            StreamAction::Done
-        }
+        LlmEvent::Chunk(s) => handle_chunk(app, &s),
+        LlmEvent::Error(err) => handle_error(app, &err),
+        LlmEvent::Done { usage } => handle_done(app, usage.as_ref(), elapsed_ms),
         LlmEvent::ToolCalls { calls, usage } => {
-            flush_remaining_buffer(app);
-            let stats = format_stats(usage.as_ref(), elapsed_ms);
-            if let Some(idx) = app.pending_assistant.take() {
-                if let Some(msg) = app.messages.get_mut(idx) {
-                    msg.tool_calls = Some(calls.clone());
-                }
-                app.assistant_stats.insert(idx, stats);
-            }
-            if let Some(u) = usage.as_ref() {
-                let p = u.prompt_tokens.unwrap_or(0);
-                let c = u.completion_tokens.unwrap_or(0);
-                let t = u.total_tokens.unwrap_or(p + c);
-                app.total_prompt_tokens = app.total_prompt_tokens.saturating_add(p);
-                app.total_completion_tokens = app.total_completion_tokens.saturating_add(c);
-                app.total_tokens = app.total_tokens.saturating_add(t);
-            }
-            app.pending_reasoning = None;
-            app.active_request = None;
-            app.busy = false;
-            app.busy_since = None;
-            StreamAction::ToolCalls(calls)
+            handle_tool_calls(app, calls, usage.as_ref(), elapsed_ms)
         }
     }
+}
+
+fn handle_chunk(app: &mut App, chunk: &str) -> StreamAction {
+    app.stream_buffer.push_str(chunk);
+    flush_completed_lines(app);
+    StreamAction::None
+}
+
+fn handle_error(app: &mut App, err: &str) -> StreamAction {
+    set_pending_assistant_content(app, err);
+    clear_stream_state(app);
+    StreamAction::Done
+}
+
+fn handle_done(
+    app: &mut App,
+    usage: Option<&crate::types::Usage>,
+    elapsed_ms: u64,
+) -> StreamAction {
+    flush_remaining_buffer(app);
+    record_assistant_stats(app, usage, elapsed_ms);
+    update_usage_totals(app, usage);
+    clear_stream_state(app);
+    StreamAction::Done
+}
+
+fn handle_tool_calls(
+    app: &mut App,
+    calls: Vec<ToolCall>,
+    usage: Option<&crate::types::Usage>,
+    elapsed_ms: u64,
+) -> StreamAction {
+    flush_remaining_buffer(app);
+    attach_tool_calls(app, calls.clone(), elapsed_ms, usage);
+    update_usage_totals(app, usage);
+    clear_stream_state(app);
+    StreamAction::ToolCalls(calls)
+}
+
+fn attach_tool_calls(
+    app: &mut App,
+    calls: Vec<ToolCall>,
+    elapsed_ms: u64,
+    usage: Option<&crate::types::Usage>,
+) {
+    let stats = format_stats(usage, elapsed_ms);
+    if let Some(idx) = app.pending_assistant.take() {
+        if let Some(msg) = app.messages.get_mut(idx) {
+            msg.tool_calls = Some(calls);
+        }
+        app.assistant_stats.insert(idx, stats);
+    }
+}
+
+fn record_assistant_stats(
+    app: &mut App,
+    usage: Option<&crate::types::Usage>,
+    elapsed_ms: u64,
+) {
+    let stats = format_stats(usage, elapsed_ms);
+    if let Some(idx) = app.pending_assistant.take() {
+        app.assistant_stats.insert(idx, stats);
+    }
+}
+
+fn update_usage_totals(app: &mut App, usage: Option<&crate::types::Usage>) {
+    let Some(u) = usage else {
+        return;
+    };
+    let p = u.prompt_tokens.unwrap_or(0);
+    let c = u.completion_tokens.unwrap_or(0);
+    let t = u.total_tokens.unwrap_or(p + c);
+    app.total_prompt_tokens = app.total_prompt_tokens.saturating_add(p);
+    app.total_completion_tokens = app.total_completion_tokens.saturating_add(c);
+    app.total_tokens = app.total_tokens.saturating_add(t);
+}
+
+fn clear_stream_state(app: &mut App) {
+    app.pending_assistant = None;
+    app.pending_reasoning = None;
+    app.stream_buffer.clear();
+    app.active_request = None;
+    app.busy = false;
+    app.busy_since = None;
 }
 
 pub fn stop_stream(app: &mut App) -> bool {

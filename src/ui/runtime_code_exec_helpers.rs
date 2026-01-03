@@ -49,12 +49,19 @@ pub(crate) fn inject_requirements(code: &str) -> String {
 }
 
 pub(crate) fn filter_pip_output(stdout: &str, exit_code: Option<i32>) -> String {
-    let Some(code) = exit_code else {
-        return stdout.to_string();
-    };
-    if code != 0 {
+    if !pip_filter_allowed(exit_code) {
         return stdout.to_string();
     }
+    let mut out = strip_pip_markers(stdout);
+    trim_trailing_newline(&mut out);
+    out
+}
+
+fn pip_filter_allowed(exit_code: Option<i32>) -> bool {
+    matches!(exit_code, Some(0))
+}
+
+fn strip_pip_markers(stdout: &str) -> String {
     let mut out = String::new();
     let mut in_pip = false;
     for line in stdout.lines() {
@@ -71,13 +78,16 @@ pub(crate) fn filter_pip_output(stdout: &str, exit_code: Option<i32>) -> String 
             out.push('\n');
         }
     }
+    out
+}
+
+fn trim_trailing_newline(out: &mut String) {
     if out.ends_with('\n') {
         out.pop();
         if out.ends_with('\r') {
             out.pop();
         }
     }
-    out
 }
 
 #[cfg(test)]

@@ -1,14 +1,15 @@
 use crate::render::MessageLayout;
-use crate::render::label_line_layout;
-use crate::render::label_line_with_button;
 use crate::render::markdown::{
     close_unbalanced_code_fence, count_markdown_lines, render_markdown_lines,
 };
 use crate::render::theme::{RenderTheme, theme_cache_key};
-use crate::render::util::{hash_message, label_for_role, ranges_overlap, suffix_for_index};
+use crate::render::util::hash_message;
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use ratatui::text::{Line, Text};
 use std::borrow::Cow;
+
+mod viewport;
+use viewport::ViewportState;
 #[derive(Clone)]
 pub struct RenderCacheEntry {
     pub(crate) role: String,
@@ -122,82 +123,69 @@ pub fn messages_to_viewport_text_cached_with_layout(
     cache: &mut Vec<RenderCacheEntry>,
 ) -> (Text<'static>, usize, Vec<MessageLayout>) {
     let theme_key = theme_cache_key(theme);
-    if cache.len() > messages.len() {
-        cache.truncate(messages.len());
-    }
+    trim_cache(cache, messages.len());
     let start = scroll as usize;
     let end = start.saturating_add(height as usize);
-    let mut out: Vec<Line<'static>> = Vec::new();
-    let mut layouts: Vec<MessageLayout> = Vec::new();
-    let mut line_cursor = 0usize;
+    let mut state = ViewportState::new(
+        width,
+        theme,
+        theme_key,
+        label_suffixes,
+        streaming_idx,
+        start,
+        end,
+    );
     for (idx, msg) in messages.iter().enumerate() {
-        if cache.len() <= idx {
-            cache.push(empty_entry(theme_key));
-        }
-        let suffix = suffix_for_index(label_suffixes, idx);
-        let streaming = streaming_idx == Some(idx);
-        let entry = &mut cache[idx];
-        let content_hash = hash_message(&msg.role, &msg.content);
-        let content_len = msg.content.len();
-        if entry.role != msg.role
-            || entry.content_hash != content_hash
-            || entry.content_len != content_len
-            || entry.width != width
-            || entry.theme_key != theme_key
-            || entry.streaming != streaming
-        {
-            entry.role = msg.role.clone();
-            entry.content_hash = content_hash;
-            entry.content_len = content_len;
-            entry.width = width;
-            entry.theme_key = theme_key;
-            entry.streaming = streaming;
-            entry.lines.clear();
-            entry.rendered = false;
-            entry.line_count = count_message_lines(msg, width, streaming);
-        }
-        if let Some(label) = label_for_role(&msg.role, suffix) {
-            let (button_range, label_line) = label_line_layout(&msg.role, &label, line_cursor);
-            layouts.push(MessageLayout {
-                index: idx,
-                label_line,
-                button_range,
-            });
-            if line_cursor >= start && line_cursor < end {
-                out.push(label_line_with_button(&msg.role, &label, theme));
-            }
-            line_cursor += 1;
-            if !entry.rendered
-                && ranges_overlap(start, end, line_cursor, line_cursor + entry.line_count)
-            {
-                entry.lines = render_message_content_lines(msg, width, theme, streaming);
-                entry.rendered = true;
-                entry.line_count = entry.lines.len();
-            }
-            let content_len = entry.line_count;
-            if content_len > 0 {
-                if line_cursor + content_len <= start || line_cursor >= end {
-                    line_cursor += content_len;
-                } else {
-                    if entry.rendered {
-                        for line in &entry.lines {
-                            if line_cursor >= start && line_cursor < end {
-                                out.push(line.clone());
-                            }
-                            line_cursor += 1;
-                        }
-                    } else {
-                        line_cursor += content_len;
-                    }
-                }
-            }
-            if line_cursor >= start && line_cursor < end {
-                out.push(Line::from(""));
-            }
-            line_cursor += 1;
-        }
+        state.process_message(idx, msg, cache);
     }
-    (Text::from(out), line_cursor, layouts)
+    state.finish()
+}
+
+fn trim_cache(cache: &mut Vec<RenderCacheEntry>, len: usize) {
+    if cache.len() > len {
+        cache.truncate(len);
+    }
+}
+
+
+fn ensure_cache_entry<'a>(
+    cache: &'a mut Vec<RenderCacheEntry>,
+    idx: usize,
+    theme_key: u64,
+) -> &'a mut RenderCacheEntry {
+    if cache.len() <= idx {
+        cache.push(empty_entry(theme_key));
+    }
+    &mut cache[idx]
+}
+
+fn update_cache_entry(
+    entry: &mut RenderCacheEntry,
+    msg: &Message,
+    width: usize,
+    theme_key: u64,
+    streaming: bool,
+) {
+    let content_hash = hash_message(&msg.role, &msg.content);
+    let content_len = msg.content.len();
+    let needs_update = entry.role != msg.role
+        || entry.content_hash != content_hash
+        || entry.content_len != content_len
+        || entry.width != width
+        || entry.theme_key != theme_key
+        || entry.streaming != streaming;
+    if !needs_update {
+        return;
+    }
+    entry.role = msg.role.clone();
+    entry.content_hash = content_hash;
+    entry.content_len = content_len;
+    entry.width = width;
+    entry.theme_key = theme_key;
+    entry.streaming = streaming;
+    entry.lines.clear();
+    entry.rendered = false;
+    entry.line_count = count_message_lines(msg, width, streaming);
 }
 pub fn insert_empty_cache_entry(
     cache: &mut Vec<RenderCacheEntry>,

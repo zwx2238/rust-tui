@@ -3,6 +3,7 @@ mod count;
 mod latex;
 mod list;
 mod render;
+mod render_state;
 mod shared;
 mod table;
 mod text;

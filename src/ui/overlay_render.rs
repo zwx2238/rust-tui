@@ -84,65 +84,115 @@ pub(crate) fn render_model_overlay(
     ctx: &mut RenderContext<'_>,
     view: &mut ViewState,
 ) -> Result<(), Box<dyn Error>> {
-    if let Some(tab_state) = ctx.tabs.get_mut(ctx.active_tab) {
-        redraw_with_overlay(
-            ctx.terminal,
-            &mut tab_state.app,
-            ctx.theme,
-            ctx.text,
-            ctx.total_lines,
-            ctx.tab_labels,
-            ctx.active_tab_pos,
-            ctx.categories,
-            ctx.active_category,
-            ctx.startup_text,
-            ctx.input_height,
-            |f| {
-                draw_model_popup(
-                    f,
-                    f.area(),
-                    ctx.models,
-                    view.model.selected,
-                    view.model.scroll,
-                    ctx.theme,
-                );
-            },
-            ctx.header_note,
-        )?;
-    }
-    Ok(())
+    render_model_overlay_inner(ctx, view)
 }
 
 pub(crate) fn render_prompt_overlay(
     ctx: &mut RenderContext<'_>,
     view: &mut ViewState,
 ) -> Result<(), Box<dyn Error>> {
-    if let Some(tab_state) = ctx.tabs.get_mut(ctx.active_tab) {
-        redraw_with_overlay(
-            ctx.terminal,
-            &mut tab_state.app,
-            ctx.theme,
-            ctx.text,
-            ctx.total_lines,
-            ctx.tab_labels,
-            ctx.active_tab_pos,
-            ctx.categories,
-            ctx.active_category,
-            ctx.startup_text,
-            ctx.input_height,
-            |f| {
-                draw_prompt_popup(
-                    f,
-                    f.area(),
-                    ctx.prompts,
-                    view.prompt.selected,
-                    view.prompt.scroll,
-                    ctx.theme,
-                );
-            },
-            ctx.header_note,
-        )?;
-    }
+    render_prompt_overlay_inner(ctx, view)
+}
+
+fn render_model_overlay_inner(
+    ctx: &mut RenderContext<'_>,
+    view: &mut ViewState,
+) -> Result<(), Box<dyn Error>> {
+    let RenderContext {
+        terminal,
+        tabs,
+        active_tab,
+        tab_labels,
+        active_tab_pos,
+        categories,
+        active_category,
+        theme,
+        startup_text,
+        input_height,
+        text,
+        total_lines,
+        header_note,
+        models,
+        ..
+    } = ctx;
+    let Some(tab_state) = tabs.get_mut(*active_tab) else {
+        return Ok(());
+    };
+    redraw_with_overlay(
+        terminal,
+        &mut tab_state.app,
+        theme,
+        text,
+        *total_lines,
+        tab_labels,
+        *active_tab_pos,
+        categories,
+        *active_category,
+        *startup_text,
+        *input_height,
+        |f| {
+            draw_model_popup(
+                f,
+                f.area(),
+                models,
+                view.model.selected,
+                view.model.scroll,
+                theme,
+            );
+        },
+        *header_note,
+    )?;
+    Ok(())
+}
+
+fn render_prompt_overlay_inner(
+    ctx: &mut RenderContext<'_>,
+    view: &mut ViewState,
+) -> Result<(), Box<dyn Error>> {
+    let RenderContext {
+        terminal,
+        tabs,
+        active_tab,
+        tab_labels,
+        active_tab_pos,
+        categories,
+        active_category,
+        theme,
+        startup_text,
+        input_height,
+        text,
+        total_lines,
+        header_note,
+        prompts,
+        ..
+    } = ctx;
+    let Some(tab_state) = tabs.get_mut(*active_tab) else {
+        return Ok(());
+    };
+    redraw_with_overlay(
+        terminal,
+        &mut tab_state.app,
+        theme,
+        text,
+        *total_lines,
+        tab_labels,
+        *active_tab_pos,
+        categories,
+        *active_category,
+        *startup_text,
+        *input_height,
+        |f| {
+            draw_prompt_popup(
+                f,
+                f.area(),
+                prompts,
+                view.prompt.selected,
+                view.prompt.scroll,
+                theme,
+            );
+        },
+        *header_note,
+    )?;
     Ok(())
 }
 

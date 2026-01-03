@@ -172,17 +172,47 @@ pub(crate) fn tab_index_at(
 }
 
 pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {
-    let app = &mut tab_state.app;
+    let (remove, user_text) = {
+        let app = &mut tab_state.app;
+        if !cancel_active_request(app) {
+            return false;
+        }
+        let assistant_idx = app.pending_assistant.take();
+        let reasoning_idx = app.pending_reasoning.take();
+        let user_idx = find_last_user_idx(app, assistant_idx);
+        let remove = collect_remove_indices(assistant_idx, reasoning_idx, user_idx);
+        if remove.is_empty() {
+            clear_stream_state(app);
+            return false;
+        }
+        let user_text = user_text_at(app, user_idx);
+        (remove, user_text)
+    };
+    apply_message_removals(tab_state, &remove);
+    reset_edit_state(&mut tab_state.app, &user_text);
+    true
+}
+
+fn cancel_active_request(app: &mut App) -> bool {
     let Some(handle) = app.active_request.take() else {
         return false;
     };
     handle.cancel();
-    let assistant_idx = app.pending_assistant.take();
-    let reasoning_idx = app.pending_reasoning.take();
+    true
+}
+
+fn find_last_user_idx(app: &App, assistant_idx: Option<usize>) -> Option<usize> {
     let search_end = assistant_idx.unwrap_or(app.messages.len());
-    let user_idx = app.messages[..search_end]
+    app.messages[..search_end]
         .iter()
-        .rposition(|m| m.role == ROLE_USER);
+        .rposition(|m| m.role == ROLE_USER)
+}
+
+fn collect_remove_indices(
+    assistant_idx: Option<usize>,
+    reasoning_idx: Option<usize>,
+    user_idx: Option<usize>,
+) -> Vec<usize> {
     let mut remove = Vec::new();
     if let Some(idx) = assistant_idx {
         remove.push(idx);
@@ -193,17 +223,22 @@ pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {
     if let Some(idx) = user_idx {
         remove.push(idx);
     }
-    if remove.is_empty() {
-        app.busy = false;
-        app.busy_since = None;
-        app.stream_buffer.clear();
-        return false;
-    }
     remove.sort_unstable();
     remove.dedup();
-    let user_text = user_idx
+    remove
+}
+
+fn user_text_at(app: &App, user_idx: Option<usize>) -> String {
+    user_idx
         .and_then(|idx| app.messages.get(idx).map(|m| m.content.clone()))
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+fn apply_message_removals(tab_state: &mut TabState, remove: &[usize]) {
+    if remove.is_empty() {
+        return;
+    }
+    let app = &mut tab_state.app;
     for idx in remove.iter().rev() {
         if *idx < app.messages.len() {
             app.messages.remove(*idx);
@@ -212,10 +247,11 @@ pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {
             tab_state.render_cache.remove(*idx);
         }
     }
-    shift_stats_after_removals(&mut app.assistant_stats, &remove);
-    app.stream_buffer.clear();
-    app.busy = false;
-    app.busy_since = None;
+    shift_stats_after_removals(&mut app.assistant_stats, remove);
+}
+
+fn reset_edit_state(app: &mut App, user_text: &str) {
+    clear_stream_state(app);
     app.follow = true;
     app.dirty_indices = (0..app.messages.len()).collect();
     app.input = tui_textarea::TextArea::default();
@@ -223,7 +259,12 @@ pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {
         app.input.insert_str(user_text);
     }
     app.focus = Focus::Input;
-    true
+}
+
+fn clear_stream_state(app: &mut App) {
+    app.stream_buffer.clear();
+    app.busy = false;
+    app.busy_since = None;
 }
 
 fn shift_stats_after_removals(stats: &mut BTreeMap<usize, String>, removed: &[usize]) {

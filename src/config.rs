@@ -1,3 +1,7 @@
+//! 配置管理模块
+//!
+//! 提供应用程序配置的加载、解析和管理功能。
+
 use serde::Deserialize;
 use std::env;
 use std::fs;

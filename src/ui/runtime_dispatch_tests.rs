@@ -12,6 +12,17 @@ mod tests {
     use crate::ui::runtime_helpers::TabState;
     use ratatui::style::Color;
 
+    struct DispatchTestState {
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        categories: Vec<String>,
+        active_category: usize,
+        theme: RenderTheme,
+        registry: ModelRegistry,
+        prompt_registry: PromptRegistry,
+        args: Args,
+    }
+
     fn theme() -> RenderTheme {
         RenderTheme {
             bg: Color::Black,
@@ -65,6 +76,20 @@ mod tests {
             question_set: None,
             yolo: false,
             read_only: false,
+            wait_gdb: false,
+        }
+    }
+
+    fn base_state() -> DispatchTestState {
+        DispatchTestState {
+            tabs: vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            categories: vec!["cat".to_string()],
+            active_category: 0,
+            theme: theme(),
+            registry: registry(),
+            prompt_registry: prompt_registry(),
+            args: args(),
         }
     }
 
@@ -91,6 +116,31 @@ mod tests {
         }
     }
 
+    fn ctx_from_state<'a>(state: &'a mut DispatchTestState) -> DispatchContext<'a> {
+        ctx(
+            &mut state.tabs,
+            &mut state.active_tab,
+            &mut state.categories,
+            &mut state.active_category,
+            &state.theme,
+            &state.registry,
+            &state.prompt_registry,
+            &state.args,
+        )
+    }
+
+    fn layout() -> crate::ui::runtime_dispatch::LayoutContext {
+        crate::ui::runtime_dispatch::LayoutContext {
+            size: ratatui::layout::Rect::new(0, 0, 80, 24),
+            tabs_area: ratatui::layout::Rect::new(0, 1, 80, 1),
+            msg_area: ratatui::layout::Rect::new(0, 2, 80, 18),
+            input_area: ratatui::layout::Rect::new(0, 20, 80, 3),
+            category_area: ratatui::layout::Rect::new(0, 1, 10, 5),
+            view_height: 10,
+            total_lines: 0,
+        }
+    }
+
     #[test]
     fn can_change_prompt_checks_user_messages() {
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m1", "p1");
@@ -106,85 +156,37 @@ mod tests {
 
     #[test]
     fn apply_model_selection_updates_key() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut state = base_state();
+        let mut ctx = ctx_from_state(&mut state);
         apply_model_selection(&mut ctx, 0);
         assert_eq!(ctx.tabs[0].app.model_key, "m1");
     }
 
     #[test]
     fn apply_prompt_selection_updates_system_prompt() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut state = base_state();
+        let mut ctx = ctx_from_state(&mut state);
         apply_prompt_selection(&mut ctx, 1);
         assert_eq!(ctx.tabs[0].app.prompt_key, "p2");
     }
 
     #[test]
     fn fork_message_requires_user_message() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")];
-        tabs[0].app.messages.push(crate::types::Message {
+        let mut state = base_state();
+        state.tabs[0].app.messages.push(crate::types::Message {
             role: crate::types::ROLE_ASSISTANT.to_string(),
             content: "hi".to_string(),
             tool_call_id: None,
             tool_calls: None,
         });
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx_from_state(&mut state);
         assert!(!fork_message_by_index(&mut ctx, 0));
     }
 
     #[test]
     fn fork_message_creates_new_tab() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")];
-        tabs[0].app.messages.push(crate::types::Message {
+        let mut state = base_state();
+        state.tabs[0].app.messages.push(crate::types::Message {
             role: crate::types::ROLE_USER.to_string(),
             content: "hi".to_string(),
             tool_call_id: None,
@@ -196,23 +198,7 @@ mod tests {
             preview: "hi".to_string(),
             scroll: 0,
         }];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx_from_state(&mut state);
         assert!(fork_message_into_new_tab(&mut ctx, &jump_rows, 0));
         assert!(ctx.tabs.len() > 1);
     }
@@ -242,30 +228,14 @@ mod tests {
 
     #[test]
     fn fork_message_by_index_non_user_pushes_notice() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")];
-        tabs[0].app.messages.push(crate::types::Message {
+        let mut state = base_state();
+        state.tabs[0].app.messages.push(crate::types::Message {
             role: crate::types::ROLE_ASSISTANT.to_string(),
             content: "hi".to_string(),
             tool_call_id: None,
             tool_calls: None,
         });
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut ctx = ctx_from_state(&mut state);
         assert!(!fork_message_by_index(&mut ctx, 0));
         assert!(ctx.tabs[0].app.notice.is_some());
     }
@@ -288,33 +258,9 @@ mod tests {
 
     #[test]
     fn sync_selections_clamp_view() {
-        let mut tabs = vec![TabState::new("id".into(), "cat".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
-        let layout = crate::ui::runtime_dispatch::LayoutContext {
-            size: ratatui::layout::Rect::new(0, 0, 80, 24),
-            tabs_area: ratatui::layout::Rect::new(0, 1, 80, 1),
-            msg_area: ratatui::layout::Rect::new(0, 2, 80, 18),
-            input_area: ratatui::layout::Rect::new(0, 20, 80, 3),
-            category_area: ratatui::layout::Rect::new(0, 1, 10, 5),
-            view_height: 10,
-            total_lines: 0,
-        };
+        let mut state = base_state();
+        let ctx = ctx_from_state(&mut state);
+        let layout = layout();
         let mut view = crate::ui::runtime_view::ViewState::new();
         sync_model_selection(&mut view, &ctx, layout);
         sync_prompt_selection(&mut view, &ctx, layout);

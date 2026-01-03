@@ -18,162 +18,164 @@ pub(crate) struct Shortcut {
     pub(crate) description: &'static str,
 }
 
-pub(crate) fn all_shortcuts() -> &'static [Shortcut] {
-    &[
-        Shortcut {
+const SHORTCUTS: &[Shortcut] = &[
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+Q",
             description: "退出应用",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+T",
             description: "新建对话",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+W",
             description: "关闭当前对话",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+Shift+W",
             description: "关闭所有对话（保留空对话）",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+O",
             description: "关闭其他对话",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "F8 / F9",
             description: "前一个 / 下一个对话",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Global,
             keys: "Ctrl+↑ / Ctrl+↓",
             description: "切换分类",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F1",
             description: "汇总页",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F2",
             description: "消息跳转页",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F3",
             description: "切换模型",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F4",
             description: "模型列表",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F5",
             description: "系统提示词列表",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F6",
             description: "终止生成",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "Shift+F6",
             description: "终止生成并编辑",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Chat,
             keys: "F10",
             description: "快捷键帮助",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Nav,
             keys: "g",
             description: "进入/退出导航模式",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Nav,
             keys: "j / n",
             description: "跳到下一条消息",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Nav,
             keys: "k / p",
             description: "跳到上一条消息",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Summary,
             keys: "↑/↓",
             description: "选择对话",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Summary,
             keys: "Enter",
             description: "进入对话",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Summary,
             keys: "Esc",
             description: "关闭汇总页",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Jump,
             keys: "↑/↓",
             description: "选择消息",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Jump,
             keys: "PageUp/PageDown",
             description: "翻页",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Jump,
             keys: "Enter",
             description: "跳转到消息",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Jump,
             keys: "E",
             description: "分叉并编辑消息",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Model,
             keys: "↑/↓",
             description: "选择模型",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Model,
             keys: "Enter",
             description: "确认模型",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Prompt,
             keys: "↑/↓",
             description: "选择系统提示词",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Prompt,
             keys: "Enter",
             description: "确认系统提示词",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::CodeExec,
             keys: "鼠标点击",
             description: "确认/拒绝/停止/退出",
-        },
-        Shortcut {
+    },
+    Shortcut {
             scope: ShortcutScope::Help,
             keys: "Esc / F10",
             description: "关闭帮助",
-        },
-    ]
+    },
+];
+
+pub(crate) fn all_shortcuts() -> &'static [Shortcut] {
+    SHORTCUTS
 }

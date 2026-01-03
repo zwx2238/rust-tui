@@ -60,23 +60,59 @@ fn resolve_session_path(input: &str) -> Result<(PathBuf, bool), Box<dyn std::err
 
 pub fn load_session(input: &str) -> Result<LoadedSession, Box<dyn std::error::Error>> {
     let (path, custom_path) = resolve_session_path(input)?;
-    let text = fs::read_to_string(&path)?;
+    let raw = read_session_raw(&path)?;
+    reject_legacy_tabs(&raw)?;
+    let mut data = parse_session_data(raw)?;
+    let id = resolve_session_id(&data, input, custom_path, &path);
+    normalize_loaded_session(&mut data, &id);
+    Ok(LoadedSession {
+        location: SessionLocation {
+            id,
+            path,
+            custom_path,
+        },
+        data,
+    })
+}
+
+fn read_session_raw(path: &PathBuf) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let text = fs::read_to_string(path)?;
     let raw: serde_json::Value = serde_json::from_str(&text)?;
+    Ok(raw)
+}
+
+fn reject_legacy_tabs(raw: &serde_json::Value) -> Result<(), Box<dyn std::error::Error>> {
     if raw.get("tabs").is_some() {
         return Err("会话格式已升级，不再兼容旧版 tabs 字段，请新建会话".into());
     }
-    let mut data: SessionData = serde_json::from_value(raw)?;
-    let id = if !data.id.trim().is_empty() {
-        data.id.clone()
-    } else if !custom_path {
-        input.to_string()
-    } else {
-        path.file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "session".to_string())
-    };
+    Ok(())
+}
+
+fn parse_session_data(raw: serde_json::Value) -> Result<SessionData, Box<dyn std::error::Error>> {
+    let data: SessionData = serde_json::from_value(raw)?;
+    Ok(data)
+}
+
+fn resolve_session_id(
+    data: &SessionData,
+    input: &str,
+    custom_path: bool,
+    path: &PathBuf,
+) -> String {
+    if !data.id.trim().is_empty() {
+        return data.id.clone();
+    }
+    if !custom_path {
+        return input.to_string();
+    }
+    path.file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "session".to_string())
+}
+
+fn normalize_loaded_session(data: &mut SessionData, id: &str) {
     if data.id.trim().is_empty() {
-        data.id = id.clone();
+        data.id = id.to_string();
     }
     if data.categories.is_empty() {
         data.categories = vec!["默认".to_string()];
@@ -91,14 +127,6 @@ pub fn load_session(input: &str) -> Result<LoadedSession, Box<dyn std::error::Er
     if !data.categories.contains(&data.active_category) {
         data.categories.push(data.active_category.clone());
     }
-    Ok(LoadedSession {
-        location: SessionLocation {
-            id,
-            path,
-            custom_path,
-        },
-        data,
-    })
 }
 
 pub fn save_session(
@@ -108,22 +136,52 @@ pub fn save_session(
     active_category: Option<&str>,
     location: Option<&SessionLocation>,
 ) -> Result<SessionLocation, Box<dyn std::error::Error>> {
-    let (id, path, custom_path) = if let Some(loc) = location {
-        (loc.id.clone(), loc.path.clone(), loc.custom_path)
-    } else {
-        let dir = sessions_dir()?;
-        fs::create_dir_all(&dir)?;
-        let id = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| "系统时间异常")?
-            .as_secs()
-            .to_string();
-        let path = dir.join(format!("{id}.json"));
-        (id, path, false)
-    };
+    let (id, path, custom_path) = resolve_save_location(location)?;
+    ensure_parent_dir(&path)?;
+    let (categories, active_category) = normalize_categories(categories, active_category);
+    let session = build_session_data(
+        &id,
+        &categories,
+        &active_category,
+        open_conversations,
+        active_conversation,
+    );
+    write_session(&path, &session)?;
+    Ok(SessionLocation {
+        id,
+        path,
+        custom_path,
+    })
+}
+
+fn resolve_save_location(
+    location: Option<&SessionLocation>,
+) -> Result<(String, PathBuf, bool), Box<dyn std::error::Error>> {
+    if let Some(loc) = location {
+        return Ok((loc.id.clone(), loc.path.clone(), loc.custom_path));
+    }
+    let dir = sessions_dir()?;
+    fs::create_dir_all(&dir)?;
+    let id = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "系统时间异常")?
+        .as_secs()
+        .to_string();
+    let path = dir.join(format!("{id}.json"));
+    Ok((id, path, false))
+}
+
+fn ensure_parent_dir(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
+    Ok(())
+}
+
+fn normalize_categories(
+    categories: &[String],
+    active_category: Option<&str>,
+) -> (Vec<String>, String) {
     let mut categories = categories.to_vec();
     if categories.is_empty() {
         categories.push("默认".to_string());
@@ -135,20 +193,32 @@ pub fn save_session(
     if !categories.contains(&active_category) {
         categories.push(active_category.clone());
     }
-    let session = SessionData {
-        id: id.clone(),
-        categories,
-        active_category,
+    (categories, active_category)
+}
+
+fn build_session_data(
+    id: &str,
+    categories: &[String],
+    active_category: &str,
+    open_conversations: &[String],
+    active_conversation: Option<&str>,
+) -> SessionData {
+    SessionData {
+        id: id.to_string(),
+        categories: categories.to_vec(),
+        active_category: active_category.to_string(),
         open_conversations: open_conversations.to_vec(),
         active_conversation: active_conversation.map(|s| s.to_string()),
-    };
-    let text = serde_json::to_string_pretty(&session)?;
-    fs::write(&path, text)?;
-    Ok(SessionLocation {
-        id,
-        path,
-        custom_path,
-    })
+    }
+}
+
+fn write_session(
+    path: &PathBuf,
+    session: &SessionData,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let text = serde_json::to_string_pretty(session)?;
+    fs::write(path, text)?;
+    Ok(())
 }
 
 #[cfg(test)]

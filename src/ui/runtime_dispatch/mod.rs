@@ -1,13 +1,12 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::types::{ROLE_SYSTEM, ROLE_USER};
+use crate::types::ROLE_USER;
 use crate::ui::net::UiEvent;
 use crate::ui::notice::push_notice;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_tab_request;
-use crate::ui::state::Focus;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
@@ -15,6 +14,7 @@ mod key;
 mod mouse;
 mod mouse_overlay;
 mod nav;
+mod fork;
 mod tabs;
 
 const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新建对话。";
@@ -22,6 +22,7 @@ const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词�
 pub(crate) use key::handle_key_event_loop;
 pub(crate) use mouse::handle_mouse_event_loop;
 pub(crate) use nav::handle_nav_key;
+pub(crate) use fork::{fork_message_by_index, fork_message_into_new_tab};
 pub(crate) use tabs::{
     close_all_tabs, close_other_tabs, close_tab, new_tab, next_category, next_tab, prev_category,
     prev_tab,
@@ -167,96 +168,6 @@ pub(crate) fn apply_prompt_selection(ctx: &mut DispatchContext<'_>, idx: usize) 
 
 pub(crate) fn push_prompt_locked(tab_state: &mut TabState) {
     push_notice(&mut tab_state.app, PROMPT_LOCKED_MSG);
-}
-
-pub(crate) fn fork_message_into_new_tab(
-    ctx: &mut DispatchContext<'_>,
-    jump_rows: &[crate::ui::jump::JumpRow],
-    row_idx: usize,
-) -> bool {
-    let Some(row) = jump_rows.get(row_idx) else {
-        return false;
-    };
-    let msg_idx = row.index.saturating_sub(1);
-    fork_message_by_index(ctx, msg_idx)
-}
-
-pub(crate) fn fork_message_by_index(ctx: &mut DispatchContext<'_>, msg_idx: usize) -> bool {
-    let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) else {
-        return false;
-    };
-    let Some(msg) = tab_state.app.messages.get(msg_idx) else {
-        return false;
-    };
-    if msg.role != ROLE_USER {
-        if let Some(active) = ctx.tabs.get_mut(*ctx.active_tab) {
-            crate::ui::notice::push_notice(&mut active.app, "仅支持从用户消息分叉。");
-        }
-        return false;
-    }
-    let content = msg.content.clone();
-    let mut history: Vec<crate::types::Message> = tab_state.app.messages[..msg_idx].to_vec();
-    let system_prompt = tab_state
-        .app
-        .messages
-        .iter()
-        .find(|m| m.role == ROLE_SYSTEM)
-        .map(|m| m.content.clone())
-        .or_else(|| {
-            ctx.prompt_registry
-                .get(&tab_state.app.prompt_key)
-                .map(|p| p.content.clone())
-        })
-        .unwrap_or_else(|| ctx.args.system.clone());
-    let model_key = if ctx.registry.get(&tab_state.app.model_key).is_some() {
-        tab_state.app.model_key.clone()
-    } else {
-        ctx.registry.default_key.clone()
-    };
-    let prompt_key = if ctx.prompt_registry.get(&tab_state.app.prompt_key).is_some() {
-        tab_state.app.prompt_key.clone()
-    } else {
-        ctx.prompt_registry.default_key.clone()
-    };
-    let conv_id =
-        crate::conversation::new_conversation_id().unwrap_or_else(|_| ctx.tabs.len().to_string());
-    let category = tab_state.category.clone();
-    if !ctx.categories.contains(&category) {
-        ctx.categories.push(category.clone());
-    }
-    let mut new_tab = TabState::new(conv_id, category, "", false, &model_key, &prompt_key);
-    new_tab
-        .app
-        .set_log_session_id(&tab_state.app.log_session_id);
-    if history.iter().all(|m| m.role != ROLE_SYSTEM) && !system_prompt.trim().is_empty() {
-        history.insert(
-            0,
-            crate::types::Message {
-                role: ROLE_SYSTEM.to_string(),
-                content: system_prompt.clone(),
-                tool_call_id: None,
-                tool_calls: None,
-            },
-        );
-    }
-    new_tab.app.messages = history;
-    new_tab.app.model_key = model_key;
-    new_tab.app.prompt_key = prompt_key;
-    new_tab.app.prompts_dir = tab_state.app.prompts_dir.clone();
-    new_tab.app.tavily_api_key = tab_state.app.tavily_api_key.clone();
-    new_tab.app.dirty_indices = (0..new_tab.app.messages.len()).collect();
-    if !content.is_empty() {
-        new_tab.app.input.insert_str(content);
-    }
-    new_tab.app.focus = Focus::Input;
-    ctx.tabs.push(new_tab);
-    *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
-    if let Some(tab) = ctx.tabs.get(*ctx.active_tab) {
-        if let Some(idx) = ctx.categories.iter().position(|c| c == &tab.category) {
-            *ctx.active_category = idx;
-        }
-    }
-    true
 }
 
 pub(crate) fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: &mut String) {

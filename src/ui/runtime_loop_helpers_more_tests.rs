@@ -3,12 +3,21 @@ mod tests {
     use crate::args::Args;
     use crate::llm::prompts::{PromptRegistry, SystemPrompt};
     use crate::model_registry::{ModelProfile, ModelRegistry};
+    use crate::session::SessionLocation;
     use crate::test_support::{env_lock, restore_env, set_env};
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::runtime_loop_helpers::handle_pending_command;
     use crate::ui::state::PendingCommand;
     use std::fs;
     use std::sync::mpsc;
+
+    struct PendingCtx {
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        categories: Vec<String>,
+        active_category: usize,
+        session_location: Option<SessionLocation>,
+    }
 
     fn registry() -> ModelRegistry {
         ModelRegistry {
@@ -47,6 +56,7 @@ mod tests {
             question_set: None,
             yolo: false,
             read_only: false,
+            wait_gdb: false,
         }
     }
 
@@ -58,43 +68,88 @@ mod tests {
         restore_env("HOME", prev);
     }
 
-    #[test]
-    fn handle_pending_command_save_session_reports_success() {
-        let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-save-session");
+    fn setup_temp_home(name: &str) -> (std::path::PathBuf, Option<String>) {
+        let temp = std::env::temp_dir().join(name);
         let _ = fs::remove_dir_all(&temp);
         fs::create_dir_all(&temp).unwrap();
         let prev = set_home(&temp);
+        (temp, prev)
+    }
 
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let mut session_location = None;
+    fn cleanup_temp_home(path: std::path::PathBuf, prev: Option<String>) {
+        restore_home(prev);
+        let _ = fs::remove_dir_all(&path);
+    }
+
+    fn base_pending_ctx() -> PendingCtx {
+        PendingCtx {
+            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            categories: vec!["默认".to_string()],
+            active_category: 0,
+            session_location: None,
+        }
+    }
+
+    fn run_pending(
+        ctx: &mut PendingCtx,
+        pending: PendingCommand,
+        registry: &ModelRegistry,
+        prompt_registry: &PromptRegistry,
+        args: &Args,
+        tx: &mpsc::Sender<crate::ui::net::UiEvent>,
+    ) {
+        handle_pending_command(
+            &mut ctx.tabs,
+            &mut ctx.active_tab,
+            &mut ctx.categories,
+            &mut ctx.active_category,
+            pending,
+            &mut ctx.session_location,
+            registry,
+            prompt_registry,
+            args,
+            tx,
+        );
+    }
+
+    fn ctx_with_existing_conversation() -> PendingCtx {
+        PendingCtx {
+            tabs: vec![
+                TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
+                TabState::new("conv1".into(), "分类 2".into(), "", false, "m1", "p1"),
+            ],
+            active_tab: 0,
+            categories: vec!["默认".to_string(), "分类 2".to_string()],
+            active_category: 0,
+            session_location: None,
+        }
+    }
+
+    #[test]
+    fn handle_pending_command_save_session_reports_success() {
+        let _guard = env_lock().lock().unwrap();
+        let (temp, prev) = setup_temp_home("deepchat-save-session");
+        let mut ctx = base_pending_ctx();
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
         let (tx, _rx) = mpsc::channel();
-        handle_pending_command(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
+        run_pending(
+            &mut ctx,
             PendingCommand::SaveSession,
-            &mut session_location,
             &registry,
             &prompt_registry,
             &args,
             &tx,
         );
-        assert!(tabs[0]
+        assert!(ctx.tabs[0]
             .app
             .messages
             .iter()
             .any(|m| m.content.contains("已保存会话")));
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
@@ -103,28 +158,20 @@ mod tests {
         let prev = std::env::var("HOME").ok();
         restore_env("HOME", None);
 
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let mut session_location = None;
+        let mut ctx = base_pending_ctx();
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
         let (tx, _rx) = mpsc::channel();
-        handle_pending_command(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
+        run_pending(
+            &mut ctx,
             PendingCommand::SaveSession,
-            &mut session_location,
             &registry,
             &prompt_registry,
             &args,
             &tx,
         );
-        assert!(tabs[0]
+        assert!(ctx.tabs[0]
             .app
             .messages
             .iter()
@@ -136,92 +183,61 @@ mod tests {
     #[test]
     fn open_conversation_switches_to_existing_tab() {
         let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-open-existing");
-        let _ = fs::remove_dir_all(&temp);
-        fs::create_dir_all(&temp).unwrap();
-        let prev = set_home(&temp);
+        let (temp, prev) = setup_temp_home("deepchat-open-existing");
 
-        let mut tabs = vec![
-            TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
-            TabState::new("conv1".into(), "分类 2".into(), "", false, "m1", "p1"),
-        ];
-        tabs[0].app.pending_open_conversation = Some("conv1".to_string());
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string(), "分类 2".to_string()];
-        let mut active_category = 0usize;
-        let mut session_location = None;
+        let mut ctx = ctx_with_existing_conversation();
+        ctx.tabs[0].app.pending_open_conversation = Some("conv1".to_string());
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
         let (tx, _rx) = mpsc::channel();
-        handle_pending_command(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
+        run_pending(
+            &mut ctx,
             PendingCommand::OpenConversation,
-            &mut session_location,
             &registry,
             &prompt_registry,
             &args,
             &tx,
         );
-        assert_eq!(active_tab, 1);
-        assert_eq!(active_category, 1);
+        assert_eq!(ctx.active_tab, 1);
+        assert_eq!(ctx.active_category, 1);
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
     fn open_conversation_reports_error_on_missing_file() {
         let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-open-missing");
-        let _ = fs::remove_dir_all(&temp);
-        fs::create_dir_all(&temp).unwrap();
-        let prev = set_home(&temp);
-
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
-        tabs[0].app.pending_open_conversation = Some("missing".to_string());
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let mut session_location = None;
+        let (temp, prev) = setup_temp_home("deepchat-open-missing");
+        let mut ctx = base_pending_ctx();
+        ctx.tabs[0].app.pending_open_conversation = Some("missing".to_string());
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
         let (tx, _rx) = mpsc::channel();
-        handle_pending_command(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
+        run_pending(
+            &mut ctx,
             PendingCommand::OpenConversation,
-            &mut session_location,
             &registry,
             &prompt_registry,
             &args,
             &tx,
         );
-        assert!(tabs[0]
+        assert!(ctx.tabs[0]
             .app
             .messages
             .iter()
             .any(|m| m.content.contains("打开对话失败")));
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 
     #[test]
     fn new_category_uses_default_name_when_empty() {
         let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-new-category");
-        let _ = fs::remove_dir_all(&temp);
-        fs::create_dir_all(&temp).unwrap();
-        let prev = set_home(&temp);
-
-        let mut tabs = vec![TabState::new(
+        let (temp, prev) = setup_temp_home("deepchat-new-category");
+        let mut ctx = base_pending_ctx();
+        ctx.tabs = vec![TabState::new(
             "id".into(),
             "默认".into(),
             "",
@@ -229,30 +245,21 @@ mod tests {
             "missing",
             "missing",
         )];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let mut session_location = None;
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
         let (tx, _rx) = mpsc::channel();
-        handle_pending_command(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
+        run_pending(
+            &mut ctx,
             PendingCommand::NewCategory,
-            &mut session_location,
             &registry,
             &prompt_registry,
             &args,
             &tx,
         );
-        assert!(categories.iter().any(|c| c == "分类 1"));
-        assert_eq!(active_tab, 1);
+        assert!(ctx.categories.iter().any(|c| c == "分类 1"));
+        assert_eq!(ctx.active_tab, 1);
 
-        restore_home(prev);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup_temp_home(temp, prev);
     }
 }

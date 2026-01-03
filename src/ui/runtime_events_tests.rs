@@ -7,6 +7,60 @@ mod tests {
     use ratatui::layout::Rect;
     use unicode_width::UnicodeWidthStr;
 
+    struct MouseCtx {
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        active_category: usize,
+        categories: Vec<String>,
+        msg_area: Rect,
+        input_area: Rect,
+        tabs_area: Rect,
+        category_area: Rect,
+        theme: crate::render::RenderTheme,
+    }
+
+    fn theme() -> crate::render::RenderTheme {
+        crate::render::RenderTheme {
+            bg: ratatui::style::Color::Black,
+            fg: Some(ratatui::style::Color::White),
+            code_bg: ratatui::style::Color::Black,
+            code_theme: "base16-ocean.dark",
+            heading_fg: Some(ratatui::style::Color::Cyan),
+        }
+    }
+
+    fn base_mouse_ctx() -> MouseCtx {
+        MouseCtx {
+            tabs: vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            active_category: 0,
+            categories: vec!["默认".to_string()],
+            msg_area: Rect::new(0, 0, 40, 10),
+            input_area: Rect::new(0, 10, 40, 3),
+            tabs_area: Rect::new(0, 0, 40, 1),
+            category_area: Rect::new(0, 0, 10, 5),
+            theme: theme(),
+        }
+    }
+
+    fn handle_mouse(ctx: &mut MouseCtx, event: MouseEvent) {
+        crate::ui::runtime_events::handle_mouse_event(
+            event,
+            &mut ctx.tabs,
+            &mut ctx.active_tab,
+            &ctx.categories,
+            &mut ctx.active_category,
+            ctx.tabs_area,
+            ctx.msg_area,
+            ctx.input_area,
+            ctx.category_area,
+            40,
+            10,
+            100,
+            &ctx.theme,
+        );
+    }
+
     #[test]
     fn handle_paste_event_inserts_text() {
         let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
@@ -92,66 +146,24 @@ mod tests {
 
     #[test]
     fn mouse_scroll_updates_scroll() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        tabs[0].app.scroll = 5;
-        let mut active_tab = 0usize;
-        let mut active_category = 0usize;
-        let categories = vec!["默认".to_string()];
-        let msg_area = Rect::new(0, 0, 40, 10);
-        let input_area = Rect::new(0, 10, 40, 3);
-        let tabs_area = Rect::new(0, 0, 40, 1);
-        let category_area = Rect::new(0, 0, 10, 5);
-        let theme = crate::render::RenderTheme {
-            bg: ratatui::style::Color::Black,
-            fg: Some(ratatui::style::Color::White),
-            code_bg: ratatui::style::Color::Black,
-            code_theme: "base16-ocean.dark",
-            heading_fg: Some(ratatui::style::Color::Cyan),
-        };
+        let mut ctx = base_mouse_ctx();
+        ctx.tabs[0].app.scroll = 5;
         let m = MouseEvent {
             kind: MouseEventKind::ScrollUp,
             column: 1,
             row: 1,
             modifiers: KeyModifiers::NONE,
         };
-        crate::ui::runtime_events::handle_mouse_event(
-            m,
-            &mut tabs,
-            &mut active_tab,
-            &categories,
-            &mut active_category,
-            tabs_area,
-            msg_area,
-            input_area,
-            category_area,
-            40,
-            10,
-            100,
-            &theme,
-        );
-        assert!(tabs[0].app.scroll < 5);
+        handle_mouse(&mut ctx, m);
+        assert!(ctx.tabs[0].app.scroll < 5);
         let m = MouseEvent {
             kind: MouseEventKind::ScrollDown,
             column: 1,
             row: 1,
             modifiers: KeyModifiers::NONE,
         };
-        crate::ui::runtime_events::handle_mouse_event(
-            m,
-            &mut tabs,
-            &mut active_tab,
-            &categories,
-            &mut active_category,
-            tabs_area,
-            msg_area,
-            input_area,
-            category_area,
-            40,
-            10,
-            100,
-            &theme,
-        );
-        assert!(tabs[0].app.scroll >= 5);
+        handle_mouse(&mut ctx, m);
+        assert!(ctx.tabs[0].app.scroll >= 5);
     }
 
     #[test]
@@ -174,13 +186,7 @@ mod tests {
             &mut tabs,
             0,
             40,
-            &crate::render::RenderTheme {
-                bg: ratatui::style::Color::Black,
-                fg: Some(ratatui::style::Color::White),
-                code_bg: ratatui::style::Color::Black,
-                code_theme: "base16-ocean.dark",
-                heading_fg: Some(ratatui::style::Color::Cyan),
-            },
+            &theme(),
         )
         .unwrap();
         assert!(!handled);
@@ -188,85 +194,29 @@ mod tests {
 
     #[test]
     fn mouse_down_on_scrollbar_starts_dragging() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut active_category = 0usize;
-        let categories = vec!["默认".to_string()];
-        let msg_area = Rect::new(0, 0, 40, 10);
-        let input_area = Rect::new(0, 10, 40, 3);
-        let tabs_area = Rect::new(0, 0, 40, 1);
-        let category_area = Rect::new(0, 0, 10, 5);
-        let scroll_area = crate::ui::draw::scrollbar_area(msg_area);
-        let theme = crate::render::RenderTheme {
-            bg: ratatui::style::Color::Black,
-            fg: Some(ratatui::style::Color::White),
-            code_bg: ratatui::style::Color::Black,
-            code_theme: "base16-ocean.dark",
-            heading_fg: Some(ratatui::style::Color::Cyan),
-        };
+        let mut ctx = base_mouse_ctx();
+        let scroll_area = crate::ui::draw::scrollbar_area(ctx.msg_area);
         let m = MouseEvent {
             kind: MouseEventKind::Down(crossterm::event::MouseButton::Left),
             column: scroll_area.x,
             row: scroll_area.y,
             modifiers: KeyModifiers::NONE,
         };
-        crate::ui::runtime_events::handle_mouse_event(
-            m,
-            &mut tabs,
-            &mut active_tab,
-            &categories,
-            &mut active_category,
-            tabs_area,
-            msg_area,
-            input_area,
-            category_area,
-            40,
-            5,
-            100,
-            &theme,
-        );
-        assert!(tabs[0].app.scrollbar_dragging);
+        handle_mouse(&mut ctx, m);
+        assert!(ctx.tabs[0].app.scrollbar_dragging);
     }
 
     #[test]
     fn mouse_down_on_input_focuses_input() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut active_category = 0usize;
-        let categories = vec!["默认".to_string()];
-        let msg_area = Rect::new(0, 0, 40, 10);
-        let input_area = Rect::new(0, 10, 40, 3);
-        let tabs_area = Rect::new(0, 0, 40, 1);
-        let category_area = Rect::new(0, 0, 10, 5);
-        let theme = crate::render::RenderTheme {
-            bg: ratatui::style::Color::Black,
-            fg: Some(ratatui::style::Color::White),
-            code_bg: ratatui::style::Color::Black,
-            code_theme: "base16-ocean.dark",
-            heading_fg: Some(ratatui::style::Color::Cyan),
-        };
+        let mut ctx = base_mouse_ctx();
         let m = MouseEvent {
             kind: MouseEventKind::Down(crossterm::event::MouseButton::Left),
-            column: input_area.x + 1,
-            row: input_area.y + 1,
+            column: ctx.input_area.x + 1,
+            row: ctx.input_area.y + 1,
             modifiers: KeyModifiers::NONE,
         };
-        crate::ui::runtime_events::handle_mouse_event(
-            m,
-            &mut tabs,
-            &mut active_tab,
-            &categories,
-            &mut active_category,
-            tabs_area,
-            msg_area,
-            input_area,
-            category_area,
-            40,
-            5,
-            100,
-            &theme,
-        );
-        assert_eq!(tabs[0].app.focus, Focus::Input);
-        assert!(tabs[0].app.input_selecting);
+        handle_mouse(&mut ctx, m);
+        assert_eq!(ctx.tabs[0].app.focus, Focus::Input);
+        assert!(ctx.tabs[0].app.input_selecting);
     }
 }

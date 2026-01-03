@@ -18,6 +18,7 @@ pub(crate) struct ViewState {
     pub(crate) help: SelectionState,
 }
 
+#[derive(Copy, Clone)]
 pub(crate) enum ViewAction {
     None,
     SwitchTab(usize),
@@ -37,29 +38,8 @@ pub(crate) fn apply_view_action(
     active_category: &mut usize,
 ) -> bool {
     match action {
-        ViewAction::SwitchTab(idx) => {
-            *active_tab = idx;
-            if let Some(tab) = tabs.get(*active_tab) {
-                if let Some(cat_idx) = categories.iter().position(|c| c == &tab.category) {
-                    *active_category = cat_idx;
-                } else {
-                    categories.push(tab.category.clone());
-                    *active_category = categories.len().saturating_sub(1);
-                }
-            }
-            true
-        }
-        ViewAction::JumpTo(idx) => {
-            if let Some(row) = jump_rows.get(idx) {
-                if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                    let app = &mut tab_state.app;
-                    app.scroll = row.scroll;
-                    app.follow = false;
-                    app.focus = crate::ui::state::Focus::Chat;
-                }
-            }
-            true
-        }
+        ViewAction::SwitchTab(idx) => apply_switch_tab(idx, tabs, active_tab, categories, active_category),
+        ViewAction::JumpTo(idx) => apply_jump_to(idx, jump_rows, tabs, *active_tab),
         ViewAction::ForkMessage(_) => false,
         ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
         ViewAction::None => false,
@@ -112,50 +92,9 @@ pub(crate) fn handle_view_key(
     jump_len: usize,
     active_tab: usize,
 ) -> ViewAction {
-    if key.code == KeyCode::F(3) {
-        return ViewAction::CycleModel;
+    if let Some(action) = handle_function_keys(view, key, tabs_len, jump_len, active_tab) {
+        return action;
     }
-    if key.code == KeyCode::F(4) {
-        view.overlay.toggle(OverlayKind::Model);
-        return ViewAction::None;
-    }
-    if key.code == KeyCode::F(10) {
-        if view.overlay.is(OverlayKind::Help) {
-            view.overlay.close();
-        } else {
-            view.open_help();
-        }
-        return ViewAction::None;
-    }
-
-    match key.code {
-        KeyCode::F(1) => {
-            if view.overlay.is(OverlayKind::Summary) {
-                view.overlay.close();
-            } else {
-                view.open_summary(active_tab, tabs_len);
-            }
-            return ViewAction::None;
-        }
-        KeyCode::F(2) => {
-            if view.overlay.is(OverlayKind::Jump) {
-                view.overlay.close();
-            } else {
-                view.open_jump();
-            }
-            return ViewAction::None;
-        }
-        KeyCode::F(5) => {
-            if view.overlay.is(OverlayKind::Prompt) {
-                view.overlay.close();
-            } else {
-                view.open_prompt();
-            }
-            return ViewAction::None;
-        }
-        _ => {}
-    }
-
     match view.overlay.active {
         None => ViewAction::None,
         Some(OverlayKind::Summary) => handle_summary_key(view, key, tabs_len),
@@ -174,49 +113,152 @@ pub(crate) fn handle_view_mouse(
     jump_len: usize,
     kind: MouseEventKind,
 ) -> ViewAction {
-    let Some(row) = row else {
-        return ViewAction::None;
-    };
+    let Some(row) = row else { return ViewAction::None; };
     match view.overlay.active {
-        Some(OverlayKind::Summary) => {
-            view.summary.select(row.min(tabs_len.saturating_sub(1)));
-            if matches!(kind, MouseEventKind::Down(_)) && row < tabs_len {
-                view.overlay.close();
-                return ViewAction::SwitchTab(row);
-            }
-        }
-        Some(OverlayKind::Jump) => {
-            view.jump.select(row.min(jump_len.saturating_sub(1)));
-            view.jump.ensure_visible(1);
-            if matches!(kind, MouseEventKind::Down(_)) && row < jump_len {
-                view.overlay.close();
-                return ViewAction::JumpTo(row);
-            }
-        }
-        Some(OverlayKind::Model) => {
-            view.model.select(row);
-            if matches!(kind, MouseEventKind::Down(_)) {
-                view.overlay.close();
-                return ViewAction::SelectModel(row);
-            }
-        }
-        Some(OverlayKind::Prompt) => {
-            view.prompt.select(row);
-            if matches!(kind, MouseEventKind::Down(_)) {
-                view.overlay.close();
-                return ViewAction::SelectPrompt(row);
-            }
-        }
-        Some(OverlayKind::Help) => {
-            view.help.select(row);
-            view.help.ensure_visible(1);
-            if matches!(kind, MouseEventKind::Down(_)) {
-                view.overlay.close();
-                return ViewAction::None;
-            }
-        }
-        Some(OverlayKind::CodeExec | OverlayKind::FilePatch) => {}
-        None => {}
+        Some(OverlayKind::Summary) => handle_summary_mouse(view, row, tabs_len, kind),
+        Some(OverlayKind::Jump) => handle_jump_mouse(view, row, jump_len, kind),
+        Some(OverlayKind::Model) => handle_model_mouse(view, row, kind),
+        Some(OverlayKind::Prompt) => handle_prompt_mouse(view, row, kind),
+        Some(OverlayKind::Help) => handle_help_mouse(view, row, kind),
+        Some(OverlayKind::CodeExec | OverlayKind::FilePatch) | None => ViewAction::None,
     }
+}
+
+fn handle_function_keys(
+    view: &mut ViewState,
+    key: KeyEvent,
+    tabs_len: usize,
+    _jump_len: usize,
+    active_tab: usize,
+) -> Option<ViewAction> {
+    match key.code {
+        KeyCode::F(3) => Some(ViewAction::CycleModel),
+        KeyCode::F(4) => Some(toggle_overlay(view, OverlayKind::Model)),
+        KeyCode::F(10) => Some(toggle_help(view)),
+        KeyCode::F(1) => Some(toggle_summary(view, active_tab, tabs_len)),
+        KeyCode::F(2) => Some(toggle_jump(view)),
+        KeyCode::F(5) => Some(toggle_prompt(view)),
+        _ => None,
+    }
+}
+
+fn toggle_overlay(view: &mut ViewState, kind: OverlayKind) -> ViewAction {
+    view.overlay.toggle(kind);
+    ViewAction::None
+}
+
+fn toggle_help(view: &mut ViewState) -> ViewAction {
+    if view.overlay.is(OverlayKind::Help) {
+        view.overlay.close();
+    } else {
+        view.open_help();
+    }
+    ViewAction::None
+}
+
+fn toggle_summary(view: &mut ViewState, active_tab: usize, tabs_len: usize) -> ViewAction {
+    if view.overlay.is(OverlayKind::Summary) {
+        view.overlay.close();
+    } else {
+        view.open_summary(active_tab, tabs_len);
+    }
+    ViewAction::None
+}
+
+fn toggle_jump(view: &mut ViewState) -> ViewAction {
+    if view.overlay.is(OverlayKind::Jump) {
+        view.overlay.close();
+    } else {
+        view.open_jump();
+    }
+    ViewAction::None
+}
+
+fn toggle_prompt(view: &mut ViewState) -> ViewAction {
+    if view.overlay.is(OverlayKind::Prompt) {
+        view.overlay.close();
+    } else {
+        view.open_prompt();
+    }
+    ViewAction::None
+}
+
+fn apply_switch_tab(
+    idx: usize,
+    tabs: &mut Vec<crate::ui::runtime_helpers::TabState>,
+    active_tab: &mut usize,
+    categories: &mut Vec<String>,
+    active_category: &mut usize,
+) -> bool {
+    *active_tab = idx;
+    if let Some(tab) = tabs.get(*active_tab) {
+        if let Some(cat_idx) = categories.iter().position(|c| c == &tab.category) {
+            *active_category = cat_idx;
+        } else {
+            categories.push(tab.category.clone());
+            *active_category = categories.len().saturating_sub(1);
+        }
+    }
+    true
+}
+
+fn apply_jump_to(
+    idx: usize,
+    jump_rows: &[crate::ui::jump::JumpRow],
+    tabs: &mut Vec<crate::ui::runtime_helpers::TabState>,
+    active_tab: usize,
+) -> bool {
+    if let Some(row) = jump_rows.get(idx) {
+        if let Some(tab_state) = tabs.get_mut(active_tab) {
+            let app = &mut tab_state.app;
+            app.scroll = row.scroll;
+            app.follow = false;
+            app.focus = crate::ui::state::Focus::Chat;
+        }
+    }
+    true
+}
+
+fn handle_summary_mouse(view: &mut ViewState, row: usize, tabs_len: usize, kind: MouseEventKind) -> ViewAction {
+    view.summary.select(row.min(tabs_len.saturating_sub(1)));
+    if matches!(kind, MouseEventKind::Down(_)) && row < tabs_len {
+        view.overlay.close();
+        return ViewAction::SwitchTab(row);
+    }
+    ViewAction::None
+}
+
+fn handle_jump_mouse(view: &mut ViewState, row: usize, jump_len: usize, kind: MouseEventKind) -> ViewAction {
+    view.jump.select(row.min(jump_len.saturating_sub(1)));
+    view.jump.ensure_visible(1);
+    if matches!(kind, MouseEventKind::Down(_)) && row < jump_len {
+        view.overlay.close();
+        return ViewAction::JumpTo(row);
+    }
+    ViewAction::None
+}
+
+fn handle_model_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
+    view.model.select(row);
+    if matches!(kind, MouseEventKind::Down(_)) {
+        view.overlay.close();
+        return ViewAction::SelectModel(row);
+    }
+    ViewAction::None
+}
+
+fn handle_prompt_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
+    view.prompt.select(row);
+    if matches!(kind, MouseEventKind::Down(_)) {
+        view.overlay.close();
+        return ViewAction::SelectPrompt(row);
+    }
+    ViewAction::None
+}
+
+fn handle_help_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
+    view.help.select(row);
+    view.help.ensure_visible(1);
+    if matches!(kind, MouseEventKind::Down(_)) { view.overlay.close(); }
     ViewAction::None
 }

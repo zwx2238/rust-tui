@@ -9,12 +9,26 @@ pub fn layout_chunks(
     input_height: u16,
     sidebar_width: u16,
 ) -> (Rect, Rect, Rect, Rect, Rect, Rect) {
-    let input_constraint = if input_height == 0 {
+    let input_constraint = input_constraint(input_height);
+    let vertical = split_vertical(size);
+    let body = vertical[1];
+    let horizontal = split_horizontal(body, sidebar_width);
+    let sidebar_area = horizontal[0];
+    let main = horizontal[1];
+    let main_split = split_main(main, input_constraint);
+    (vertical[0], sidebar_area, main_split[0], main_split[1], main_split[2], vertical[2])
+}
+
+fn input_constraint(input_height: u16) -> Constraint {
+    if input_height == 0 {
         Constraint::Length(0)
     } else {
         Constraint::Length(input_height)
-    };
-    let vertical = Layout::default()
+    }
+}
+
+fn split_vertical(size: Rect) -> std::vec::Vec<Rect> {
+    Layout::default()
         .direction(Direction::Vertical)
         .constraints(
             [
@@ -24,26 +38,24 @@ pub fn layout_chunks(
             ]
             .as_ref(),
         )
-        .split(size);
-    let body = vertical[1];
-    let horizontal = Layout::default()
+        .split(size)
+        .to_vec()
+}
+
+fn split_horizontal(body: Rect, sidebar_width: u16) -> std::vec::Vec<Rect> {
+    Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Length(sidebar_width), Constraint::Min(10)].as_ref())
-        .split(body);
-    let sidebar_area = horizontal[0];
-    let main = horizontal[1];
-    let main_split = Layout::default()
+        .split(body)
+        .to_vec()
+}
+
+fn split_main(main: Rect, input_constraint: Constraint) -> std::vec::Vec<Rect> {
+    Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(1), Constraint::Min(3), input_constraint].as_ref())
-        .split(main);
-    (
-        vertical[0],
-        sidebar_area,
-        main_split[0],
-        main_split[1],
-        main_split[2],
-        vertical[2],
-    )
+        .split(main)
+        .to_vec()
 }
 
 pub fn inner_area(area: Rect, padding_x: u16, padding_y: u16) -> Rect {

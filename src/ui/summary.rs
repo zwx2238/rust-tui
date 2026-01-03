@@ -33,86 +33,174 @@ pub enum SummarySort {
     ExecTime,
 }
 
+struct SummaryLayout {
+    size: Rect,
+    header_area: Rect,
+    category_area: Rect,
+    tabs_area: Rect,
+    body_area: Rect,
+    footer_area: Rect,
+    max_latest_width: usize,
+}
+
+struct SummaryDrawArgs<'a> {
+    theme: &'a RenderTheme,
+    tab_labels: &'a [String],
+    active_tab_pos: usize,
+    categories: &'a [String],
+    active_category: usize,
+    header_note: Option<&'a str>,
+    startup_text: Option<&'a str>,
+    layout: &'a SummaryLayout,
+    rows: &'a [SummaryRow],
+    selected_row: usize,
+    scroll: usize,
+    sort: SummarySort,
+    active_tab: Option<&'a mut TabState>,
+}
+
 pub fn build_summary_rows(tabs: &[TabState], max_latest_width: usize) -> Vec<SummaryRow> {
     tabs.iter()
         .enumerate()
-        .map(|(idx, tab)| {
-            let status = if tab.app.busy { "generating" } else { "done" };
-            let exec_pending =
-                tab.app.pending_code_exec.is_some() || tab.app.code_exec_live.is_some();
-            let exec_since = tab.app.pending_code_exec.as_ref().map(|p| p.requested_at);
-            let latest_user = latest_user_question(&tab.app.messages)
-                .map(|s| truncate_to_width(s, max_latest_width))
-                .unwrap_or_else(|| "-".to_string());
-            SummaryRow {
-                tab_index: idx,
-                tab_id: idx + 1,
-                category: tab.category.clone(),
-                message_count: tab.app.messages.len(),
-                status,
-                exec_pending,
-                exec_since,
-                latest_user,
-            }
-        })
+        .map(|(idx, tab)| build_summary_row(idx, tab, max_latest_width))
         .collect()
+}
+
+fn build_summary_row(idx: usize, tab: &TabState, max_latest_width: usize) -> SummaryRow {
+    let status = if tab.app.busy { "generating" } else { "done" };
+    let exec_pending = tab.app.pending_code_exec.is_some() || tab.app.code_exec_live.is_some();
+    let exec_since = tab.app.pending_code_exec.as_ref().map(|p| p.requested_at);
+    let latest_user = latest_user_question(&tab.app.messages)
+        .map(|s| truncate_to_width(s, max_latest_width))
+        .unwrap_or_else(|| "-".to_string());
+    SummaryRow {
+        tab_index: idx,
+        tab_id: idx + 1,
+        category: tab.category.clone(),
+        message_count: tab.app.messages.len(),
+        status,
+        exec_pending,
+        exec_since,
+        latest_user,
+    }
 }
 
 pub fn sort_summary_rows(rows: &mut [SummaryRow], sort: SummarySort) {
     match sort {
         SummarySort::TabOrder => rows.sort_by_key(|r| r.tab_index),
-        SummarySort::ExecTime => rows.sort_by_key(|r| {
-            let pending_rank = if r.exec_pending { 0 } else { 1 };
-            let since = r
-                .exec_since
-                .map(|t| t.elapsed().as_millis() as u64)
-                .unwrap_or(u64::MAX);
-            (pending_rank, since, r.tab_index as u64)
-        }),
+        SummarySort::ExecTime => rows.sort_by_key(exec_time_sort_key),
     }
 }
 
+fn exec_time_sort_key(row: &SummaryRow) -> (u8, u64, u64) {
+    let pending_rank = if row.exec_pending { 0 } else { 1 };
+    let since = row
+        .exec_since
+        .map(|t| t.elapsed().as_millis() as u64)
+        .unwrap_or(u64::MAX);
+    (pending_rank, since, row.tab_index as u64)
+}
+
 pub fn redraw_summary(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    tabs: &mut [TabState],
-    active_tab: usize,
-    tab_labels: &[String],
-    active_tab_pos: usize,
-    categories: &[String],
-    active_category: usize,
-    theme: &RenderTheme,
-    startup_text: Option<&str>,
-    header_note: Option<&str>,
-    selected_row: usize,
-    scroll: usize,
-    sort: SummarySort,
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>, tabs: &mut [TabState], active_tab: usize,
+    tab_labels: &[String], active_tab_pos: usize, categories: &[String],
+    active_category: usize, theme: &RenderTheme, startup_text: Option<&str>,
+    header_note: Option<&str>, selected_row: usize, scroll: usize, sort: SummarySort,
 ) -> Result<Vec<SummaryRow>, Box<dyn std::error::Error>> {
-    let size = terminal.size()?;
+    let layout = build_summary_layout(terminal.size()?, categories); let mut rows = build_summary_rows(tabs, layout.max_latest_width.max(10));
+    sort_summary_rows(&mut rows, sort);
+    terminal.draw(|f| {
+        draw_summary_frame(
+            f,
+            SummaryDrawArgs {
+                theme,
+                tab_labels,
+                active_tab_pos,
+                categories,
+                active_category,
+                header_note,
+                startup_text,
+                layout: &layout,
+                rows: &rows,
+                selected_row,
+                scroll,
+                sort,
+                active_tab: tabs.get_mut(active_tab),
+            },
+        );
+    })?;
+    Ok(rows)
+}
+
+fn build_summary_layout(size: ratatui::layout::Size, categories: &[String]) -> SummaryLayout {
     let size = Rect::new(0, 0, size.width, size.height);
     let sidebar_width = compute_sidebar_width(categories, size.width);
     let (header_area, category_area, tabs_area, body_area, _input_area, footer_area) =
         layout_chunks(size, 0, sidebar_width);
-    let max_latest_width = inner_area(body_area, 1, 1).width.saturating_sub(40) as usize;
-    let mut rows = build_summary_rows(tabs, max_latest_width.max(10));
-    sort_summary_rows(&mut rows, sort);
-    terminal.draw(|f| {
-        draw_header(f, header_area, theme, header_note);
-        draw_categories(f, category_area, categories, active_category, theme);
-        draw_tabs(
-            f,
-            tabs_area,
-            tab_labels,
-            active_tab_pos,
-            theme,
-            startup_text,
-        );
-        draw_summary_table(f, body_area, &rows, selected_row, scroll, theme, sort);
-        draw_footer(f, footer_area, theme, false);
-        if let Some(tab) = tabs.get_mut(active_tab) {
-            draw_notice(f, size, &mut tab.app, theme);
-        }
-    })?;
-    Ok(rows)
+    SummaryLayout {
+        size,
+        header_area,
+        category_area,
+        tabs_area,
+        body_area,
+        footer_area,
+        max_latest_width: max_latest_question_width(body_area),
+    }
+}
+
+fn max_latest_question_width(body_area: Rect) -> usize {
+    inner_area(body_area, 1, 1).width.saturating_sub(40) as usize
+}
+
+fn draw_summary_frame(
+    f: &mut ratatui::Frame<'_>,
+    args: SummaryDrawArgs<'_>,
+) {
+    draw_summary_layout(
+        f,
+        args.theme,
+        args.tab_labels,
+        args.active_tab_pos,
+        args.categories,
+        args.active_category,
+        args.header_note,
+        args.startup_text,
+        args.layout.header_area,
+        args.layout.category_area,
+        args.layout.tabs_area,
+        args.layout.footer_area,
+    );
+    draw_summary_table(f, args.layout.body_area, args.rows, args.selected_row, args.scroll, args.theme, args.sort);
+    if let Some(tab) = args.active_tab {
+        draw_notice(f, args.layout.size, &mut tab.app, args.theme);
+    }
+}
+
+fn draw_summary_layout(
+    f: &mut ratatui::Frame<'_>,
+    theme: &RenderTheme,
+    tab_labels: &[String],
+    active_tab_pos: usize,
+    categories: &[String],
+    active_category: usize,
+    header_note: Option<&str>,
+    startup_text: Option<&str>,
+    header_area: Rect,
+    category_area: Rect,
+    tabs_area: Rect,
+    footer_area: Rect,
+) {
+    draw_header(f, header_area, theme, header_note);
+    draw_categories(f, category_area, categories, active_category, theme);
+    draw_tabs(
+        f,
+        tabs_area,
+        tab_labels,
+        active_tab_pos,
+        theme,
+        startup_text,
+    );
+    draw_footer(f, footer_area, theme, false);
 }
 
 fn draw_summary_table(
@@ -124,7 +212,32 @@ fn draw_summary_table(
     theme: &RenderTheme,
     sort: SummarySort,
 ) {
-    let header = Row::new(vec![
+    let popup = build_summary_table(rows, selected_row, scroll, theme, sort);
+    draw_overlay_table(f, area, popup);
+}
+
+fn build_summary_table<'a>(
+    rows: &'a [SummaryRow],
+    selected_row: usize,
+    scroll: usize,
+    theme: &'a RenderTheme,
+    sort: SummarySort,
+) -> OverlayTable<'a> {
+    let header = summary_header(theme);
+    let body = summary_body(rows);
+    OverlayTable {
+        title: Line::from(summary_title(sort)),
+        header,
+        rows: body.collect(),
+        widths: summary_widths(),
+        selected: selected_row,
+        scroll,
+        theme,
+    }
+}
+
+fn summary_header(theme: &RenderTheme) -> Row<'static> {
+    Row::new(vec![
         Cell::from("对话"),
         Cell::from("分类"),
         Cell::from("消息数"),
@@ -132,9 +245,11 @@ fn draw_summary_table(
         Cell::from("执行中"),
         Cell::from("最新提问"),
     ])
-    .style(header_style(theme));
+    .style(header_style(theme))
+}
 
-    let body = rows.iter().map(|row| {
+fn summary_body<'a>(rows: &'a [SummaryRow]) -> impl Iterator<Item = Row<'a>> + 'a {
+    rows.iter().map(|row| {
         Row::new(vec![
             Cell::from(row.tab_id.to_string()),
             Cell::from(row.category.clone()),
@@ -143,28 +258,25 @@ fn draw_summary_table(
             Cell::from(if row.exec_pending { "是" } else { "否" }),
             Cell::from(row.latest_user.clone()),
         ])
-    });
+    })
+}
 
-    let popup = OverlayTable {
-        title: Line::from(match sort {
-            SummarySort::TabOrder => "汇总页 · F1 退出 · Enter 进入 · S 排序(默认)",
-            SummarySort::ExecTime => "汇总页 · F1 退出 · Enter 进入 · S 排序(执行中)",
-        }),
-        header,
-        rows: body.collect(),
-        widths: vec![
-            Constraint::Length(6),
-            Constraint::Length(10),
-            Constraint::Length(8),
-            Constraint::Length(12),
-            Constraint::Length(8),
-            Constraint::Min(10),
-        ],
-        selected: selected_row,
-        scroll,
-        theme,
-    };
-    draw_overlay_table(f, area, popup);
+fn summary_widths() -> Vec<Constraint> {
+    vec![
+        Constraint::Length(6),
+        Constraint::Length(10),
+        Constraint::Length(8),
+        Constraint::Length(12),
+        Constraint::Length(8),
+        Constraint::Min(10),
+    ]
+}
+
+fn summary_title(sort: SummarySort) -> &'static str {
+    match sort {
+        SummarySort::TabOrder => "汇总页 · F1 退出 · Enter 进入 · S 排序(默认)",
+        SummarySort::ExecTime => "汇总页 · F1 退出 · Enter 进入 · S 排序(执行中)",
+    }
 }
 
 fn latest_user_question(messages: &[crate::types::Message]) -> Option<&str> {

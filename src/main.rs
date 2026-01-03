@@ -1,6 +1,7 @@
 mod args;
 mod config;
 mod conversation;
+mod debug;
 mod llm;
 mod model_registry;
 mod question_set;
@@ -13,16 +14,30 @@ mod ui;
 
 use args::Args;
 use clap::Parser;
-use config::{default_config_path, load_config};
+use config::{default_config_path, load_config, Config};
 use question_set::{list_question_sets, question_sets_dir};
 use render::theme_from_config;
 use std::env;
 use std::path::PathBuf;
 
 fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
-    if (args.yolo_enabled() || args.read_only_enabled())
-        && env::var("DEEPCHAT_CODE_EXEC_NETWORK").is_err()
-    {
+    if args.wait_gdb {
+        debug::wait_for_gdb_attach()?;
+    }
+    apply_env_from_args(&args);
+    if maybe_list_question_sets(&args)? {
+        return Ok(());
+    }
+    let cfg_path = config_path_from_args(&args)?;
+    let cfg = load_config_with_path(&cfg_path)?;
+    let theme = theme_from_config(&cfg)?;
+    ui::run(args, cfg, &theme)?;
+    Ok(())
+}
+
+fn apply_env_from_args(args: &Args) {
+    let enable_net_guard = args.yolo_enabled() || args.read_only_enabled();
+    if enable_net_guard && env::var("DEEPCHAT_CODE_EXEC_NETWORK").is_err() {
         unsafe {
             env::set_var("DEEPCHAT_CODE_EXEC_NETWORK", "none");
         }
@@ -32,32 +47,40 @@ fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
             env::set_var("DEEPCHAT_READ_ONLY", "1");
         }
     }
+}
 
-    if args.question_set.as_deref() == Some("list") {
-        let sets = list_question_sets()?;
-        let dir = question_sets_dir()?;
-        if sets.is_empty() {
-            println!("未找到问题集目录或目录为空：{}", dir.display());
-        } else {
-            println!("可用问题集（{}）：", sets.len());
-            for name in sets {
-                println!("{name}");
-            }
-            println!("目录：{}", dir.display());
-        }
-        return Ok(());
+fn maybe_list_question_sets(args: &Args) -> Result<bool, Box<dyn std::error::Error>> {
+    if args.question_set.as_deref() != Some("list") {
+        return Ok(false);
     }
+    let sets = list_question_sets()?;
+    let dir = question_sets_dir()?;
+    print_question_sets(&sets, &dir);
+    Ok(true)
+}
 
-    let cfg_path = match args.config.as_deref() {
-        Some(p) => PathBuf::from(p),
-        None => default_config_path()?,
-    };
-    let cfg = load_config(&cfg_path)
-        .map_err(|e| format!("配置文件错误：{} ({})", cfg_path.display(), e))?;
-    let theme = theme_from_config(&cfg)?;
+fn print_question_sets(sets: &[String], dir: &PathBuf) {
+    if sets.is_empty() {
+        println!("未找到问题集目录或目录为空：{}", dir.display());
+        return;
+    }
+    println!("可用问题集（{}）：", sets.len());
+    for name in sets {
+        println!("{name}");
+    }
+    println!("目录：{}", dir.display());
+}
 
-    ui::run(args, cfg, &theme)?;
-    Ok(())
+fn config_path_from_args(args: &Args) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    match args.config.as_deref() {
+        Some(p) => Ok(PathBuf::from(p)),
+        None => default_config_path(),
+    }
+}
+
+fn load_config_with_path(cfg_path: &PathBuf) -> Result<Config, Box<dyn std::error::Error>> {
+    load_config(cfg_path)
+        .map_err(|e| format!("配置文件错误：{} ({})", cfg_path.display(), e).into())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

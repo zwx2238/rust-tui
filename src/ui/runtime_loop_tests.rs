@@ -14,6 +14,19 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Instant;
 
+    struct RunLoopState {
+        terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        categories: Vec<String>,
+        active_category: usize,
+        session_location: Option<crate::session::SessionLocation>,
+        tx: mpsc::Sender<UiEvent>,
+        rx: mpsc::Receiver<UiEvent>,
+        preheat_tx: mpsc::Sender<PreheatTask>,
+        preheat_res_rx: mpsc::Receiver<PreheatResult>,
+    }
+
     fn theme() -> RenderTheme {
         RenderTheme {
             bg: Color::Black,
@@ -61,6 +74,26 @@ mod tests {
             question_set: None,
             yolo: false,
             read_only: false,
+            wait_gdb: false,
+        }
+    }
+
+    fn base_run_loop_state() -> RunLoopState {
+        let terminal = Terminal::new(CrosstermBackend::new(std::io::stdout())).unwrap();
+        let (tx, rx) = mpsc::channel::<UiEvent>();
+        let (preheat_tx, _preheat_rx) = mpsc::channel::<PreheatTask>();
+        let (_preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
+        RunLoopState {
+            terminal,
+            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            categories: vec!["默认".to_string()],
+            active_category: 0,
+            session_location: None,
+            tx,
+            rx,
+            preheat_tx,
+            preheat_res_rx,
         }
     }
 
@@ -68,26 +101,18 @@ mod tests {
     fn run_loop_exits_in_test_mode() {
         let _guard = env_lock().lock().unwrap();
         let prev = set_env("DEEPCHAT_TEST_RUN_LOOP_ONCE", "1");
-        let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout())).unwrap();
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let mut session_location = None;
-        let (tx, rx) = mpsc::channel::<UiEvent>();
-        let (preheat_tx, _preheat_rx) = mpsc::channel::<PreheatTask>();
-        let (_preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
+        let mut state = base_run_loop_state();
         let result = run_loop(
-            &mut terminal,
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &mut session_location,
-            &rx,
-            &tx,
-            &preheat_tx,
-            &preheat_res_rx,
+            &mut state.terminal,
+            &mut state.tabs,
+            &mut state.active_tab,
+            &mut state.categories,
+            &mut state.active_category,
+            &mut state.session_location,
+            &state.rx,
+            &state.tx,
+            &state.preheat_tx,
+            &state.preheat_res_rx,
             &registry(),
             &prompt_registry(),
             &args(),

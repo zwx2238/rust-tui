@@ -1,3 +1,7 @@
+//! 对话管理模块
+//!
+//! 处理对话会话的创建、保存、加载和管理功能。
+
 use crate::types::Message;
 use serde::{Deserialize, Serialize};
 use std::env;

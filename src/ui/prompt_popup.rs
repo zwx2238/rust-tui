@@ -18,6 +18,17 @@ pub fn draw_prompt_popup(
     theme: &RenderTheme,
 ) {
     let popup = prompt_popup_area(area, prompts.len());
+    let popup_spec = build_prompt_table(prompts, selected, scroll, theme, popup);
+    draw_overlay_table(f, popup, popup_spec);
+}
+
+fn build_prompt_table<'a>(
+    prompts: &[SystemPrompt],
+    selected: usize,
+    scroll: usize,
+    theme: &'a RenderTheme,
+    popup: Rect,
+) -> OverlayTable<'a> {
     let role_width = role_col_width(popup, prompts);
     let header =
         Row::new(vec![Cell::from("角色"), Cell::from("系统提示词")]).style(header_style(theme));
@@ -30,7 +41,7 @@ pub fn draw_prompt_popup(
             )),
         ])
     });
-    let popup_spec = OverlayTable {
+    OverlayTable {
         title: Line::from("系统提示词 · Enter 确认 · Esc 取消"),
         header,
         rows: body.collect(),
@@ -38,8 +49,7 @@ pub fn draw_prompt_popup(
         selected,
         scroll,
         theme,
-    };
-    draw_overlay_table(f, popup, popup_spec);
+    }
 }
 
 pub fn prompt_popup_area(area: Rect, rows: usize) -> Rect {

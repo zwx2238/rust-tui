@@ -13,6 +13,18 @@ mod tests {
     use ratatui::style::Color;
     use std::sync::{Arc, atomic::AtomicBool};
 
+    struct KeyDispatchState {
+        tabs: Vec<TabState>,
+        active_tab: usize,
+        categories: Vec<String>,
+        active_category: usize,
+        theme: RenderTheme,
+        registry: ModelRegistry,
+        prompt_registry: PromptRegistry,
+        args: Args,
+        view: ViewState,
+    }
+
     fn theme() -> RenderTheme {
         RenderTheme {
             bg: Color::Black,
@@ -60,6 +72,21 @@ mod tests {
             question_set: None,
             yolo: false,
             read_only: false,
+            wait_gdb: false,
+        }
+    }
+
+    fn base_state() -> KeyDispatchState {
+        KeyDispatchState {
+            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            active_tab: 0,
+            categories: vec!["默认".to_string()],
+            active_category: 0,
+            theme: theme(),
+            registry: registry(),
+            prompt_registry: prompt_registry(),
+            args: args(),
+            view: ViewState::new(),
         }
     }
 
@@ -73,6 +100,33 @@ mod tests {
             view_height: 10,
             total_lines: 0,
         }
+    }
+
+    fn ctx_and_view<'a>(
+        state: &'a mut KeyDispatchState,
+    ) -> (DispatchContext<'a>, &'a mut ViewState) {
+        let KeyDispatchState {
+            tabs,
+            active_tab,
+            categories,
+            active_category,
+            theme,
+            registry,
+            prompt_registry,
+            args,
+            view,
+        } = state;
+        let ctx = ctx(
+            tabs,
+            active_tab,
+            categories,
+            active_category,
+            theme,
+            registry,
+            prompt_registry,
+            args,
+        );
+        (ctx, view)
     }
 
     fn ctx<'a>(
@@ -100,158 +154,76 @@ mod tests {
 
     #[test]
     fn ctrl_q_exits() {
-        let mut tabs = vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut view = ViewState::new();
-        view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut state = base_state();
+        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
-        let should_exit = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let should_exit =
+            handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(should_exit);
     }
 
     #[test]
     fn global_shortcuts_switch_category_and_tabs() {
-        let mut tabs = vec![
+        let mut state = base_state();
+        state.tabs = vec![
             TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
             TabState::new("id2".into(), "分类 2".into(), "", false, "m1", "p1"),
         ];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string(), "分类 2".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut view = ViewState::new();
-        view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.categories = vec!["默认".to_string(), "分类 2".to_string()];
+        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL);
-        let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert_eq!(*ctx.active_category, 1);
         let key = KeyEvent::new(KeyCode::F(8), KeyModifiers::NONE);
-        let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert_eq!(*ctx.active_tab, 1);
     }
 
     #[test]
     fn ctrl_t_creates_new_tab() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut view = ViewState::new();
-        view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let mut state = base_state();
+        state.view.overlay.open(crate::ui::overlay::OverlayKind::Summary);
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL);
-        let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert_eq!(ctx.tabs.len(), 2);
     }
 
     #[test]
     fn f6_stops_active_request() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
+        let mut state = base_state();
         let cancel = Arc::new(AtomicBool::new(false));
-        tabs[0].app.active_request = Some(RequestHandle { id: 1, cancel: cancel.clone() });
-        tabs[0].app.busy = true;
-        tabs[0].app.pending_assistant = Some(0);
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut view = ViewState::new();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.tabs[0].app.active_request = Some(RequestHandle { id: 1, cancel: cancel.clone() });
+        state.tabs[0].app.busy = true;
+        state.tabs[0].app.pending_assistant = Some(0);
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::F(6), KeyModifiers::NONE);
-        let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(cancel.load(std::sync::atomic::Ordering::Relaxed));
         assert!(!ctx.tabs[0].app.busy);
     }
 
     #[test]
     fn f5_pushes_prompt_locked_notice() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        tabs[0].app.messages.push(crate::types::Message {
+        let mut state = base_state();
+        state.tabs[0].app.messages.push(crate::types::Message {
             role: crate::types::ROLE_USER.to_string(),
             content: "hi".to_string(),
             tool_call_id: None,
             tool_calls: None,
         });
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut view = ViewState::new();
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::F(5), KeyModifiers::NONE);
-        let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(ctx.tabs[0].app.notice.is_some());
     }
 
     #[test]
     fn code_exec_reason_escape_clears_target() {
-        let mut tabs = vec![TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1")];
-        tabs[0].app.pending_code_exec = Some(crate::ui::state::PendingCodeExec {
+        let mut state = base_state();
+        state.tabs[0].app.pending_code_exec = Some(crate::ui::state::PendingCodeExec {
             call_id: "call".to_string(),
             language: "python".to_string(),
             code: "print(1)".to_string(),
@@ -259,31 +231,14 @@ mod tests {
             requested_at: std::time::Instant::now(),
             stop_reason: None,
         });
-        tabs[0].app.code_exec_reason_target =
+        state.tabs[0].app.code_exec_reason_target =
             Some(crate::ui::state::CodeExecReasonTarget::Deny);
-        tabs[0].app.code_exec_reason_input = tui_textarea::TextArea::default();
-        tabs[0].app.code_exec_reason_input.insert_str("why");
-        let mut active_tab = 0usize;
-        let mut categories = vec!["默认".to_string()];
-        let mut active_category = 0usize;
-        let theme = theme();
-        let registry = registry();
-        let prompt_registry = prompt_registry();
-        let args = args();
-        let mut view = ViewState::new();
-        view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
-        let mut ctx = ctx(
-            &mut tabs,
-            &mut active_tab,
-            &mut categories,
-            &mut active_category,
-            &theme,
-            &registry,
-            &prompt_registry,
-            &args,
-        );
+        state.tabs[0].app.code_exec_reason_input = tui_textarea::TextArea::default();
+        state.tabs[0].app.code_exec_reason_input.insert_str("why");
+        state.view.overlay.open(crate::ui::overlay::OverlayKind::CodeExec);
+        let (mut ctx, view) = ctx_and_view(&mut state);
         let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
-        let _ = handle_key_event_loop(key, &mut ctx, layout(), &mut view, &[]).unwrap();
+        let _ = handle_key_event_loop(key, &mut ctx, layout(), view, &[]).unwrap();
         assert!(ctx.tabs[0].app.code_exec_reason_target.is_none());
         assert!(ctx.tabs[0].app.code_exec_reason_input.lines().join("").is_empty());
     }

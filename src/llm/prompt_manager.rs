@@ -31,85 +31,71 @@ pub fn build_history_and_prompt(
     messages: &[UiMessage],
     templates: &RigTemplates,
 ) -> Result<(Vec<Message>, String), String> {
-    let mut last_user_idx = None;
-    for (idx, msg) in messages.iter().enumerate() {
-        if msg.role == crate::types::ROLE_USER {
-            last_user_idx = Some(idx);
-        }
-    }
+    let last_user_idx = find_last_user_index(messages);
     if let Some(idx) = last_user_idx {
-        let has_tool_after_user = messages
-            .iter()
-            .skip(idx + 1)
-            .any(|m| m.role == crate::types::ROLE_TOOL);
-        if has_tool_after_user {
-            let mut history = Vec::new();
-            for msg in messages {
-                if msg.role == crate::types::ROLE_SYSTEM {
-                    continue;
-                }
-                if msg.role == crate::types::ROLE_TOOL {
-                    let wrapped = templates.render_tool_result(
-                        "tool",
-                        &serde_json::Value::Null,
-                        &msg.content,
-                    )?;
-                    history.push(Message {
-                        role: "user".to_string(),
-                        content: wrapped,
-                    });
-                } else {
-                    history.push(Message {
-                        role: msg.role.clone(),
-                        content: msg.content.clone(),
-                    });
-                }
-            }
-            return Ok((history, templates.render_followup()?));
+        if has_tool_after(messages, idx) {
+            let history = build_history(messages, templates, None)?;
+            let prompt = templates.render_followup()?;
+            return Ok((history, prompt));
         }
+        let history = build_history(messages, templates, Some(idx))?;
+        return Ok((history, messages[idx].content.clone()));
     }
+    let history = build_history(messages, templates, None)?;
+    let prompt = templates.render_followup()?;
+    Ok((history, prompt))
+}
+
+fn find_last_user_index(messages: &[UiMessage]) -> Option<usize> {
+    messages
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, m)| m.role == crate::types::ROLE_USER)
+        .map(|(idx, _)| idx)
+}
+
+fn has_tool_after(messages: &[UiMessage], idx: usize) -> bool {
+    messages
+        .iter()
+        .skip(idx + 1)
+        .any(|m| m.role == crate::types::ROLE_TOOL)
+}
+
+fn build_history(
+    messages: &[UiMessage],
+    templates: &RigTemplates,
+    end: Option<usize>,
+) -> Result<Vec<Message>, String> {
+    let slice = match end {
+        Some(end) => &messages[..end],
+        None => messages,
+    };
     let mut history = Vec::new();
-    if let Some(idx) = last_user_idx {
-        for msg in &messages[..idx] {
-            if msg.role == crate::types::ROLE_SYSTEM {
-                continue;
-            }
-            if msg.role == crate::types::ROLE_TOOL {
-                let wrapped =
-                    templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
-                history.push(Message {
-                    role: "user".to_string(),
-                    content: wrapped,
-                });
-            } else {
-                history.push(Message {
-                    role: msg.role.clone(),
-                    content: msg.content.clone(),
-                });
-            }
+    for msg in slice {
+        if let Some(entry) = map_history_message(msg, templates)? {
+            history.push(entry);
         }
-        Ok((history, messages[idx].content.clone()))
-    } else {
-        for msg in messages {
-            if msg.role == crate::types::ROLE_SYSTEM {
-                continue;
-            }
-            if msg.role == crate::types::ROLE_TOOL {
-                let wrapped =
-                    templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
-                history.push(Message {
-                    role: "user".to_string(),
-                    content: wrapped,
-                });
-            } else {
-                history.push(Message {
-                    role: msg.role.clone(),
-                    content: msg.content.clone(),
-                });
-            }
-        }
-        Ok((history, templates.render_followup()?))
     }
+    Ok(history)
+}
+
+fn map_history_message(
+    msg: &UiMessage,
+    templates: &RigTemplates,
+) -> Result<Option<Message>, String> {
+    if msg.role == crate::types::ROLE_SYSTEM {
+        return Ok(None);
+    }
+    if msg.role == crate::types::ROLE_TOOL {
+        let wrapped =
+            templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
+        return Ok(Some(Message::user(wrapped)));
+    }
+    Ok(Some(match msg.role.as_str() {
+        crate::types::ROLE_ASSISTANT => Message::assistant(msg.content.clone()),
+        _ => Message::user(msg.content.clone()),
+    }))
 }
 
 #[cfg(test)]
@@ -118,6 +104,7 @@ mod tests {
     use crate::test_support::{env_lock, restore_env, set_env};
     use crate::types::Message as UiMessage;
     use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
+    use rig::completion::Message;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -177,7 +164,65 @@ mod tests {
     #[test]
     fn build_history_uses_last_user_as_prompt() {
         let templates = rig_templates();
+        let msgs = messages_for_last_user_prompt();
+        let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
+        assert_eq!(prompt, "last");
+        assert!(history.iter().any(|m| message_text(m) == "first"));
+    }
+
+    #[test]
+    fn build_history_wraps_tools_after_last_user() {
+        let templates = rig_templates();
         let msgs = vec![
+            UiMessage {
+                role: ROLE_USER.to_string(),
+                content: "ask".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            UiMessage {
+                role: ROLE_TOOL.to_string(),
+                content: "tool output".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+        ];
+        let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
+        assert_eq!(prompt, "FOLLOWUP");
+        assert!(history.iter().any(|m| message_text(m).contains("TOOL=tool output")));
+    }
+
+    fn message_text(msg: &Message) -> String {
+        match msg {
+            Message::User { content } => user_text(content),
+            Message::Assistant { content, .. } => assistant_text(content),
+        }
+    }
+
+    fn user_text(content: &rig::OneOrMany<rig::completion::message::UserContent>) -> String {
+        content
+            .iter()
+            .filter_map(|item| match item {
+                rig::completion::message::UserContent::Text(text) => Some(text.text.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
+    fn assistant_text(content: &rig::OneOrMany<rig::completion::AssistantContent>) -> String {
+        content
+            .iter()
+            .filter_map(|item| match item {
+                rig::completion::AssistantContent::Text(text) => Some(text.text.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
+    fn messages_for_last_user_prompt() -> Vec<UiMessage> {
+        vec![
             UiMessage {
                 role: ROLE_SYSTEM.to_string(),
                 content: "sys".to_string(),
@@ -202,31 +247,6 @@ mod tests {
                 tool_call_id: None,
                 tool_calls: None,
             },
-        ];
-        let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
-        assert_eq!(prompt, "last");
-        assert!(history.iter().any(|m| m.content == "first"));
-    }
-
-    #[test]
-    fn build_history_wraps_tools_after_last_user() {
-        let templates = rig_templates();
-        let msgs = vec![
-            UiMessage {
-                role: ROLE_USER.to_string(),
-                content: "ask".to_string(),
-                tool_call_id: None,
-                tool_calls: None,
-            },
-            UiMessage {
-                role: ROLE_TOOL.to_string(),
-                content: "tool output".to_string(),
-                tool_call_id: None,
-                tool_calls: None,
-            },
-        ];
-        let (history, prompt) = build_history_and_prompt(&msgs, &templates).unwrap();
-        assert_eq!(prompt, "FOLLOWUP");
-        assert!(history.iter().any(|m| m.content.contains("TOOL=tool output")));
+        ]
     }
 }

@@ -53,32 +53,46 @@ pub fn apply_selection_to_text(
     let mut out: Vec<Line<'static>> = Vec::with_capacity(text.lines.len());
     for (idx, line) in text.lines.iter().enumerate() {
         let global_line = scroll + idx;
-        if global_line < start_line || global_line > end_line {
+        let Some((sel_start, sel_end)) = selection_range_for_line(
+            global_line,
+            start_line,
+            end_line,
+            start_col,
+            end_col,
+            line_width(line),
+        ) else {
             out.push(to_owned_line(line));
             continue;
-        }
-        let line_len = line_width(line);
-        let (sel_start, sel_end) = if start_line == end_line {
-            (start_col.min(line_len), end_col.min(line_len))
-        } else if global_line == start_line {
-            (start_col.min(line_len), line_len)
-        } else if global_line == end_line {
-            (0, end_col.min(line_len))
-        } else {
-            (0, line_len)
         };
-        if sel_start == sel_end {
-            out.push(to_owned_line(line));
-            continue;
-        }
-        out.push(apply_selection_to_line(
-            line,
-            sel_start,
-            sel_end,
-            select_style,
-        ));
+        out.push(apply_selection_to_line(line, sel_start, sel_end, select_style));
     }
     Text::from(out)
+}
+
+fn selection_range_for_line(
+    global_line: usize,
+    start_line: usize,
+    end_line: usize,
+    start_col: usize,
+    end_col: usize,
+    line_len: usize,
+) -> Option<(usize, usize)> {
+    if global_line < start_line || global_line > end_line {
+        return None;
+    }
+    let (sel_start, sel_end) = if start_line == end_line {
+        (start_col.min(line_len), end_col.min(line_len))
+    } else if global_line == start_line {
+        (start_col.min(line_len), line_len)
+    } else if global_line == end_line {
+        (0, end_col.min(line_len))
+    } else {
+        (0, line_len)
+    };
+    if sel_start == sel_end {
+        return None;
+    }
+    Some((sel_start, sel_end))
 }
 
 fn apply_selection_to_line(
@@ -87,43 +101,84 @@ fn apply_selection_to_line(
     sel_end: usize,
     select_style: Style,
 ) -> Line<'static> {
-    let mut spans: Vec<Span<'static>> = Vec::new();
-    let mut col = 0usize;
-    let mut current_style: Option<Style> = None;
-    let mut buffer = String::new();
-    let flush = |spans: &mut Vec<Span<'static>>, style: Option<Style>, buffer: &mut String| {
-        if let Some(style) = style {
-            if !buffer.is_empty() {
-                spans.push(Span::styled(std::mem::take(buffer), style));
-            }
-        }
-    };
-
-    for span in &line.spans {
-        let base_style = span.style;
-        for ch in span.content.chars() {
-            let width = UnicodeWidthChar::width(ch).unwrap_or(0).max(1);
-            let next = col.saturating_add(width);
-            let selected = next > sel_start && col < sel_end;
-            let style = if selected {
-                base_style.patch(select_style)
-            } else {
-                base_style
-            };
-            if current_style.map(|s| s != style).unwrap_or(true) {
-                flush(&mut spans, current_style, &mut buffer);
-                current_style = Some(style);
-            }
-            buffer.push(ch);
-            col = next;
-        }
-    }
-    flush(&mut spans, current_style, &mut buffer);
-
+    let spans = build_selected_spans(line, sel_start, sel_end, select_style);
     Line {
         style: line.style,
         alignment: line.alignment,
         spans,
+    }
+}
+
+fn build_selected_spans(
+    line: &Line<'_>,
+    sel_start: usize,
+    sel_end: usize,
+    select_style: Style,
+) -> Vec<Span<'static>> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    let mut col = 0usize;
+    let mut current_style: Option<Style> = None;
+    let mut buffer = String::new();
+    for span in &line.spans {
+        process_span(
+            span,
+            sel_start,
+            sel_end,
+            select_style,
+            &mut col,
+            &mut spans,
+            &mut current_style,
+            &mut buffer,
+        );
+    }
+    flush_buffer(&mut spans, current_style, &mut buffer);
+    spans
+}
+
+fn process_span(
+    span: &Span<'_>,
+    sel_start: usize,
+    sel_end: usize,
+    select_style: Style,
+    col: &mut usize,
+    spans: &mut Vec<Span<'static>>,
+    current_style: &mut Option<Style>,
+    buffer: &mut String,
+) {
+    let base_style = span.style;
+    for ch in span.content.chars() {
+        let width = UnicodeWidthChar::width(ch).unwrap_or(0).max(1);
+        let next = col.saturating_add(width);
+        let selected = next > sel_start && *col < sel_end;
+        let style = if selected {
+            base_style.patch(select_style)
+        } else {
+            base_style
+        };
+        update_buffer(spans, current_style, buffer, style, ch);
+        *col = next;
+    }
+}
+
+fn update_buffer(
+    spans: &mut Vec<Span<'static>>,
+    current_style: &mut Option<Style>,
+    buffer: &mut String,
+    style: Style,
+    ch: char,
+) {
+    if current_style.map(|s| s != style).unwrap_or(true) {
+        flush_buffer(spans, *current_style, buffer);
+        *current_style = Some(style);
+    }
+    buffer.push(ch);
+}
+
+fn flush_buffer(spans: &mut Vec<Span<'static>>, style: Option<Style>, buffer: &mut String) {
+    if let Some(style) = style {
+        if !buffer.is_empty() {
+            spans.push(Span::styled(std::mem::take(buffer), style));
+        }
     }
 }
 
@@ -165,18 +220,15 @@ pub fn extract_selection(lines: &[String], selection: Selection) -> String {
     let end_line = end_line.min(lines.len().saturating_sub(1));
     let mut out = Vec::new();
     for (idx, line) in lines.iter().enumerate() {
-        if idx < start_line || idx > end_line {
+        let Some((sel_start, sel_end)) = selection_range_for_line(
+            idx,
+            start_line,
+            end_line,
+            start_col,
+            end_col,
+            line.width(),
+        ) else {
             continue;
-        }
-        let line_width = line.width();
-        let (sel_start, sel_end) = if start_line == end_line {
-            (start_col.min(line_width), end_col.min(line_width))
-        } else if idx == start_line {
-            (start_col.min(line_width), line_width)
-        } else if idx == end_line {
-            (0, end_col.min(line_width))
-        } else {
-            (0, line_width)
         };
         out.push(slice_line_by_cols(line, sel_start, sel_end));
     }

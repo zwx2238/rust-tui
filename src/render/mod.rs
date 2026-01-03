@@ -1,3 +1,15 @@
+//! 渲染模块
+//!
+//! 负责将消息和内容渲染为终端可显示的格式。
+//!
+//! ## 子模块
+//!
+//! - `cache` - 渲染缓存管理
+//! - `layout` - 布局管理
+//! - `markdown` - Markdown 渲染
+//! - `theme` - 主题管理
+//! - `util` - 工具函数
+
 mod cache;
 #[cfg(test)]
 mod cache_tests;

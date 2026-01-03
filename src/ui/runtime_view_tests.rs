@@ -6,6 +6,21 @@ mod tests {
     use crate::ui::jump::JumpRow;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind, MouseButton};
 
+    fn setup_view_action_state() -> (Vec<TabState>, usize, Vec<String>, usize, Vec<JumpRow>) {
+        let tabs = vec![
+            TabState::new("a".into(), "cat1".into(), "", false, "m", "p"),
+            TabState::new("b".into(), "cat2".into(), "", false, "m", "p"),
+        ];
+        let categories = vec!["cat1".to_string(), "cat2".to_string()];
+        let jump_rows = vec![JumpRow {
+            index: 1,
+            role: crate::types::ROLE_USER.to_string(),
+            preview: "hi".to_string(),
+            scroll: 3,
+        }];
+        (tabs, 0, categories, 0, jump_rows)
+    }
+
     #[test]
     fn handle_view_key_toggles_overlays() {
         let mut view = ViewState::new();
@@ -162,19 +177,8 @@ mod tests {
 
     #[test]
     fn apply_view_action_switch_and_jump() {
-        let mut tabs = vec![
-            TabState::new("a".into(), "cat1".into(), "", false, "m", "p"),
-            TabState::new("b".into(), "cat2".into(), "", false, "m", "p"),
-        ];
-        let mut active_tab = 0usize;
-        let mut categories = vec!["cat1".to_string(), "cat2".to_string()];
-        let mut active_category = 0usize;
-        let jump_rows = vec![JumpRow {
-            index: 1,
-            role: crate::types::ROLE_USER.to_string(),
-            preview: "hi".to_string(),
-            scroll: 3,
-        }];
+        let (mut tabs, mut active_tab, mut categories, mut active_category, jump_rows) =
+            setup_view_action_state();
         let switched = apply_view_action(
             ViewAction::SwitchTab(1),
             &jump_rows,

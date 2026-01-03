@@ -24,15 +24,33 @@ pub fn load_prompts(
     default_key: &str,
     default_content: &str,
 ) -> Result<PromptRegistry, Box<dyn std::error::Error>> {
-    let mut prompts = Vec::new();
     let dir_path = PathBuf::from(dir);
+    ensure_prompts_dir(&dir_path)?;
+    let mut prompts = read_prompts_from_dir(&dir_path)?;
+    prompts.sort_by(|a, b| a.key.cmp(&b.key));
+    inject_default_prompt(&mut prompts, default_key, default_content);
+    let default_key = select_default_key(&prompts, default_key);
+    Ok(PromptRegistry {
+        default_key,
+        prompts,
+    })
+}
+
+fn ensure_prompts_dir(dir_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     if !dir_path.exists() {
         return Err(format!("提示词目录不存在：{}", dir_path.display()).into());
     }
     if !dir_path.is_dir() {
         return Err(format!("提示词路径不是目录：{}", dir_path.display()).into());
     }
-    let entries = fs::read_dir(&dir_path)?;
+    Ok(())
+}
+
+fn read_prompts_from_dir(
+    dir_path: &PathBuf,
+) -> Result<Vec<SystemPrompt>, Box<dyn std::error::Error>> {
+    let mut prompts = Vec::new();
+    let entries = fs::read_dir(dir_path)?;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_file() {
@@ -41,28 +59,31 @@ pub fn load_prompts(
             }
         }
     }
-    prompts.sort_by(|a, b| a.key.cmp(&b.key));
-    if prompts.iter().all(|p| p.key != default_key) && !default_content.trim().is_empty() {
-        prompts.insert(
-            0,
-            SystemPrompt {
-                key: default_key.to_string(),
-                content: default_content.to_string(),
-            },
-        );
+    Ok(prompts)
+}
+
+fn inject_default_prompt(prompts: &mut Vec<SystemPrompt>, key: &str, content: &str) {
+    let exists = prompts.iter().any(|p| p.key == key);
+    if exists || content.trim().is_empty() {
+        return;
     }
-    let default_key = if prompts.iter().any(|p| p.key == default_key) {
-        default_key.to_string()
-    } else {
-        prompts
-            .first()
-            .map(|p| p.key.clone())
-            .unwrap_or_else(|| default_key.to_string())
-    };
-    Ok(PromptRegistry {
-        default_key,
-        prompts,
-    })
+    prompts.insert(
+        0,
+        SystemPrompt {
+            key: key.to_string(),
+            content: content.to_string(),
+        },
+    );
+}
+
+fn select_default_key(prompts: &[SystemPrompt], key: &str) -> String {
+    if prompts.iter().any(|p| p.key == key) {
+        return key.to_string();
+    }
+    prompts
+        .first()
+        .map(|p| p.key.clone())
+        .unwrap_or_else(|| key.to_string())
 }
 
 fn read_prompt_file(path: &PathBuf) -> Option<SystemPrompt> {

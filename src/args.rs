@@ -54,6 +54,10 @@ pub struct Args {
     /// 只读模式：禁止所有写入/修改类工具调用（包含代码执行/文件修改）
     #[arg(long, default_value_t = false)]
     pub read_only: bool,
+
+    /// 等待 gdb attach 后再继续执行（用于调试）
+    #[arg(long, default_value_t = false)]
+    pub wait_gdb: bool,
 }
 
 impl Args {

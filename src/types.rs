@@ -1,3 +1,7 @@
+//! 类型定义模块
+//!
+//! 定义应用程序中使用的主要数据结构，包括消息、工具调用、使用统计等。
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -81,53 +81,35 @@ impl TableBuild {
         theme: &RenderTheme,
     ) -> Vec<Line<'static>> {
         let mut out = Vec::new();
-        if !self.in_table {
-            return out;
-        }
+        if !self.in_table { return out; }
         let cols = table_cols(&self.header, &self.rows);
-        if cols == 0 {
-            self.in_table = false;
-            return out;
-        }
+        if cols == 0 { self.in_table = false; return out; }
         let style = Style::default().fg(theme.fg.unwrap_or(Color::White));
-
-        if self.streaming {
-            if let Some(header) = &self.header {
-                out.push(Line::from(Span::styled(
-                    render_table_row_unaligned(header),
-                    style.add_modifier(Modifier::BOLD),
-                )));
-                out.push(Line::from(Span::styled(
-                    render_table_rule_unaligned(header),
-                    style,
-                )));
-            }
-            for row in &self.rows {
-                out.push(Line::from(Span::styled(
-                    render_table_row_unaligned(row),
-                    style,
-                )));
-            }
-            self.in_table = false;
-            return out;
-        }
-
+        if self.streaming { self.render_streaming(&mut out, style); self.in_table = false; return out; }
         let widths = compute_table_widths(&self.header, &self.rows, cols, width);
-        if let Some(header) = &self.header {
-            out.push(Line::from(Span::styled(
-                render_table_row(header, &widths),
-                style.add_modifier(Modifier::BOLD),
-            )));
-            out.push(Line::from(Span::styled(render_table_rule(&widths), style)));
-        }
-        for row in &self.rows {
-            out.push(Line::from(Span::styled(
-                render_table_row(row, &widths),
-                style,
-            )));
-        }
+        self.render_fixed(&mut out, &widths, style);
         self.in_table = false;
         out
+    }
+
+    fn render_streaming(&self, out: &mut Vec<Line<'static>>, style: Style) {
+        if let Some(header) = &self.header {
+            out.push(Line::from(Span::styled(render_table_row_unaligned(header), style.add_modifier(Modifier::BOLD))));
+            out.push(Line::from(Span::styled(render_table_rule_unaligned(header), style)));
+        }
+        for row in &self.rows {
+            out.push(Line::from(Span::styled(render_table_row_unaligned(row), style)));
+        }
+    }
+
+    fn render_fixed(&self, out: &mut Vec<Line<'static>>, widths: &[usize], style: Style) {
+        if let Some(header) = &self.header {
+            out.push(Line::from(Span::styled(render_table_row(header, widths), style.add_modifier(Modifier::BOLD))));
+            out.push(Line::from(Span::styled(render_table_rule(widths), style)));
+        }
+        for row in &self.rows {
+            out.push(Line::from(Span::styled(render_table_row(row, widths), style)));
+        }
     }
 
     pub(crate) fn finish_count(&mut self, width: usize) -> usize {
@@ -163,28 +145,34 @@ fn compute_table_widths(
 ) -> Vec<usize> {
     let mut widths = vec![1usize; cols];
     if let Some(h) = header {
-        for (i, cell) in h.iter().enumerate() {
-            let w = UnicodeWidthStr::width(cell.as_str());
-            if w > widths[i] {
-                widths[i] = w;
-            }
-        }
+        update_widths_from_cells(&mut widths, h);
     }
     for row in rows {
-        for (i, cell) in row.iter().enumerate() {
-            let w = UnicodeWidthStr::width(cell.as_str());
-            if w > widths[i] {
-                widths[i] = w;
-            }
+        update_widths_from_cells(&mut widths, row);
+    }
+    check_table_widths(&widths, cols, width);
+    widths
+}
+
+fn update_widths_from_cells(widths: &mut [usize], cells: &[String]) {
+    for (i, cell) in cells.iter().enumerate() {
+        if i >= widths.len() {
+            break;
+        }
+        let w = UnicodeWidthStr::width(cell.as_str());
+        if w > widths[i] {
+            widths[i] = w;
         }
     }
+}
+
+fn check_table_widths(widths: &[usize], cols: usize, width: usize) {
     let total_sep = cols + 1;
     let total_content: usize = widths.iter().sum();
     let total = total_sep + total_content + cols * 2;
     if total > width.max(10) {
         // Keep widths; table may wrap but column alignment still uses content width.
     }
-    widths
 }
 
 fn render_table_row(row: &[String], widths: &[usize]) -> String {

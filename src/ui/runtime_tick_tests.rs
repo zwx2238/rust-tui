@@ -26,6 +26,38 @@ mod tests {
         }
     }
 
+    fn stream_tab() -> TabState {
+        let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
+        tab.app.active_request = Some(RequestHandle {
+            id: 1,
+            cancel: Arc::new(AtomicBool::new(false)),
+        });
+        tab.app.busy = true;
+        tab.app.pending_assistant = Some(0);
+        tab.app.messages.push(Message {
+            role: crate::types::ROLE_ASSISTANT.to_string(),
+            content: String::new(),
+            tool_call_id: None,
+            tool_calls: None,
+        });
+        tab
+    }
+
+    fn send_stream_events(tx: &mpsc::Sender<UiEvent>) {
+        tx.send(UiEvent {
+            tab: 0,
+            request_id: 1,
+            event: LlmEvent::Chunk("hi".to_string()),
+        })
+        .unwrap();
+        tx.send(UiEvent {
+            tab: 0,
+            request_id: 1,
+            event: LlmEvent::Done { usage: None },
+        })
+        .unwrap();
+    }
+
     #[test]
     fn drain_preheat_results_updates_cache() {
         let tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
@@ -48,32 +80,9 @@ mod tests {
 
     #[test]
     fn collect_stream_events_returns_done_and_tools() {
-        let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
-        tab.app.active_request = Some(RequestHandle {
-            id: 1,
-            cancel: Arc::new(AtomicBool::new(false)),
-        });
-        tab.app.busy = true;
-        tab.app.pending_assistant = Some(0);
-        tab.app.messages.push(Message {
-            role: crate::types::ROLE_ASSISTANT.to_string(),
-            content: String::new(),
-            tool_call_id: None,
-            tool_calls: None,
-        });
+        let tab = stream_tab();
         let (tx, rx) = mpsc::channel();
-        tx.send(UiEvent {
-            tab: 0,
-            request_id: 1,
-            event: LlmEvent::Chunk("hi".to_string()),
-        })
-        .unwrap();
-        tx.send(UiEvent {
-            tab: 0,
-            request_id: 1,
-            event: LlmEvent::Done { usage: None },
-        })
-        .unwrap();
+        send_stream_events(&tx);
         let (done, tools) = collect_stream_events(&rx, &mut [tab], &theme());
         assert_eq!(done, vec![0]);
         assert!(tools.is_empty());

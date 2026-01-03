@@ -68,31 +68,52 @@ pub(crate) fn overlay_table_metrics(
     counts: OverlayRowCounts,
 ) -> OverlayTableMetrics {
     match kind {
-        OverlayKind::Summary => OverlayTableMetrics {
-            area: areas.msg,
-            rows: counts.tabs,
-        },
-        OverlayKind::Jump => OverlayTableMetrics {
-            area: areas.msg,
-            rows: counts.jump,
-        },
-        OverlayKind::Model => OverlayTableMetrics {
-            area: model_popup_area(areas.full, counts.models),
-            rows: counts.models,
-        },
-        OverlayKind::Prompt => OverlayTableMetrics {
-            area: prompt_popup_area(areas.full, counts.prompts),
-            rows: counts.prompts,
-        },
-        OverlayKind::CodeExec | OverlayKind::FilePatch => OverlayTableMetrics {
-            area: areas.msg,
-            rows: 0,
-        },
-        OverlayKind::Help => OverlayTableMetrics {
-            area: help_popup_area(areas.full, counts.help),
-            rows: counts.help,
-        },
+        OverlayKind::Summary => summary_metrics(areas, counts),
+        OverlayKind::Jump => jump_metrics(areas, counts),
+        OverlayKind::Model => model_metrics(areas, counts),
+        OverlayKind::Prompt => prompt_metrics(areas, counts),
+        OverlayKind::CodeExec | OverlayKind::FilePatch => empty_metrics(areas),
+        OverlayKind::Help => help_metrics(areas, counts),
     }
+}
+
+fn summary_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
+    OverlayTableMetrics {
+        area: areas.msg,
+        rows: counts.tabs,
+    }
+}
+
+fn jump_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
+    OverlayTableMetrics {
+        area: areas.msg,
+        rows: counts.jump,
+    }
+}
+
+fn model_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
+    OverlayTableMetrics {
+        area: model_popup_area(areas.full, counts.models),
+        rows: counts.models,
+    }
+}
+
+fn prompt_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
+    OverlayTableMetrics {
+        area: prompt_popup_area(areas.full, counts.prompts),
+        rows: counts.prompts,
+    }
+}
+
+fn help_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
+    OverlayTableMetrics {
+        area: help_popup_area(areas.full, counts.help),
+        rows: counts.help,
+    }
+}
+
+fn empty_metrics(areas: OverlayAreas) -> OverlayTableMetrics {
+    OverlayTableMetrics { area: areas.msg, rows: 0 }
 }
 
 pub(crate) fn overlay_visible_rows(

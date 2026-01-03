@@ -2,228 +2,148 @@ use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::ui::net::UiEvent;
 use crate::ui::render_context::RenderContext;
-use crate::ui::runtime_context::{make_dispatch_context, make_layout_context};
-use crate::ui::runtime_dispatch::{
-    handle_key_event_loop, handle_mouse_event_loop, start_pending_request,
-};
-use crate::ui::runtime_events::handle_paste_event;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
-use crate::ui::runtime_layout::compute_layout;
-use crate::ui::runtime_loop_helpers::handle_pending_command;
-use crate::ui::runtime_render::render_view;
-use crate::ui::runtime_tick::{
-    ActiveFrameData, build_exec_header_note, collect_stream_events, drain_preheat_results,
-    finalize_done_tabs, preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay,
-    sync_file_patch_overlay, update_code_exec_results, update_tab_widths,
+use crate::ui::runtime_loop_steps::{
+    DispatchContextParams, FrameLayout, LayoutContextParams, active_frame_data, frame_layout,
+    handle_pending_command_if_any, handle_pending_line, header_note, note_elapsed,
+    poll_and_dispatch_event, prepare_categories, process_stream_updates, tab_labels_and_pos,
 };
+use crate::ui::runtime_render::render_view;
+use crate::ui::runtime_tick::drain_preheat_results;
 use crate::ui::runtime_view::ViewState;
-use crate::ui::runtime_yolo::auto_finalize_code_exec;
-use crate::ui::tool_service::ToolService;
-use crossterm::event::{self, Event};
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum LoopControl {
+    Continue,
+    Break,
+}
+
+struct IterationData {
+    frame: FrameLayout,
+    tab_labels: Vec<String>,
+    active_tab_pos: usize,
+    active_data: crate::ui::runtime_tick::ActiveFrameData,
+    jump_rows: Vec<crate::ui::jump::JumpRow>,
+}
 
 pub(crate) fn run_loop(
-    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    tabs: &mut Vec<TabState>,
-    active_tab: &mut usize,
-    categories: &mut Vec<String>,
-    active_category: &mut usize,
-    session_location: &mut Option<crate::session::SessionLocation>,
-    rx: &mpsc::Receiver<UiEvent>,
-    tx: &mpsc::Sender<UiEvent>,
-    preheat_tx: &mpsc::Sender<PreheatTask>,
-    preheat_res_rx: &mpsc::Receiver<PreheatResult>,
-    registry: &crate::model_registry::ModelRegistry,
-    prompt_registry: &crate::llm::prompts::PromptRegistry,
-    args: &Args,
-    theme: &RenderTheme,
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, tabs: &mut Vec<TabState>,
+    active_tab: &mut usize, categories: &mut Vec<String>, active_category: &mut usize,
+    session_location: &mut Option<crate::session::SessionLocation>, rx: &mpsc::Receiver<UiEvent>,
+    tx: &mpsc::Sender<UiEvent>, preheat_tx: &mpsc::Sender<PreheatTask>,
+    preheat_res_rx: &mpsc::Receiver<PreheatResult>, registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry, args: &Args, theme: &RenderTheme,
     start_time: Instant,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut startup_elapsed: Option<Duration> = None;
-    let mut view = ViewState::new();
+    let mut startup_elapsed = None; let mut view = ViewState::new();
     loop {
-        let size = terminal.size()?;
-        let size = ratatui::layout::Rect::new(0, 0, size.width, size.height);
-        let layout = compute_layout(size, &view, tabs, *active_tab, categories);
-        let header_area = layout.header_area;
-        let category_area = layout.category_area;
-        let tabs_area = layout.tabs_area;
-        let msg_area = layout.msg_area;
-        let input_area = layout.input_area;
-        let footer_area = layout.footer_area;
-        let msg_width = layout.msg_width;
-        let view_height = layout.view_height;
-        let input_height = layout.input_height;
-        drain_preheat_results(preheat_res_rx, tabs);
-        if categories.is_empty() {
-            categories.push("默认".to_string());
-        }
-        if *active_category >= categories.len() {
-            *active_category = 0;
-        }
-        if let Some(tab_state) = tabs.get(*active_tab) {
-            if let Some(idx) = categories.iter().position(|c| c == &tab_state.category) {
-                *active_category = idx;
-            }
-        }
-        let active_category_name = categories[*active_category].clone();
-        let tab_labels =
-            crate::ui::runtime_helpers::tab_labels_for_category(tabs, &active_category_name);
-        let active_tab_pos = crate::ui::runtime_helpers::active_tab_position(
-            tabs,
-            &active_category_name,
-            *active_tab,
-        );
-
-        let (done_tabs, tool_queue) = collect_stream_events(rx, tabs, theme);
-        let tool_service = ToolService::new(registry, args, tx);
-        for (tab, calls) in tool_queue {
-            if let Some(tab_state) = tabs.get_mut(tab) {
-                tool_service.apply_tool_calls(tab_state, tab, &calls);
-            }
-        }
-        update_code_exec_results(tabs);
-        if args.yolo_enabled() {
-            auto_finalize_code_exec(tabs, registry, args, tx);
-        }
-        finalize_done_tabs(tabs, &done_tabs)?;
-        update_tab_widths(tabs, msg_width);
-        preheat_inactive_tabs(tabs, *active_tab, theme, msg_width, preheat_tx);
-        if !args.yolo_enabled() {
-            sync_code_exec_overlay(tabs, *active_tab, &mut view);
-            sync_file_patch_overlay(tabs, *active_tab, &mut view);
-        }
-        let ActiveFrameData {
-            text,
-            total_lines,
-            startup_text,
-            mut pending_line,
-            pending_command,
-        } = prepare_active_frame(
-            &mut tabs[*active_tab],
-            theme,
-            msg_width,
-            view_height,
-            input_area,
-            startup_elapsed,
-        );
-        let header_note = build_exec_header_note(tabs, categories);
-        let mut render_ctx = RenderContext {
-            terminal,
-            tabs,
-            active_tab: *active_tab,
-            tab_labels: &tab_labels,
-            active_tab_pos,
-            categories,
-            active_category: *active_category,
-            theme,
-            startup_text: startup_text.as_deref(),
-            full_area: size,
-            input_height,
-            msg_area,
-            tabs_area,
-            category_area,
-            header_area,
-            footer_area,
-            msg_width,
-            text: &text,
-            total_lines,
-            header_note: header_note.as_deref(),
-            models: &registry.models,
-            prompts: &prompt_registry.prompts,
-        };
-        let jump_rows = render_view(&mut render_ctx, &mut view)?;
-        if startup_elapsed.is_none() {
-            startup_elapsed = Some(start_time.elapsed());
-        }
-        terminal.hide_cursor()?;
-        if let Some(line) = pending_line.take() {
-            if let Some(tab_state) = tabs.get_mut(*active_tab) {
-                tab_state.app.pending_send = Some(line);
-                start_pending_request(registry, args, tx, *active_tab, tab_state);
-            }
-        }
-        if let Some(cmd) = pending_command {
-            handle_pending_command(
-                tabs,
-                active_tab,
-                categories,
-                active_category,
-                cmd,
-                session_location,
-                registry,
-                prompt_registry,
-                args,
-                tx,
-            );
-        }
-        if event::poll(Duration::from_millis(50))? {
-            match event::read()? {
-                Event::Key(key) => {
-                    let mut ctx = make_dispatch_context(
-                        tabs,
-                        active_tab,
-                        categories,
-                        active_category,
-                        msg_width,
-                        theme,
-                        registry,
-                        prompt_registry,
-                        args,
-                    );
-                    let layout_ctx = make_layout_context(
-                        size,
-                        tabs_area,
-                        msg_area,
-                        input_area,
-                        category_area,
-                        view_height,
-                        total_lines,
-                    );
-                    if handle_key_event_loop(key, &mut ctx, layout_ctx, &mut view, &jump_rows)? {
-                        break;
-                    }
-                }
-                Event::Paste(paste) => {
-                    if view.is_chat() {
-                        handle_paste_event(&paste, tabs, *active_tab);
-                    }
-                }
-                Event::Mouse(m) => {
-                    let mut ctx = make_dispatch_context(
-                        tabs,
-                        active_tab,
-                        categories,
-                        active_category,
-                        msg_width,
-                        theme,
-                        registry,
-                        prompt_registry,
-                        args,
-                    );
-                    let layout_ctx = make_layout_context(
-                        size,
-                        tabs_area,
-                        msg_area,
-                        input_area,
-                        category_area,
-                        view_height,
-                        total_lines,
-                    );
-                    handle_mouse_event_loop(m, &mut ctx, layout_ctx, &mut view, &jump_rows);
-                }
-                _ => {}
-            }
-        }
+        if run_loop_iteration(
+            terminal, tabs, active_tab, categories, active_category, session_location, rx, tx,
+            preheat_tx, preheat_res_rx, registry, prompt_registry, args, theme, start_time,
+            &mut startup_elapsed, &mut view,
+        )? == LoopControl::Break { break; }
         #[cfg(test)]
-        if std::env::var("DEEPCHAT_TEST_RUN_LOOP_ONCE").is_ok() {
-            break;
-        }
+        if std::env::var("DEEPCHAT_TEST_RUN_LOOP_ONCE").is_ok() { break; }
     }
-
     Ok(())
 }
 
-// context helpers live in runtime_context
+fn run_loop_iteration(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, tabs: &mut Vec<TabState>,
+    active_tab: &mut usize, categories: &mut Vec<String>, active_category: &mut usize,
+    session_location: &mut Option<crate::session::SessionLocation>, rx: &mpsc::Receiver<UiEvent>,
+    tx: &mpsc::Sender<UiEvent>, preheat_tx: &mpsc::Sender<PreheatTask>,
+    preheat_res_rx: &mpsc::Receiver<PreheatResult>, registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry, args: &Args, theme: &RenderTheme,
+    start_time: Instant, startup_elapsed: &mut Option<std::time::Duration>, view: &mut ViewState,
+) -> Result<LoopControl, Box<dyn std::error::Error>> {
+    let data = build_iteration_data(
+        terminal, tabs, active_tab, categories, active_category, rx, tx, preheat_tx,
+        preheat_res_rx, registry, prompt_registry, args, theme, start_time, startup_elapsed, view,
+    )?;
+    handle_pending_line(
+        data.active_data.pending_line.clone(),
+        tabs,
+        *active_tab,
+        registry,
+        args,
+        tx,
+    );
+    handle_pending_command_if_any(
+        data.active_data.pending_command, tabs, active_tab, categories, active_category,
+        session_location, registry, prompt_registry, args, tx,
+    );
+    if dispatch_events(
+        tabs, active_tab, categories, active_category, theme, registry, prompt_registry, args,
+        &data, view,
+    )? { return Ok(LoopControl::Break); }
+    Ok(LoopControl::Continue)
+}
+
+fn build_iteration_data(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, tabs: &mut Vec<TabState>,
+    active_tab: &mut usize, categories: &mut Vec<String>, active_category: &mut usize,
+    rx: &mpsc::Receiver<UiEvent>, tx: &mpsc::Sender<UiEvent>,
+    preheat_tx: &mpsc::Sender<PreheatTask>, preheat_res_rx: &mpsc::Receiver<PreheatResult>,
+    registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry, args: &Args, theme: &RenderTheme,
+    start_time: Instant, startup_elapsed: &mut Option<std::time::Duration>, view: &mut ViewState,
+) -> Result<IterationData, Box<dyn std::error::Error>> {
+    let frame = frame_layout(terminal, view, tabs, *active_tab, categories)?; drain_preheat_results(preheat_res_rx, tabs);
+    let active_category_name = prepare_categories(tabs, *active_tab, categories, active_category);
+    let (tab_labels, active_tab_pos) = tab_labels_and_pos(tabs, *active_tab, &active_category_name);
+    process_stream_updates(rx, tabs, *active_tab, theme, frame.layout.msg_width, registry, args, tx, preheat_tx, view)?;
+    let active_data = active_frame_data(tabs, *active_tab, theme, frame.layout.msg_width, frame.layout.view_height, frame.layout.input_area, *startup_elapsed);
+    let header_note = header_note(tabs, categories);
+    let jump_rows = render_frame(terminal, tabs, *active_tab, &tab_labels, active_tab_pos, categories, *active_category, theme, active_data.startup_text.as_deref(), frame.size, frame.layout.input_height, frame.layout.msg_area, frame.layout.tabs_area, frame.layout.category_area, frame.layout.header_area, frame.layout.footer_area, frame.layout.msg_width, &active_data.text, active_data.total_lines, header_note.as_deref(), registry, prompt_registry, view)?;
+    note_elapsed(start_time, startup_elapsed); terminal.hide_cursor()?;
+    Ok(IterationData {
+        frame,
+        tab_labels: tab_labels.to_vec(),
+        active_tab_pos,
+        active_data,
+        jump_rows,
+    })
+}
+
+fn dispatch_events(
+    tabs: &mut Vec<TabState>, active_tab: &mut usize, categories: &mut Vec<String>,
+    active_category: &mut usize, theme: &RenderTheme, registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry, args: &Args, data: &IterationData,
+    view: &mut ViewState,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut dispatch_params = DispatchContextParams {
+        tabs, active_tab, categories, active_category, msg_width: data.frame.layout.msg_width,
+        theme, registry, prompt_registry, args,
+    };
+    let layout_params = LayoutContextParams {
+        size: data.frame.size, tabs_area: data.frame.layout.tabs_area,
+        msg_area: data.frame.layout.msg_area, input_area: data.frame.layout.input_area,
+        category_area: data.frame.layout.category_area, view_height: data.frame.layout.view_height,
+        total_lines: data.active_data.total_lines,
+    };
+    poll_and_dispatch_event(&mut dispatch_params, layout_params, view, &data.jump_rows)
+}
+
+fn render_frame(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, tabs: &mut Vec<TabState>,
+    active_tab: usize, tab_labels: &[String], active_tab_pos: usize, categories: &Vec<String>,
+    active_category: usize, theme: &RenderTheme, startup_text: Option<&str>,
+    full_area: ratatui::layout::Rect, input_height: u16, msg_area: ratatui::layout::Rect,
+    tabs_area: ratatui::layout::Rect, category_area: ratatui::layout::Rect,
+    header_area: ratatui::layout::Rect, footer_area: ratatui::layout::Rect, msg_width: usize,
+    text: &ratatui::text::Text<'_>, total_lines: usize, header_note: Option<&str>,
+    registry: &crate::model_registry::ModelRegistry,
+    prompt_registry: &crate::llm::prompts::PromptRegistry, view: &mut ViewState,
+) -> Result<Vec<crate::ui::jump::JumpRow>, Box<dyn std::error::Error>> {
+    let mut render_ctx = RenderContext {
+        terminal, tabs, active_tab, tab_labels, active_tab_pos, categories, active_category,
+        theme, startup_text, full_area, input_height, msg_area, tabs_area, category_area,
+        header_area, footer_area, msg_width, text, total_lines, header_note,
+        models: &registry.models, prompts: &prompt_registry.prompts,
+    };
+    render_view(&mut render_ctx, view)
+}

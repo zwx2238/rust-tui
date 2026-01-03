@@ -7,15 +7,7 @@ mod tests {
     use std::sync::{Arc, Mutex, atomic::AtomicBool};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    fn setup_fake_docker() -> (std::path::PathBuf, Option<String>) {
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        let dir = std::env::temp_dir().join(format!("deepchat-docker-{ts}"));
-        fs::create_dir_all(&dir).unwrap();
-        let bin = dir.join("docker");
-        let script = r#"#!/bin/sh
+    const DOCKER_SCRIPT: &str = r#"#!/bin/sh
 cmd="$1"
 shift
 case "$cmd" in
@@ -45,18 +37,43 @@ case "$cmd" in
     ;;
 esac
 "#;
-        fs::write(&bin, script).unwrap();
-        let mut perms = fs::metadata(&bin).unwrap().permissions();
+
+    fn docker_script() -> &'static str {
+        DOCKER_SCRIPT
+    }
+
+    fn write_executable(bin: &std::path::Path, script: &str) {
+        fs::write(bin, script).unwrap();
+        let mut perms = fs::metadata(bin).unwrap().permissions();
         perms.set_readonly(false);
-        fs::set_permissions(&bin, perms).unwrap();
+        fs::set_permissions(bin, perms).unwrap();
         let _ = std::process::Command::new("chmod")
             .arg("+x")
-            .arg(&bin)
+            .arg(bin)
             .status();
-        let prev_path = set_env(
+    }
+
+    fn set_fake_path(dir: &std::path::Path) -> Option<String> {
+        set_env(
             "PATH",
-            &format!("{}:{}", dir.to_string_lossy(), std::env::var("PATH").unwrap_or_default()),
-        );
+            &format!(
+                "{}:{}",
+                dir.to_string_lossy(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+    }
+
+    fn setup_fake_docker() -> (std::path::PathBuf, Option<String>) {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let dir = std::env::temp_dir().join(format!("deepchat-docker-{ts}"));
+        fs::create_dir_all(&dir).unwrap();
+        let bin = dir.join("docker");
+        write_executable(&bin, docker_script());
+        let prev_path = set_fake_path(&dir);
         (dir, prev_path)
     }
 
