@@ -214,8 +214,24 @@ mod tests {
             end: (0, 1),
         });
         let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        let args = crate::args::Args {
+            model: "m".to_string(),
+            system: "sys".to_string(),
+            base_url: "http://example.com".to_string(),
+            show_reasoning: false,
+            config: None,
+            resume: None,
+            replay_fork_last: false,
+            enable: None,
+            log_requests: None,
+            perf: false,
+            question_set: None,
+            yolo: false,
+            read_only: false,
+            wait_gdb: false,
+        };
         let handled =
-            crate::ui::runtime_events::handle_key_event(key, &mut tabs, 0, 40, &theme()).unwrap();
+            crate::ui::runtime_events::handle_key_event(key, &mut tabs, 0, &args, 40, &theme()).unwrap();
         assert!(!handled);
     }
 

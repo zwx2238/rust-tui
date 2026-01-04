@@ -37,7 +37,7 @@ pub(crate) fn handle_chat_input(
     ctx: &mut DispatchContext<'_>,
     key: KeyEvent,
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    handle_key_event(key, ctx.tabs, *ctx.active_tab, ctx.msg_width, ctx.theme)
+    handle_key_event(key, ctx.tabs, *ctx.active_tab, ctx.args, ctx.msg_width, ctx.theme)
 }
 
 fn handle_model_cycle(ctx: &mut DispatchContext<'_>, action: ViewAction) -> bool {

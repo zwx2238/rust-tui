@@ -72,6 +72,7 @@ fn build_active_data(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> ActiveFra
     active_frame_data(
         ctx.tabs,
         *ctx.active_tab,
+        ctx.args,
         ctx.theme,
         layout.layout.msg_width,
         layout.layout.view_height,

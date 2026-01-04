@@ -2,7 +2,7 @@ use crate::ui::state::CodeExecLive;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::ui::code_exec_container_env::{pip_target_dir, run_dir, tmp_dir};
 
@@ -17,6 +17,26 @@ pub(crate) fn ensure_container(container_id: &mut Option<String>) -> Result<Stri
     }
     let id = start_container()?;
     *container_id = Some(id.clone());
+    Ok(id)
+}
+
+static CONTAINER_CACHE: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+fn cached_container() -> &'static Mutex<Option<String>> {
+    CONTAINER_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+pub(crate) fn ensure_container_cached() -> Result<String, String> {
+    let mut guard = cached_container()
+        .lock()
+        .map_err(|_| "Docker 启动失败：容器缓存锁异常".to_string())?;
+    if let Some(id) = guard.as_ref()
+        && is_container_running(id)
+    {
+        return Ok(id.clone());
+    }
+    let id = start_container()?;
+    *guard = Some(id.clone());
     Ok(id)
 }
 

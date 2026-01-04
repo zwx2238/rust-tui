@@ -56,6 +56,7 @@ pub(crate) fn process_stream_updates(
 pub(crate) fn active_frame_data(
     tabs: &mut [TabState],
     active_tab: usize,
+    args: &Args,
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
@@ -64,6 +65,7 @@ pub(crate) fn active_frame_data(
 ) -> ActiveFrameData {
     prepare_active_frame(
         &mut tabs[active_tab],
+        args,
         theme,
         msg_width,
         view_height,

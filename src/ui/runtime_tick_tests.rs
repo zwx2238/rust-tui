@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::args::Args;
     use crate::render::RenderTheme;
     use crate::types::Message;
     use crate::ui::net::{LlmEvent, UiEvent};
@@ -192,9 +193,25 @@ mod tests {
             tool_call_id: None,
             tool_calls: None,
         });
+        let args = Args {
+            model: "m".to_string(),
+            system: "sys".to_string(),
+            base_url: "http://example.com".to_string(),
+            show_reasoning: false,
+            config: None,
+            resume: None,
+            replay_fork_last: false,
+            enable: None,
+            log_requests: None,
+            perf: false,
+            question_set: None,
+            yolo: false,
+            read_only: false,
+            wait_gdb: false,
+        };
         let ActiveFrameData {
             text, total_lines, ..
-        } = prepare_active_frame(&mut tab, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
+        } = prepare_active_frame(&mut tab, &args, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
         assert!(total_lines >= 1);
         assert!(!text.lines.is_empty());
     }

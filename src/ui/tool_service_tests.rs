@@ -203,6 +203,23 @@ mod tests {
     }
 
     #[test]
+    fn list_dir_disabled_when_read_file_disabled() {
+        let registry = registry_empty_key();
+        let args = args(Some("-read_file".to_string()), false);
+        let (tx, _rx) = mpsc::channel();
+        let service = ToolService::new(&registry, &args, &tx);
+        let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
+        let calls = vec![tool_call("list_dir", r#"{"path":"."}"#)];
+        service.apply_tool_calls(&mut tab, 0, &calls);
+        assert!(
+            tab.app
+                .messages
+                .iter()
+                .any(|m| m.content.contains("list_dir 未启用"))
+        );
+    }
+
+    #[test]
     fn modify_file_invalid_json_reports_error() {
         let registry = registry_empty_key();
         let args = args(Some("modify_file".to_string()), false);

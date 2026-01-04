@@ -72,6 +72,7 @@ impl BaseFrameWidget {
                     key,
                     ctx.tabs,
                     *ctx.active_tab,
+                    ctx.args,
                     layout.layout.msg_width,
                     ctx.theme,
                 )?;
@@ -778,6 +779,7 @@ impl Widget for InputWidget {
                             *key,
                             ctx.tabs,
                             *ctx.active_tab,
+                            ctx.args,
                             layout.layout.msg_width,
                             ctx.theme,
                         )?;

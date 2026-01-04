@@ -3,7 +3,7 @@ mod helpers;
 mod pending;
 
 use crate::args::Args;
-use crate::ui::code_exec_container::ensure_container;
+use crate::ui::code_exec_container::ensure_container_cached;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_code_exec_helpers::inject_requirements;
 use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
@@ -79,14 +79,22 @@ pub(crate) fn handle_code_exec_approve(
     let run_id = helpers::init_run_id(&mut tab_state.app);
     let exec_code = inject_requirements(&pending.code);
     helpers::store_exec_code(&mut tab_state.app, &mut pending, exec_code);
-    let container_id = match ensure_container(&mut tab_state.app.code_exec_container_id) {
-        Ok(id) => id,
-        Err(err) => {
-            helpers::mark_exec_error(&live, err);
+    std::thread::spawn(move || {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return;
         }
-    };
-    exec::spawn_exec(container_id, run_id, pending, live, cancel);
+        let container_id = match ensure_container_cached() {
+            Ok(id) => id,
+            Err(err) => {
+                helpers::mark_exec_error(&live, err);
+                return;
+            }
+        };
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
+        exec::spawn_exec(container_id, run_id, pending, live, cancel);
+    });
 }
 
 pub(crate) fn handle_code_exec_deny(

@@ -25,6 +25,7 @@ pub(super) fn build_enabled_tools(
     }
     if enable_read_file {
         out.push("read_file");
+        out.push("list_dir");
     }
     if enable_read_code {
         out.push("read_code");

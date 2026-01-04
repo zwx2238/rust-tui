@@ -51,6 +51,7 @@ fn build_enabled_tools_collects_flags() {
     let tools = build_enabled_tools(true, false, true, false, true);
     assert!(tools.contains(&"web_search"));
     assert!(tools.contains(&"read_file"));
+    assert!(tools.contains(&"list_dir"));
     assert!(tools.contains(&"modify_file"));
     assert!(!tools.contains(&"code_exec"));
 }

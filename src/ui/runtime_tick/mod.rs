@@ -1,7 +1,11 @@
+use crate::args::Args;
+use crate::llm::prompt_manager::{augment_system, extract_system};
+use crate::llm::templates::RigTemplates;
 use crate::render::{
     RenderTheme, ViewportRenderParams, messages_to_viewport_text_cached,
     messages_to_viewport_text_cached_with_layout,
 };
+use crate::types::{Message, ROLE_SYSTEM};
 use crate::ui::input_click::update_input_view_top;
 use crate::ui::logic::{
     StreamAction, build_label_suffixes, drain_events, handle_stream_event, timer_text,
@@ -151,6 +155,7 @@ pub fn sync_file_patch_overlay(tabs: &mut [TabState], active_tab: usize, view: &
 
 pub fn prepare_active_frame(
     tab_state: &mut TabState,
+    args: &Args,
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
@@ -158,8 +163,15 @@ pub fn prepare_active_frame(
     startup_elapsed: Option<Duration>,
 ) -> ActiveFrameData {
     let label_suffixes = build_active_label_suffixes(&tab_state.app);
-    let (text, computed_total_lines) =
-        update_text_and_scroll(tab_state, theme, msg_width, view_height, &label_suffixes);
+    let render_messages = build_display_messages(&tab_state.app, args);
+    let (text, computed_total_lines) = update_text_and_scroll(
+        tab_state,
+        &render_messages,
+        theme,
+        msg_width,
+        view_height,
+        &label_suffixes,
+    );
     update_input_view_top(&mut tab_state.app, input_area);
     let startup_text = format_startup_text(startup_elapsed);
     let (pending_line, pending_command) = take_pending(&mut tab_state.app);
@@ -175,6 +187,7 @@ pub fn prepare_active_frame(
 
 fn update_text_and_scroll(
     tab_state: &mut TabState,
+    messages: &[Message],
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
@@ -182,10 +195,17 @@ fn update_text_and_scroll(
 ) -> (Text<'static>, usize) {
     let prev_scroll = tab_state.app.scroll;
     let (mut text, total) =
-        render_active_text(tab_state, theme, msg_width, view_height, label_suffixes);
+        render_active_text(tab_state, messages, theme, msg_width, view_height, label_suffixes);
     update_scroll(&mut tab_state.app, total, view_height);
     if tab_state.app.scroll != prev_scroll {
-        text = refresh_text_after_scroll(tab_state, theme, msg_width, view_height, label_suffixes);
+        text = refresh_text_after_scroll(
+            tab_state,
+            messages,
+            theme,
+            msg_width,
+            view_height,
+            label_suffixes,
+        );
     }
     (text, total)
 }
@@ -203,6 +223,7 @@ fn build_active_label_suffixes(app: &crate::ui::state::App) -> Vec<(usize, Strin
 
 fn render_active_text(
     tab_state: &mut TabState,
+    messages: &[Message],
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
@@ -210,7 +231,7 @@ fn render_active_text(
 ) -> (Text<'static>, usize) {
     let app = &mut tab_state.app;
     let params = ViewportRenderParams {
-        messages: &app.messages,
+        messages,
         width: msg_width,
         theme,
         label_suffixes,
@@ -234,6 +255,7 @@ fn update_scroll(app: &mut crate::ui::state::App, total_lines: usize, view_heigh
 
 fn refresh_text_after_scroll(
     tab_state: &mut TabState,
+    messages: &[Message],
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
@@ -242,7 +264,7 @@ fn refresh_text_after_scroll(
     let app = &mut tab_state.app;
     let (text, _) = messages_to_viewport_text_cached(
         crate::render::ViewportRenderParams {
-            messages: &app.messages,
+            messages,
             width: msg_width,
             theme,
             label_suffixes,
@@ -262,6 +284,75 @@ fn format_startup_text(startup_elapsed: Option<Duration>) -> Option<String> {
 fn reset_active_cache(app: &mut crate::ui::state::App) {
     app.dirty_indices.clear();
     app.cache_shift = None;
+}
+
+pub(crate) fn build_display_messages(app: &crate::ui::state::App, args: &Args) -> Vec<Message> {
+    if app.messages.is_empty() {
+        return Vec::new();
+    }
+    let mut messages = app.messages.clone();
+    if let Some(msg) = messages.first_mut()
+        && msg.role == ROLE_SYSTEM
+    {
+        if let Some(full) =
+            build_full_prompt_for_display(&app.messages, &app.prompts_dir, args)
+        {
+            if !full.trim().is_empty() {
+                msg.content = full;
+            }
+        }
+    }
+    messages
+}
+
+fn build_full_prompt_for_display(
+    messages: &[Message],
+    prompts_dir: &str,
+    args: &Args,
+) -> Option<String> {
+    let templates = RigTemplates::load(prompts_dir).ok()?;
+    let enabled = enabled_tool_names(args);
+    let tools = templates.tool_defs().ok()?;
+    let filtered = filter_tools_for_display(tools, &enabled);
+    let base_system = augment_system(&extract_system(messages));
+    if filtered.is_empty() {
+        return Some(base_system);
+    }
+    templates.render_preamble(&base_system, &filtered).ok()
+}
+
+fn enabled_tool_names(args: &Args) -> Vec<&'static str> {
+    let mut out = Vec::new();
+    if args.web_search_enabled() {
+        out.push("web_search");
+    }
+    if args.code_exec_enabled() {
+        out.push("code_exec");
+    }
+    if args.read_file_enabled() {
+        out.push("read_file");
+        out.push("list_dir");
+    }
+    if args.read_code_enabled() {
+        out.push("read_code");
+    }
+    if args.modify_file_enabled() {
+        out.push("modify_file");
+    }
+    out
+}
+
+fn filter_tools_for_display(
+    tools: Vec<crate::llm::templates::ToolSchema>,
+    enabled: &[&str],
+) -> Vec<crate::llm::templates::ToolSchema> {
+    if enabled.is_empty() {
+        return Vec::new();
+    }
+    tools
+        .into_iter()
+        .filter(|tool| enabled.iter().any(|name| *name == tool.name))
+        .collect()
 }
 
 pub fn build_exec_header_note(tabs: &[TabState], categories: &[String]) -> Option<String> {

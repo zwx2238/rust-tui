@@ -56,6 +56,7 @@ impl<'a> ToolService<'a> {
             "web_search" => self.handle_simple_tool(call, tab_state, state, ToolKind::WebSearch),
             "read_file" => self.handle_simple_tool(call, tab_state, state, ToolKind::ReadFile),
             "read_code" => self.handle_simple_tool(call, tab_state, state, ToolKind::ReadCode),
+            "list_dir" => self.handle_simple_tool(call, tab_state, state, ToolKind::ListDir),
             "modify_file" => self.handle_modify_file(call, tab_state, tab_id, state),
             "code_exec" => self.handle_code_exec(call, tab_state, tab_id, state),
             _ => {}
@@ -121,6 +122,7 @@ impl<'a> ToolService<'a> {
             ToolKind::WebSearch => self.args.web_search_enabled(),
             ToolKind::ReadFile => self.args.read_file_enabled(),
             ToolKind::ReadCode => self.args.read_code_enabled(),
+            ToolKind::ListDir => self.args.read_file_enabled(),
         }
     }
 
@@ -223,6 +225,7 @@ enum ToolKind {
     WebSearch,
     ReadFile,
     ReadCode,
+    ListDir,
 }
 
 fn tool_root(yolo: bool) -> Option<std::path::PathBuf> {

@@ -1,7 +1,7 @@
 use crate::render::{RenderTheme, render_markdown_lines};
 use ratatui::text::{Line, Text};
-use crate::ui::selection::line_to_string;
-use textwrap::Options;
+use crate::ui::selection::{line_to_string, line_width};
+use unicode_width::UnicodeWidthChar;
 
 pub(crate) fn build_code_text(
     code: &str,
@@ -10,14 +10,12 @@ pub(crate) fn build_code_text(
     scroll: usize,
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
-    let wrapped = wrap_text(code, width);
-    let md = code_to_markdown(&wrapped);
+    let md = code_to_markdown(code);
     build_text(&md, width, height, scroll, theme)
 }
 
 pub(crate) fn code_max_scroll(code: &str, width: u16, height: u16, theme: &RenderTheme) -> usize {
-    let wrapped = wrap_text(code, width);
-    let md = code_to_markdown(&wrapped);
+    let md = code_to_markdown(code);
     max_scroll(&md, width, height, theme)
 }
 
@@ -29,8 +27,7 @@ pub(crate) fn build_stdout_text(
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
     let stdout = output.unwrap_or("");
-    let wrapped = wrap_text(stdout, width);
-    let md = stdout_to_markdown(&wrapped);
+    let md = stdout_to_markdown(stdout);
     build_text(&md, width, height, scroll, theme)
 }
 
@@ -40,8 +37,7 @@ pub(crate) fn stdout_max_scroll(
     height: u16,
     theme: &RenderTheme,
 ) -> usize {
-    let wrapped = wrap_text(output, width);
-    let md = stdout_to_markdown(&wrapped);
+    let md = stdout_to_markdown(output);
     max_scroll(&md, width, height, theme)
 }
 
@@ -53,8 +49,7 @@ pub(crate) fn build_stderr_text(
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
     let stderr = output.unwrap_or("");
-    let wrapped = wrap_text(stderr, width);
-    let md = stderr_to_markdown(&wrapped);
+    let md = stderr_to_markdown(stderr);
     build_text(&md, width, height, scroll, theme)
 }
 
@@ -64,26 +59,22 @@ pub(crate) fn stderr_max_scroll(
     height: u16,
     theme: &RenderTheme,
 ) -> usize {
-    let wrapped = wrap_text(output, width);
-    let md = stderr_to_markdown(&wrapped);
+    let md = stderr_to_markdown(output);
     max_scroll(&md, width, height, theme)
 }
 
 pub(crate) fn code_plain_lines(code: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
-    let wrapped = wrap_text(code, width);
-    let md = code_to_markdown(&wrapped);
+    let md = code_to_markdown(code);
     render_plain_lines(&md, width, theme)
 }
 
 pub(crate) fn stdout_plain_lines(output: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
-    let wrapped = wrap_text(output, width);
-    let md = stdout_to_markdown(&wrapped);
+    let md = stdout_to_markdown(output);
     render_plain_lines(&md, width, theme)
 }
 
 pub(crate) fn stderr_plain_lines(output: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
-    let wrapped = wrap_text(output, width);
-    let md = stderr_to_markdown(&wrapped);
+    let md = stderr_to_markdown(output);
     render_plain_lines(&md, width, theme)
 }
 
@@ -94,7 +85,7 @@ fn build_text(
     scroll: usize,
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
-    let lines = render_markdown_lines(md, width as usize, theme, false);
+    let lines = wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false), width);
     let view_height = height.saturating_sub(1) as usize;
     let start = scroll.min(lines.len());
     let end = (start + view_height).min(lines.len());
@@ -103,32 +94,63 @@ fn build_text(
 }
 
 fn max_scroll(md: &str, width: u16, height: u16, theme: &RenderTheme) -> usize {
-    let lines = render_markdown_lines(md, width as usize, theme, false);
+    let lines = wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false), width);
     let view_height = height.saturating_sub(1) as usize;
     lines.len().saturating_sub(view_height)
 }
 
 fn render_plain_lines(md: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
-    let lines: Vec<Line<'static>> = render_markdown_lines(md, width as usize, theme, false);
+    let lines: Vec<Line<'static>> =
+        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false), width);
     lines.into_iter().map(|line| line_to_string(&line)).collect()
 }
 
-fn wrap_text(input: &str, width: u16) -> String {
+fn wrap_rendered_lines(lines: Vec<Line<'static>>, width: u16) -> Vec<Line<'static>> {
     let width = width.max(1) as usize;
-    let options = Options::new(width).break_words(true);
-    let mut out = String::new();
-    for line in input.lines() {
-        if line.is_empty() {
-            out.push('\n');
+    let mut out = Vec::new();
+    for line in lines {
+        if line_width(&line) <= width {
+            out.push(line);
             continue;
         }
-        for wrapped in textwrap::wrap(line, &options) {
-            out.push_str(&wrapped);
-            out.push('\n');
+        let mut text = line_to_string(&line);
+        text = text.trim_end_matches(['\n', '\r']).to_string();
+        if text.is_empty() {
+            out.push(Line::from(""));
+            continue;
+        }
+        for wrapped in wrap_fixed_width(&text, width) {
+            out.push(Line::from(wrapped));
         }
     }
-    if !input.ends_with('\n') && out.ends_with('\n') {
-        out.pop();
+    out
+}
+
+fn wrap_fixed_width(text: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![text.to_string()];
+    }
+    let mut out = Vec::new();
+    let mut buf = String::new();
+    let mut col = 0usize;
+    for ch in text.chars() {
+        let w = UnicodeWidthChar::width(ch).unwrap_or(0).max(1);
+        if col + w > width && !buf.is_empty() {
+            out.push(std::mem::take(&mut buf));
+            col = 0;
+        }
+        buf.push(ch);
+        col += w;
+        if col >= width {
+            out.push(std::mem::take(&mut buf));
+            col = 0;
+        }
+    }
+    if !buf.is_empty() {
+        out.push(buf);
+    }
+    if out.is_empty() {
+        out.push(String::new());
     }
     out
 }

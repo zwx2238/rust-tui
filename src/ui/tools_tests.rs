@@ -167,6 +167,57 @@ mod tests {
     }
 
     #[test]
+    fn list_dir_outputs_entries() {
+        let dir = temp_dir("tools-list");
+        let file = dir.join("a.txt");
+        let sub = dir.join("sub");
+        fs::write(&file, "hi").unwrap();
+        fs::create_dir_all(&sub).unwrap();
+        let call = ToolCall {
+            id: "8".to_string(),
+            kind: "function".to_string(),
+            function: ToolFunctionCall {
+                name: "list_dir".to_string(),
+                arguments: format!(r#"{{"path":"{}"}}"#, dir.display()),
+            },
+        };
+        let result = run_tool(&call, "", None);
+        assert!(result.content.contains("a.txt"));
+        assert!(result.content.contains("sub/"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn list_dir_respects_root() {
+        let root = temp_dir("tools-list-root");
+        let good = root.join("ok");
+        fs::create_dir_all(&good).unwrap();
+        let call = ToolCall {
+            id: "9".to_string(),
+            kind: "function".to_string(),
+            function: ToolFunctionCall {
+                name: "list_dir".to_string(),
+                arguments: format!(r#"{{"path":"{}"}}"#, root.display()),
+            },
+        };
+        let result = run_tool(&call, "", Some(&root));
+        assert!(result.content.contains("[list_dir]"));
+        let outside = temp_dir("tools-list-outside");
+        let call = ToolCall {
+            id: "10".to_string(),
+            kind: "function".to_string(),
+            function: ToolFunctionCall {
+                name: "list_dir".to_string(),
+                arguments: format!(r#"{{"path":"{}"}}"#, outside.display()),
+            },
+        };
+        let result = run_tool(&call, "", Some(&root));
+        assert!(result.content.contains("禁止读取"));
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
+    }
+
+    #[test]
     fn web_search_requires_query_and_key() {
         let call = ToolCall {
             id: "5".to_string(),
