@@ -29,7 +29,6 @@ pub(crate) fn prepare_categories(
 ) -> String {
     ensure_categories(categories);
     clamp_active_category(categories, active_category);
-    sync_active_category_with_tab(tabs, active_tab, categories, active_category);
     categories[*active_category].clone()
 }
 
@@ -57,15 +56,4 @@ fn clamp_active_category(categories: &[String], active_category: &mut usize) {
     }
 }
 
-fn sync_active_category_with_tab(
-    tabs: &[TabState],
-    active_tab: usize,
-    categories: &[String],
-    active_category: &mut usize,
-) {
-    if let Some(tab_state) = tabs.get(active_tab)
-        && let Some(idx) = categories.iter().position(|c| c == &tab_state.category)
-    {
-        *active_category = idx;
-    }
-}
+// active_category is user-driven; do not auto-sync it to active_tab here.

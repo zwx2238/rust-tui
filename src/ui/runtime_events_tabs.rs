@@ -1,7 +1,5 @@
 use crate::ui::logic::point_in_rect;
-use crate::ui::runtime_helpers::{
-    TabState, tab_index_at, tab_labels_for_category, visible_tab_indices,
-};
+use crate::ui::runtime_helpers::{TabState, tab_index_at, tab_labels_for_category, visible_tab_indices};
 use ratatui::layout::Rect;
 
 pub(crate) struct TabCategoryClickParams<'a> {
@@ -53,12 +51,6 @@ fn handle_category_click(
     let row = mouse_y.saturating_sub(category_area.y) as usize;
     if row < categories.len() {
         *active_category = row;
-        if let Some(category) = categories.get(*active_category) {
-            let visible = visible_tab_indices(tabs, category);
-            if let Some(tab_idx) = visible.first() {
-                *active_tab = *tab_idx;
-            }
-        }
     }
     true
 }

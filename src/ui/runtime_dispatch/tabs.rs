@@ -174,7 +174,6 @@ pub(crate) fn prev_category(ctx: &mut DispatchContext<'_>) {
     } else {
         *ctx.active_category -= 1;
     }
-    ensure_active_tab_in_category(ctx);
 }
 
 pub(crate) fn next_category(ctx: &mut DispatchContext<'_>) {
@@ -182,7 +181,6 @@ pub(crate) fn next_category(ctx: &mut DispatchContext<'_>) {
         ctx.categories.push("默认".to_string());
     }
     *ctx.active_category = (*ctx.active_category + 1) % ctx.categories.len();
-    ensure_active_tab_in_category(ctx);
 }
 
 fn active_category_name(ctx: &mut DispatchContext<'_>) -> String {
