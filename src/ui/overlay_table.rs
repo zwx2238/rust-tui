@@ -3,7 +3,7 @@ use crate::ui::draw::style::{base_fg, base_style, selection_bg};
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Row, Table, TableState};
+use ratatui::widgets::{Block, Borders, Clear, Row, Table, TableState};
 
 pub struct OverlayTable<'a> {
     pub title: Line<'a>,
@@ -16,6 +16,10 @@ pub struct OverlayTable<'a> {
 }
 
 pub fn draw_overlay_table(f: &mut ratatui::Frame<'_>, area: Rect, table: OverlayTable<'_>) {
+    // Clear underlying chat content so the overlay fully covers the area.
+    f.render_widget(Clear, area);
+    let base = Block::default().style(base_style(table.theme));
+    f.render_widget(base, area);
     let mut state = TableState::default().with_offset(table.scroll);
     if !table.rows.is_empty() {
         state.select(Some(table.selected.min(table.rows.len() - 1)));

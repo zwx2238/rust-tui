@@ -4,6 +4,9 @@ use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
 use std::error::Error;
 
+use crate::ui::runtime_events::handle_tab_category_click;
+use crate::ui::widget_system::bindings::bind_event;
+
 use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::ui::runtime_loop_steps::FrameLayout;
 
@@ -88,6 +91,24 @@ impl Widget for OverlayRootWidget {
         jump_rows: &[crate::ui::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
+        if let crossterm::event::Event::Mouse(m) = event
+            && matches!(m.kind, crossterm::event::MouseEventKind::Down(_))
+        {
+            let mut binding = bind_event(ctx, layout, update);
+            let handled = handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+                mouse_x: m.column,
+                mouse_y: m.row,
+                tabs: binding.dispatch.tabs,
+                active_tab: binding.dispatch.active_tab,
+                categories: binding.dispatch.categories,
+                active_category: binding.dispatch.active_category,
+                tabs_area: binding.layout.tabs_area,
+                category_area: binding.layout.category_area,
+            });
+            if handled {
+                return Ok(EventResult::handled());
+            }
+        }
         let result = match Self::active_kind(ctx.view) {
             Some(OverlayKind::Summary) => self.summary.event(ctx, event, layout, update, jump_rows),
             Some(OverlayKind::Jump) => self.jump.event(ctx, event, layout, update, jump_rows),

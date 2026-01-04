@@ -1,4 +1,5 @@
 mod base_frame;
+mod button;
 mod code_exec;
 mod frame;
 mod file_patch;

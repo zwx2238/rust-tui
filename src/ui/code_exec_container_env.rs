@@ -57,21 +57,28 @@ pub(crate) fn pip_cache_dir() -> String {
         Ok(value) => {
             let v = value.trim();
             if v.is_empty() {
-                std::env::temp_dir()
-                    .join("deepchat")
-                    .join("pip-cache")
-                    .to_string_lossy()
-                    .to_string()
+                default_pip_cache_dir()
             } else {
                 v.to_string()
             }
         }
-        Err(_) => std::env::temp_dir()
-            .join("deepchat")
-            .join("pip-cache")
-            .to_string_lossy()
-            .to_string(),
+        Err(_) => default_pip_cache_dir(),
     }
+}
+
+fn default_pip_cache_dir() -> String {
+    if let Ok(home) = std::env::var("HOME") {
+        let path = std::path::Path::new(&home)
+            .join(".cache")
+            .join("deepchat")
+            .join("pip");
+        return path.to_string_lossy().to_string();
+    }
+    std::env::temp_dir()
+        .join("deepchat")
+        .join("pip-cache")
+        .to_string_lossy()
+        .to_string()
 }
 
 pub(crate) fn prepare_pip_cache_dir() {

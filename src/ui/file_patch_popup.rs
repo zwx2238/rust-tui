@@ -20,6 +20,18 @@ pub(crate) fn draw_file_patch_popup(
     hover: Option<FilePatchHover>,
     theme: &RenderTheme,
 ) {
+    draw_file_patch_popup_base(f, area, pending, scroll, theme);
+    let layout = file_patch_popup_layout(area);
+    render_buttons(f, theme, layout, hover);
+}
+
+pub(crate) fn draw_file_patch_popup_base(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    pending: &PendingFilePatch,
+    scroll: usize,
+    theme: &RenderTheme,
+) {
     let layout = file_patch_popup_layout(area);
     let mask = popup_mask(area, layout.popup);
     render_mask(f, theme, mask);
@@ -33,7 +45,6 @@ pub(crate) fn draw_file_patch_popup(
     );
     render_preview_panel(f, theme, layout, preview_text);
     render_preview_scrollbar(f, theme, pending, layout, total_lines, scroll);
-    render_buttons(f, theme, layout, hover);
 }
 
 fn popup_mask(area: Rect, popup: Rect) -> Rect {

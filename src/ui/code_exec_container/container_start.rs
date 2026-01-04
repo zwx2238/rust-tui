@@ -64,6 +64,7 @@ fn add_container_envs(cmd: &mut Command) {
     let work_dir = work_dir();
     let tmp_dir = tmp_dir();
     let site_dir = pip_target_dir();
+    let cache_dir = format!("{work_dir}/.cache/pip");
     cmd.arg("-e")
         .arg(format!("TMPDIR={tmp_dir}"))
         .arg("-e")
@@ -78,6 +79,8 @@ fn add_container_envs(cmd: &mut Command) {
         .arg(format!("PIP_TARGET={site_dir}"))
         .arg("-e")
         .arg(format!("PYTHONPATH={site_dir}"))
+        .arg("-e")
+        .arg(format!("PIP_CACHE_DIR={cache_dir}"))
         .arg("-e")
         .arg("PIP_DISABLE_PIP_VERSION_CHECK=1");
 }

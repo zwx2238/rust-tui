@@ -2,9 +2,10 @@ use crate::render::RenderTheme;
 use crate::ui::code_exec_popup_layout::{CodeExecPopupLayout, OUTER_MARGIN};
 use crate::ui::code_exec_popup_text::{build_code_text, build_stderr_text, build_stdout_text};
 use crate::ui::draw::style::{base_fg, base_style};
+use crate::ui::selection::{Selection, apply_selection_to_text};
 use crate::ui::state::PendingCodeExec;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{
     Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
@@ -63,6 +64,7 @@ pub(crate) fn render_code_panel(
     pending: &PendingCodeExec,
     layout: CodeExecPopupLayout,
     scroll: usize,
+    selection: Option<Selection>,
 ) {
     let (text, total_lines) = build_code_text(
         &pending.code,
@@ -71,6 +73,7 @@ pub(crate) fn render_code_panel(
         scroll,
         theme,
     );
+    let text = apply_selection_if_needed(text, scroll, selection);
     render_text_panel(
         f,
         TextPanelParams {
@@ -91,6 +94,7 @@ pub(crate) fn render_stdout_panel(
     layout: CodeExecPopupLayout,
     live: Option<&crate::ui::state::CodeExecLive>,
     scroll: usize,
+    selection: Option<Selection>,
 ) {
     let (text, total_lines) = build_stdout_text(
         live.map(|l| l.stdout.as_str()),
@@ -99,6 +103,7 @@ pub(crate) fn render_stdout_panel(
         scroll,
         theme,
     );
+    let text = apply_selection_if_needed(text, scroll, selection);
     render_text_panel(
         f,
         TextPanelParams {
@@ -119,6 +124,7 @@ pub(crate) fn render_stderr_panel(
     layout: CodeExecPopupLayout,
     live: Option<&crate::ui::state::CodeExecLive>,
     scroll: usize,
+    selection: Option<Selection>,
 ) {
     let (text, total_lines) = build_stderr_text(
         live.map(|l| l.stderr.as_str()),
@@ -127,6 +133,7 @@ pub(crate) fn render_stderr_panel(
         scroll,
         theme,
     );
+    let text = apply_selection_if_needed(text, scroll, selection);
     render_text_panel(
         f,
         TextPanelParams {
@@ -168,6 +175,25 @@ fn render_text_panel(f: &mut ratatui::Frame<'_>, params: TextPanelParams<'_>) {
         params.total_lines,
         params.scroll,
     );
+}
+
+fn apply_selection_if_needed(
+    text: Text<'static>,
+    scroll: usize,
+    selection: Option<Selection>,
+) -> Text<'static> {
+    let Some(selection) = selection else {
+        return text;
+    };
+    if selection.is_empty() {
+        return text;
+    }
+    apply_selection_to_text(
+        &text,
+        scroll,
+        selection,
+        Style::default().bg(Color::DarkGray),
+    )
 }
 
 fn render_scrollbar_if_needed(

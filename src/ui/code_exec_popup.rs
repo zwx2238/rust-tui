@@ -22,20 +22,60 @@ pub(crate) struct CodeExecPopupParams<'a, 'b> {
     pub reason_target: Option<CodeExecReasonTarget>,
     pub reason_input: &'a mut TextArea<'b>,
     pub live: Option<&'a crate::ui::state::CodeExecLive>,
+    pub code_selection: Option<crate::ui::selection::Selection>,
+    pub stdout_selection: Option<crate::ui::selection::Selection>,
+    pub stderr_selection: Option<crate::ui::selection::Selection>,
     pub theme: &'a RenderTheme,
 }
 
 pub(crate) fn draw_code_exec_popup<'a, 'b>(
     f: &mut ratatui::Frame<'_>,
-    params: CodeExecPopupParams<'a, 'b>,
+    mut params: CodeExecPopupParams<'a, 'b>,
+) {
+    draw_code_exec_popup_base(f, &mut params);
+    let layout = code_exec_popup_layout(params.area, params.reason_target.is_some());
+    render_action_buttons(
+        f,
+        layout,
+        params.hover,
+        params.reason_target,
+        params.live,
+        params.theme,
+    );
+}
+
+pub(crate) fn draw_code_exec_popup_base<'a, 'b>(
+    f: &mut ratatui::Frame<'_>,
+    params: &mut CodeExecPopupParams<'a, 'b>,
 ) {
     let layout = code_exec_popup_layout(params.area, params.reason_target.is_some());
     let mask = popup_mask(params.area, layout.popup);
     render_mask(f, params.theme, mask);
     render_popup_base(f, params.theme, layout.popup, &build_title(params.live));
-    render_code_panel(f, params.theme, params.pending, layout, params.scroll);
-    render_stdout_panel(f, params.theme, layout, params.live, params.stdout_scroll);
-    render_stderr_panel(f, params.theme, layout, params.live, params.stderr_scroll);
+    render_code_panel(
+        f,
+        params.theme,
+        params.pending,
+        layout,
+        params.scroll,
+        params.code_selection,
+    );
+    render_stdout_panel(
+        f,
+        params.theme,
+        layout,
+        params.live,
+        params.stdout_scroll,
+        params.stdout_selection,
+    );
+    render_stderr_panel(
+        f,
+        params.theme,
+        layout,
+        params.live,
+        params.stderr_scroll,
+        params.stderr_selection,
+    );
     if let Some(target) = params.reason_target {
         draw_reason_input(
             f,
@@ -45,12 +85,4 @@ pub(crate) fn draw_code_exec_popup<'a, 'b>(
             params.theme,
         );
     }
-    render_action_buttons(
-        f,
-        layout,
-        params.hover,
-        params.reason_target,
-        params.live,
-        params.theme,
-    );
 }

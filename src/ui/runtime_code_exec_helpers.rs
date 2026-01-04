@@ -28,10 +28,13 @@ pub(crate) fn inject_requirements(code: &str) -> String {
     out.push_str("work_dir = os.environ.get(\"DEEPCHAT_WORKDIR\", \"/opt/deepchat\")\n");
     out.push_str("tmp_dir = os.path.join(work_dir, \"tmp\")\n");
     out.push_str("site_dir = os.path.join(work_dir, \"site-packages\")\n");
+    out.push_str("cache_dir = os.environ.get(\"PIP_CACHE_DIR\") or os.path.join(tmp_dir, \"pip-cache\")\n");
     out.push_str("os.makedirs(tmp_dir, exist_ok=True)\n");
     out.push_str("os.makedirs(site_dir, exist_ok=True)\n");
+    out.push_str("os.makedirs(cache_dir, exist_ok=True)\n");
+    out.push_str("os.environ[\"PIP_CACHE_DIR\"] = cache_dir\n");
     out.push_str("print(\"DEEPCHAT_PIP_BEGIN\")\n");
-    out.push_str("subprocess.check_call([sys.executable, \"-m\", \"pip\", \"install\", \"--target\", site_dir");
+    out.push_str("subprocess.check_call([sys.executable, \"-m\", \"pip\", \"install\", \"--target\", site_dir, \"--cache-dir\", cache_dir");
     for req in &requirements {
         out.push_str(", \"");
         out.push_str(req);

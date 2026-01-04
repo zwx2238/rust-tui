@@ -5,7 +5,6 @@ use crate::ui::runtime_dispatch::{
 use crate::ui::runtime_dispatch::key_helpers::{
     handle_pre_key_actions, handle_view_action_flow, is_quit_key, resolve_view_action,
 };
-use crate::ui::runtime_events::handle_tab_category_click;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
 use crate::ui::scroll::SCROLL_STEP_I32;
 use crate::ui::shortcut_help::help_rows_len;
@@ -59,9 +58,6 @@ impl<'a> OverlayTableController<'a> {
     }
 
     fn handle_mouse(&mut self, m: crossterm::event::MouseEvent) {
-        if self.handle_tab_click(m) {
-            return;
-        }
         if self.handle_overlay_scroll(m.kind) {
             return;
         }
@@ -84,22 +80,6 @@ impl<'a> OverlayTableController<'a> {
             self.dispatch.categories,
             self.dispatch.active_category,
         );
-    }
-
-    fn handle_tab_click(&mut self, m: crossterm::event::MouseEvent) -> bool {
-        if !matches!(m.kind, crossterm::event::MouseEventKind::Down(_)) {
-            return false;
-        }
-        handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
-            mouse_x: m.column,
-            mouse_y: m.row,
-            tabs: self.dispatch.tabs,
-            active_tab: self.dispatch.active_tab,
-            categories: self.dispatch.categories,
-            active_category: self.dispatch.active_category,
-            tabs_area: self.layout.tabs_area,
-            category_area: self.layout.category_area,
-        })
     }
 
     fn handle_overlay_scroll(&mut self, kind: crossterm::event::MouseEventKind) -> bool {

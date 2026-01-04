@@ -49,6 +49,9 @@ mod tests {
                         reason_target: Some(CodeExecReasonTarget::Deny),
                         reason_input: &mut input,
                         live: None,
+                        code_selection: None,
+                        stdout_selection: None,
+                        stderr_selection: None,
                         theme: &theme(),
                     },
                 );
@@ -88,6 +91,9 @@ mod tests {
                 reason_target,
                 reason_input: input,
                 live,
+                code_selection: None,
+                stdout_selection: None,
+                stderr_selection: None,
                 theme: &theme(),
             },
         );

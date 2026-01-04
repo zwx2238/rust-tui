@@ -177,6 +177,9 @@ fn draw_code_exec_popup_frame(
             reason_target: ui_state.4,
             reason_input,
             live: live_snapshot,
+            code_selection: None,
+            stdout_selection: None,
+            stderr_selection: None,
             theme,
         },
     );

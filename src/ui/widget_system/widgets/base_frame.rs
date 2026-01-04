@@ -11,14 +11,18 @@ use crate::ui::runtime_events::handle_key_event;
 use crate::ui::runtime_events::handle_mouse_event;
 use crate::ui::runtime_events::handle_paste_event;
 use crate::ui::runtime_events::handle_tab_category_click;
+use crate::ui::draw::inner_area;
+use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::state::Focus;
 use crate::ui::widget_system::bindings::{bind_active_tab, bind_event};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
+use ratatui::style::{Color, Modifier, Style};
 use std::error::Error;
 
 use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::ui::runtime_loop_steps::FrameLayout;
+use super::button::ButtonWidget;
 
 pub(crate) struct BaseFrameWidget {
     global_keys: WidgetPod<GlobalKeyWidget>,
@@ -26,6 +30,7 @@ pub(crate) struct BaseFrameWidget {
     tabs: WidgetPod<TabsWidget>,
     categories: WidgetPod<CategoriesWidget>,
     messages: WidgetPod<MessagesWidget>,
+    edit_button: WidgetPod<EditButtonWidget>,
     input: WidgetPod<InputWidget>,
     footer: WidgetPod<FooterWidget>,
     command_suggestions: WidgetPod<CommandSuggestionsWidget>,
@@ -39,6 +44,7 @@ impl BaseFrameWidget {
             tabs: WidgetPod::new(TabsWidget),
             categories: WidgetPod::new(CategoriesWidget),
             messages: WidgetPod::new(MessagesWidget),
+            edit_button: WidgetPod::new(EditButtonWidget::new()),
             input: WidgetPod::new(InputWidget),
             footer: WidgetPod::new(FooterWidget),
             command_suggestions: WidgetPod::new(CommandSuggestionsWidget),
@@ -61,7 +67,7 @@ impl BaseFrameWidget {
         }
         if let Some(mut active) = bind_active_tab(ctx.tabs, *ctx.active_tab) {
             let app = active.app();
-            if app.focus == Focus::Input && !app.busy {
+            if !app.busy {
                 let handled = handle_key_event(
                     key,
                     ctx.tabs,
@@ -118,6 +124,13 @@ impl BaseFrameWidget {
                 .input
                 .event(ctx, &crossterm::event::Event::Mouse(m), layout, update, jump_rows);
         }
+        if self
+            .edit_button
+            .event(ctx, &crossterm::event::Event::Mouse(m), layout, update, jump_rows)?
+            .handled
+        {
+            return Ok(EventResult::handled());
+        }
         if self.messages.contains(m.column, m.row)
             || scrollbar_hit(layout.layout.msg_area, m.column, m.row)
         {
@@ -141,6 +154,7 @@ impl Widget for BaseFrameWidget {
         self.tabs.set_rect(layout.layout.tabs_area);
         self.categories.set_rect(layout.layout.category_area);
         self.messages.set_rect(layout.layout.msg_area);
+        self.edit_button.set_rect(layout.layout.msg_area);
         self.input.set_rect(layout.layout.input_area);
         self.footer.set_rect(layout.layout.footer_area);
         self.command_suggestions.set_rect(rect);
@@ -149,10 +163,19 @@ impl Widget for BaseFrameWidget {
 
     fn update(
         &mut self,
-        _ctx: &mut UpdateCtx<'_>,
-        _layout: &FrameLayout,
-        _update: &UpdateOutput,
+        ctx: &mut UpdateCtx<'_>,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
     ) -> Result<(), Box<dyn Error>> {
+        self.global_keys.update(ctx, layout, update)?;
+        self.header.update(ctx, layout, update)?;
+        self.tabs.update(ctx, layout, update)?;
+        self.categories.update(ctx, layout, update)?;
+        self.messages.update(ctx, layout, update)?;
+        self.edit_button.update(ctx, layout, update)?;
+        self.input.update(ctx, layout, update)?;
+        self.command_suggestions.update(ctx, layout, update)?;
+        self.footer.update(ctx, layout, update)?;
         Ok(())
     }
 
@@ -188,6 +211,7 @@ impl Widget for BaseFrameWidget {
         self.categories.render(frame, layout, update)?;
         self.tabs.render(frame, layout, update)?;
         self.messages.render(frame, layout, update)?;
+        self.edit_button.render(frame, layout, update)?;
         self.input.render(frame, layout, update)?;
         self.command_suggestions.render(frame, layout, update)?;
         self.footer.render(frame, layout, update)?;
@@ -500,7 +524,7 @@ impl Widget for MessagesWidget {
             return Ok(EventResult::ignored());
         }
         let mut binding = bind_event(ctx, layout, update);
-        let msg_idx = handle_mouse_event(crate::ui::runtime_events::MouseEventParams {
+        let _ = handle_mouse_event(crate::ui::runtime_events::MouseEventParams {
             m: *m,
             tabs: binding.dispatch.tabs,
             active_tab: binding.dispatch.active_tab,
@@ -515,12 +539,6 @@ impl Widget for MessagesWidget {
             total_lines: update.active_data.total_lines,
             theme: binding.dispatch.theme,
         });
-        if let Some(idx) = msg_idx {
-            let _ = crate::ui::runtime_dispatch::fork::fork_message_by_index(
-                &mut binding.dispatch,
-                idx,
-            );
-        }
         Ok(EventResult::handled())
     }
 
@@ -547,6 +565,156 @@ impl Widget for MessagesWidget {
         }
         Ok(())
     }
+}
+
+struct EditButtonWidget {
+    buttons: Vec<EditButtonEntry>,
+}
+
+struct EditButtonEntry {
+    msg_index: usize,
+    button: ButtonWidget,
+}
+
+impl EditButtonWidget {
+    fn new() -> Self {
+        Self { buttons: Vec::new() }
+    }
+
+    fn sync_buttons(
+        &mut self,
+        layouts: &[crate::render::MessageLayout],
+        scroll: u16,
+        msg_area: ratatui::layout::Rect,
+    ) {
+        let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
+        let mut count = 0;
+        for layout in layouts {
+            let Some((start, end)) = layout.button_range else {
+                continue;
+            };
+            let row = layout.label_line as i32 - scroll as i32;
+            if row < 0 || row >= inner.height as i32 {
+                continue;
+            }
+            let start_u = start as u16;
+            if start_u >= inner.width {
+                continue;
+            }
+            let end_u = (end as u16).min(inner.width);
+            let width = end_u.saturating_sub(start_u);
+            if width == 0 {
+                continue;
+            }
+            let rect = ratatui::layout::Rect {
+                x: inner.x + start_u,
+                y: inner.y + row as u16,
+                width,
+                height: 1,
+            };
+            let entry = self.ensure_entry(count, layout.index);
+            entry.msg_index = layout.index;
+            entry.button.set_rect(rect);
+            entry.button.set_label("[编辑]");
+            entry.button.set_visible(true);
+            entry.button.set_bordered(false);
+            entry.button.set_style(edit_button_style());
+            count += 1;
+        }
+        for entry in self.buttons.iter_mut().skip(count) {
+            entry.button.set_visible(false);
+        }
+    }
+
+    fn ensure_entry(&mut self, idx: usize, msg_index: usize) -> &mut EditButtonEntry {
+        if self.buttons.len() <= idx {
+            self.buttons.push(EditButtonEntry {
+                msg_index,
+                button: ButtonWidget::new("[编辑]"),
+            });
+        }
+        &mut self.buttons[idx]
+    }
+}
+
+impl Widget for EditButtonWidget {
+    fn layout(
+        &mut self,
+        _ctx: &mut LayoutCtx<'_>,
+        _layout: &FrameLayout,
+        _rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx<'_>,
+        layout: &FrameLayout,
+        _update: &UpdateOutput,
+    ) -> Result<(), Box<dyn Error>> {
+        if let Some(tab_state) = ctx.tabs.get(*ctx.active_tab) {
+            self.sync_buttons(
+                &tab_state.app.message_layouts,
+                tab_state.app.scroll,
+                layout.layout.msg_area,
+            );
+        }
+        Ok(())
+    }
+
+    fn event(
+        &mut self,
+        ctx: &mut EventCtx<'_>,
+        event: &crossterm::event::Event,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+        _jump_rows: &[crate::ui::jump::JumpRow],
+        _rect: ratatui::layout::Rect,
+    ) -> Result<EventResult, Box<dyn Error>> {
+        let crossterm::event::Event::Mouse(m) = event else {
+            return Ok(EventResult::ignored());
+        };
+        if !matches!(m.kind, crossterm::event::MouseEventKind::Down(_)) {
+            return Ok(EventResult::ignored());
+        }
+        for entry in &mut self.buttons {
+            if entry
+                .button
+                .event(ctx, event, layout, update, &[], layout.layout.msg_area)?
+                .handled
+            {
+                let mut binding = bind_event(ctx, layout, update);
+                let _ = crate::ui::runtime_dispatch::fork::fork_message_by_index(
+                    &mut binding.dispatch,
+                    entry.msg_index,
+                );
+                return Ok(EventResult::handled());
+            }
+        }
+        Ok(EventResult::ignored())
+    }
+
+    fn render(
+        &mut self,
+        frame: &mut WidgetFrame<'_, '_, '_, '_>,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+        _rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        for entry in &mut self.buttons {
+            let _ = entry
+                .button
+                .render(frame, layout, update, layout.layout.msg_area);
+        }
+        Ok(())
+    }
+}
+
+fn edit_button_style() -> Style {
+    Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
 }
 
 struct InputWidget;
@@ -736,6 +904,9 @@ impl Widget for CommandSuggestionsWidget {
         let crossterm::event::Event::Mouse(m) = event else {
             return Ok(EventResult::ignored());
         };
+        if !matches!(m.kind, crossterm::event::MouseEventKind::Down(_)) {
+            return Ok(EventResult::ignored());
+        }
         if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
             if handle_command_suggestion_click(
                 &mut tab_state.app,

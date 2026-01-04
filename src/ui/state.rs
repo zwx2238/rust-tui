@@ -35,6 +35,13 @@ pub enum CodeExecReasonTarget {
     Stop,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CodeExecSelectionTarget {
+    Code,
+    Stdout,
+    Stderr,
+}
+
 #[derive(Clone)]
 pub struct RequestHandle {
     pub id: u64,
@@ -95,6 +102,10 @@ pub struct App {
     pub code_exec_reason_input: TextArea<'static>,
     pub code_exec_container_id: Option<String>,
     pub code_exec_run_id: Option<String>,
+    pub code_exec_selecting: Option<CodeExecSelectionTarget>,
+    pub code_exec_code_selection: Option<crate::ui::selection::Selection>,
+    pub code_exec_stdout_selection: Option<crate::ui::selection::Selection>,
+    pub code_exec_stderr_selection: Option<crate::ui::selection::Selection>,
     pub pending_file_patch: Option<PendingFilePatch>,
     pub file_patch_scroll: usize,
     pub file_patch_hover: Option<FilePatchHover>,
