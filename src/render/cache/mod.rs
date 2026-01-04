@@ -228,7 +228,7 @@ fn render_message_content_lines(
     match msg.role.as_str() {
         ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM | ROLE_TOOL => {
             let content = message_content(msg, streaming);
-            render_markdown_lines(content.as_ref(), width, theme, streaming)
+            render_markdown_lines(content.as_ref(), width, theme, streaming, false)
         }
         _ => Vec::new(),
     }

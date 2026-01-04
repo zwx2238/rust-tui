@@ -32,7 +32,7 @@ fn build_text(
     scroll: usize,
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
-    let lines = render_markdown_lines(md, width as usize, theme, false);
+    let lines = render_markdown_lines(md, width as usize, theme, false, false);
     let view_height = height.saturating_sub(1) as usize;
     let start = scroll.min(lines.len());
     let end = (start + view_height).min(lines.len());
@@ -41,7 +41,7 @@ fn build_text(
 }
 
 fn max_scroll(md: &str, width: u16, height: u16, theme: &RenderTheme) -> usize {
-    let lines = render_markdown_lines(md, width as usize, theme, false);
+    let lines = render_markdown_lines(md, width as usize, theme, false, false);
     let view_height = height.saturating_sub(1) as usize;
     lines.len().saturating_sub(view_height)
 }

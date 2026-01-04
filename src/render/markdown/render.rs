@@ -9,10 +9,11 @@ pub fn render_markdown_lines(
     width: usize,
     theme: &RenderTheme,
     streaming: bool,
+    show_code_line_numbers: bool,
 ) -> Vec<Line<'static>> {
     let text = preprocess_math(text);
     let parser = markdown_parser(&text);
-    let mut state = RenderState::new(width, theme, streaming);
+    let mut state = RenderState::new(width, theme, streaming, show_code_line_numbers);
     for event in parser {
         state.handle_event(event);
     }

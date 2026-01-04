@@ -85,7 +85,8 @@ fn build_text(
     scroll: usize,
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
-    let lines = wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false), width);
+    let lines =
+        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false, true), width);
     let view_height = height.saturating_sub(1) as usize;
     let start = scroll.min(lines.len());
     let end = (start + view_height).min(lines.len());
@@ -94,14 +95,15 @@ fn build_text(
 }
 
 fn max_scroll(md: &str, width: u16, height: u16, theme: &RenderTheme) -> usize {
-    let lines = wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false), width);
+    let lines =
+        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false, true), width);
     let view_height = height.saturating_sub(1) as usize;
     lines.len().saturating_sub(view_height)
 }
 
 fn render_plain_lines(md: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
     let lines: Vec<Line<'static>> =
-        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false), width);
+        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false, true), width);
     lines.into_iter().map(|line| line_to_string(&line)).collect()
 }
 
@@ -119,8 +121,48 @@ fn wrap_rendered_lines(lines: Vec<Line<'static>>, width: u16) -> Vec<Line<'stati
             out.push(Line::from(""));
             continue;
         }
-        for wrapped in wrap_fixed_width(&text, width) {
-            out.push(Line::from(wrapped));
+        if let Some((prefix, cont_prefix, content)) = split_numbered_prefix(&text) {
+            for wrapped in wrap_with_prefix(&content, &prefix, &cont_prefix, width) {
+                out.push(Line::from(wrapped));
+            }
+        } else {
+            for wrapped in wrap_fixed_width(&text, width) {
+                out.push(Line::from(wrapped));
+            }
+        }
+    }
+    out
+}
+
+fn split_numbered_prefix(text: &str) -> Option<(String, String, String)> {
+    let pipe = text.find(" | ")?;
+    let (left, rest) = text.split_at(pipe);
+    let left_trim = left.trim();
+    if left_trim.is_empty() || !left_trim.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let prefix = format!("{} | ", left_trim);
+    let cont_prefix = format!("{} | ", " ".repeat(left_trim.len()));
+    let content = rest.trim_start_matches(" | ").to_string();
+    Some((prefix, cont_prefix, content))
+}
+
+fn wrap_with_prefix(content: &str, prefix: &str, cont_prefix: &str, width: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let prefix_width = prefix.chars().map(char_width).sum::<usize>().max(1);
+    if width <= prefix_width + 1 {
+        for wrapped in wrap_fixed_width(&format!("{prefix}{content}"), width) {
+            out.push(wrapped);
+        }
+        return out;
+    }
+    let avail = width.saturating_sub(prefix_width);
+    let parts = wrap_fixed_width(content, avail);
+    for (i, part) in parts.into_iter().enumerate() {
+        if i == 0 {
+            out.push(format!("{prefix}{part}"));
+        } else {
+            out.push(format!("{cont_prefix}{part}"));
         }
     }
     out
@@ -134,7 +176,7 @@ fn wrap_fixed_width(text: &str, width: usize) -> Vec<String> {
     let mut buf = String::new();
     let mut col = 0usize;
     for ch in text.chars() {
-        let w = UnicodeWidthChar::width(ch).unwrap_or(0).max(1);
+        let w = char_width(ch);
         if col + w > width && !buf.is_empty() {
             out.push(std::mem::take(&mut buf));
             col = 0;
@@ -153,6 +195,10 @@ fn wrap_fixed_width(text: &str, width: usize) -> Vec<String> {
         out.push(String::new());
     }
     out
+}
+
+fn char_width(ch: char) -> usize {
+    UnicodeWidthChar::width(ch).unwrap_or(0).max(1)
 }
 
 fn code_to_markdown(code: &str) -> String {

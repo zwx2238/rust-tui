@@ -10,11 +10,12 @@ pub(crate) fn render_code_block_lines(
     text: &str,
     lang: &str,
     theme: &RenderTheme,
+    show_line_numbers: bool,
 ) -> Vec<Line<'static>> {
     let (ss, syn_theme, syntax) = load_syntax(theme, lang);
     let mut highlighter = HighlightLines::new(syntax, syn_theme);
     let lines: Vec<&str> = text.lines().collect();
-    let config = build_highlight_config(theme, lang, lines.len());
+    let config = build_highlight_config(theme, lang, lines.len(), show_line_numbers);
     let mut out = Vec::new();
     for (i, raw) in lines.iter().enumerate() {
         let spans = highlight_spans(raw, &mut highlighter, ss, &config, i);
@@ -113,8 +114,13 @@ fn append_highlighted_spans(
     }
 }
 
-fn build_highlight_config(theme: &RenderTheme, lang: &str, lines_len: usize) -> HighlightConfig {
-    let show_line_numbers = lang != "math";
+fn build_highlight_config(
+    theme: &RenderTheme,
+    lang: &str,
+    lines_len: usize,
+    show_numbers: bool,
+) -> HighlightConfig {
+    let show_line_numbers = show_numbers && lang != "math";
     let max_digits = if show_line_numbers {
         lines_len.max(1).to_string().len()
     } else {
@@ -167,7 +173,7 @@ mod tests {
 
     #[test]
     fn renders_line_numbers_for_non_math() {
-        let lines = render_code_block_lines("let x = 1;\nlet y = 2;", "rust", &theme());
+        let lines = render_code_block_lines("let x = 1;\nlet y = 2;", "rust", &theme(), true);
         assert_eq!(lines.len(), 2);
         let first = lines[0].to_string();
         assert!(first.contains("|"));
@@ -175,7 +181,7 @@ mod tests {
 
     #[test]
     fn omits_line_numbers_for_math() {
-        let lines = render_code_block_lines("x^2 + 1", "math", &theme());
+        let lines = render_code_block_lines("x^2 + 1", "math", &theme(), true);
         assert_eq!(lines.len(), 1);
         let line = lines[0].to_string();
         assert!(!line.contains("|"));

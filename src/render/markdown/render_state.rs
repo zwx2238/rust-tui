@@ -13,6 +13,7 @@ pub(super) struct RenderState<'a> {
     width: usize,
     theme: &'a RenderTheme,
     streaming: bool,
+    show_code_line_numbers: bool,
     buf: String,
     in_code: bool,
     code_lang: String,
@@ -27,11 +28,17 @@ pub(super) struct RenderState<'a> {
 }
 
 impl<'a> RenderState<'a> {
-    pub(super) fn new(width: usize, theme: &'a RenderTheme, streaming: bool) -> Self {
+    pub(super) fn new(
+        width: usize,
+        theme: &'a RenderTheme,
+        streaming: bool,
+        show_code_line_numbers: bool,
+    ) -> Self {
         Self {
             width,
             theme,
             streaming,
+            show_code_line_numbers,
             buf: String::new(),
             in_code: false,
             code_lang: String::new(),
@@ -186,7 +193,12 @@ impl<'a> RenderState<'a> {
 
     fn end_code_block(&mut self) {
         self.in_code = false;
-        let lines = render_code_block_lines(&self.code_buf, self.code_lang.trim(), self.theme);
+        let lines = render_code_block_lines(
+            &self.code_buf,
+            self.code_lang.trim(),
+            self.theme,
+            self.show_code_line_numbers,
+        );
         self.lines.extend(lines);
         self.code_buf.clear();
         self.code_lang.clear();
