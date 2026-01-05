@@ -91,35 +91,10 @@ impl Widget for OverlayRootWidget {
         jump_rows: &[crate::ui::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
-        if let crossterm::event::Event::Mouse(m) = event
-            && matches!(m.kind, crossterm::event::MouseEventKind::Down(_))
-        {
-            let mut binding = bind_event(ctx, layout, update);
-            let handled = handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
-                mouse_x: m.column,
-                mouse_y: m.row,
-                tabs: binding.dispatch.tabs,
-                active_tab: binding.dispatch.active_tab,
-                categories: binding.dispatch.categories,
-                active_category: binding.dispatch.active_category,
-                tabs_area: binding.layout.tabs_area,
-                category_area: binding.layout.category_area,
-            });
-            if handled {
-                return Ok(EventResult::handled());
-            }
+        if try_tab_category_click(ctx, event, layout, update)? {
+            return Ok(EventResult::handled());
         }
-        let result = match Self::active_kind(ctx.view) {
-            Some(OverlayKind::Summary) => self.summary.event(ctx, event, layout, update, jump_rows),
-            Some(OverlayKind::Jump) => self.jump.event(ctx, event, layout, update, jump_rows),
-            Some(OverlayKind::Model) => self.model.event(ctx, event, layout, update, jump_rows),
-            Some(OverlayKind::Prompt) => self.prompt.event(ctx, event, layout, update, jump_rows),
-            Some(OverlayKind::CodeExec) => self.code_exec.event(ctx, event, layout, update, jump_rows),
-            Some(OverlayKind::FilePatch) => self.file_patch.event(ctx, event, layout, update, jump_rows),
-            Some(OverlayKind::Help) => self.help.event(ctx, event, layout, update, jump_rows),
-            None => return Ok(EventResult::ignored()),
-        }?;
-        return Ok(result);
+        dispatch_overlay_event(self, ctx, event, layout, update, jump_rows)
     }
 
     fn render(
@@ -140,5 +115,55 @@ impl Widget for OverlayRootWidget {
             None => {}
         }
         Ok(())
+    }
+}
+
+fn try_tab_category_click(
+    ctx: &mut EventCtx<'_>,
+    event: &crossterm::event::Event,
+    layout: &FrameLayout,
+    update: &UpdateOutput,
+) -> Result<bool, Box<dyn Error>> {
+    let crossterm::event::Event::Mouse(m) = event else {
+        return Ok(false);
+    };
+    if !matches!(m.kind, crossterm::event::MouseEventKind::Down(_)) {
+        return Ok(false);
+    }
+    let binding = bind_event(ctx, layout, update);
+    let handled = handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+        mouse_x: m.column,
+        mouse_y: m.row,
+        tabs: binding.dispatch.tabs,
+        active_tab: binding.dispatch.active_tab,
+        categories: binding.dispatch.categories,
+        active_category: binding.dispatch.active_category,
+        tabs_area: binding.layout.tabs_area,
+        category_area: binding.layout.category_area,
+    });
+    Ok(handled)
+}
+
+fn dispatch_overlay_event(
+    widget: &mut OverlayRootWidget,
+    ctx: &mut EventCtx<'_>,
+    event: &crossterm::event::Event,
+    layout: &FrameLayout,
+    update: &UpdateOutput,
+    jump_rows: &[crate::ui::jump::JumpRow],
+) -> Result<EventResult, Box<dyn Error>> {
+    match OverlayRootWidget::active_kind(ctx.view) {
+        Some(OverlayKind::Summary) => widget.summary.event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::Jump) => widget.jump.event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::Model) => widget.model.event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::Prompt) => widget.prompt.event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::CodeExec) => {
+            widget.code_exec.event(ctx, event, layout, update, jump_rows)
+        }
+        Some(OverlayKind::FilePatch) => {
+            widget.file_patch.event(ctx, event, layout, update, jump_rows)
+        }
+        Some(OverlayKind::Help) => widget.help.event(ctx, event, layout, update, jump_rows),
+        None => Ok(EventResult::ignored()),
     }
 }

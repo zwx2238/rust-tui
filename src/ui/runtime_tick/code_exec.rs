@@ -1,7 +1,7 @@
 use crate::ui::runtime_code_exec_output::build_code_exec_tool_output;
 use crate::ui::runtime_helpers::TabState;
 
-pub(super) fn update_code_exec_results(tabs: &mut [TabState]) {
+pub fn update_code_exec_results(tabs: &mut [TabState]) {
     for tab_state in tabs.iter_mut() {
         update_tab_code_exec(tab_state);
     }

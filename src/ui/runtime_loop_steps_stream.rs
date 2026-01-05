@@ -27,6 +27,17 @@ pub(crate) struct ProcessStreamUpdatesParams<'a> {
     pub view: &'a mut ViewState,
 }
 
+pub(crate) struct ActiveFrameDataParams<'a> {
+    pub tabs: &'a mut [TabState],
+    pub active_tab: usize,
+    pub args: &'a Args,
+    pub theme: &'a RenderTheme,
+    pub msg_width: usize,
+    pub view_height: u16,
+    pub input_area: Rect,
+    pub startup_elapsed: Option<Duration>,
+}
+
 pub(crate) fn process_stream_updates(
     params: ProcessStreamUpdatesParams<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -53,24 +64,15 @@ pub(crate) fn process_stream_updates(
     Ok(())
 }
 
-pub(crate) fn active_frame_data(
-    tabs: &mut [TabState],
-    active_tab: usize,
-    args: &Args,
-    theme: &RenderTheme,
-    msg_width: usize,
-    view_height: u16,
-    input_area: Rect,
-    startup_elapsed: Option<Duration>,
-) -> ActiveFrameData {
+pub(crate) fn active_frame_data(params: ActiveFrameDataParams<'_>) -> ActiveFrameData {
     prepare_active_frame(
-        &mut tabs[active_tab],
-        args,
-        theme,
-        msg_width,
-        view_height,
-        input_area,
-        startup_elapsed,
+        &mut params.tabs[params.active_tab],
+        params.args,
+        params.theme,
+        params.msg_width,
+        params.view_height,
+        params.input_area,
+        params.startup_elapsed,
     )
 }
 

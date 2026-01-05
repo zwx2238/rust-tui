@@ -43,39 +43,85 @@ fn assert_duration_under(label: &str, d: Duration, limit: Duration) {
 #[test]
 #[ignore]
 fn long_conversation_render_latency() {
-    let theme = RenderTheme {
+    let theme = build_theme();
+    let messages = build_long_messages(50);
+    let width = 100;
+    let mut cache: Vec<RenderCacheEntry> = Vec::new();
+
+    let height = 30u16;
+    let (cold, warm, cold_text) = measure_render(&messages, &theme, width, height, &mut cache);
+    let max_cold = read_duration_env("PERF_COLD_MS", 2500);
+    let max_warm = read_duration_env("PERF_WARM_MS", 400);
+
+    eprintln!(
+        "long_conversation_render_latency: cold={:?}, warm={:?}",
+        cold, warm
+    );
+    write_render_output(&cold_text);
+
+    assert_duration_under("cold render", cold, max_cold);
+    assert_duration_under("warm render", warm, max_warm);
+}
+
+fn build_theme() -> RenderTheme {
+    RenderTheme {
         bg: Color::Black,
         fg: None,
         code_bg: Color::Black,
         code_theme: "base16-ocean.dark",
         heading_fg: None,
-    };
-    let messages = build_long_messages(50);
-    let width = 100;
-    let mut cache: Vec<RenderCacheEntry> = Vec::new();
+    }
+}
 
+fn measure_render(
+    messages: &[Message],
+    theme: &RenderTheme,
+    width: u16,
+    height: u16,
+    cache: &mut Vec<RenderCacheEntry>,
+) -> (Duration, Duration, ratatui::text::Text<'static>) {
+    let (cold_text, total_lines, cold) = render_once(messages, theme, width, height, cache);
+    let warm = render_warm(messages, theme, width, height, cache, total_lines);
+    (cold, warm, cold_text)
+}
+
+fn render_once(
+    messages: &[Message],
+    theme: &RenderTheme,
+    width: u16,
+    height: u16,
+    cache: &mut Vec<RenderCacheEntry>,
+) -> (ratatui::text::Text<'static>, usize, Duration) {
     let t0 = Instant::now();
-    let height = 30u16;
     let (cold_text, total_lines) = messages_to_viewport_text_cached(
         ViewportRenderParams {
-            messages: &messages,
-            width,
-            theme: &theme,
+            messages,
+            width: width as usize,
+            theme,
             label_suffixes: &[],
             streaming_idx: None,
             scroll: 0,
             height,
         },
-        &mut cache,
+        cache,
     );
-    let cold = t0.elapsed();
+    (cold_text, total_lines, t0.elapsed())
+}
 
+fn render_warm(
+    messages: &[Message],
+    theme: &RenderTheme,
+    width: u16,
+    height: u16,
+    cache: &mut Vec<RenderCacheEntry>,
+    total_lines: usize,
+) -> Duration {
     let t1 = Instant::now();
     let _ = messages_to_viewport_text_cached(
         ViewportRenderParams {
-            messages: &messages,
-            width,
-            theme: &theme,
+            messages,
+            width: width as usize,
+            theme,
             label_suffixes: &[],
             streaming_idx: None,
             scroll: total_lines
@@ -83,40 +129,31 @@ fn long_conversation_render_latency() {
                 .min(u16::MAX as usize) as u16,
             height,
         },
-        &mut cache,
+        cache,
     );
-    let warm = t1.elapsed();
+    t1.elapsed()
+}
 
-    let max_cold = Duration::from_millis(
-        std::env::var("PERF_COLD_MS")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(2500),
-    );
-    let max_warm = Duration::from_millis(
-        std::env::var("PERF_WARM_MS")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(400),
-    );
+fn read_duration_env(key: &str, default_ms: u64) -> Duration {
+    let ms = std::env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default_ms);
+    Duration::from_millis(ms)
+}
 
-    eprintln!(
-        "long_conversation_render_latency: cold={:?}, warm={:?}",
-        cold, warm
-    );
-
-    if let Ok(path) = std::env::var("PERF_RENDER_OUTPUT")
-        && let Ok(mut file) = File::create(path)
-    {
-        for line in cold_text.lines {
-            let mut s = String::new();
-            for span in line.spans {
-                s.push_str(&span.content);
-            }
-            let _ = writeln!(file, "{s}");
+fn write_render_output(cold_text: &ratatui::text::Text<'_>) {
+    let Ok(path) = std::env::var("PERF_RENDER_OUTPUT") else {
+        return;
+    };
+    let Ok(mut file) = File::create(path) else {
+        return;
+    };
+    for line in &cold_text.lines {
+        let mut s = String::new();
+        for span in &line.spans {
+            s.push_str(&span.content);
         }
+        let _ = writeln!(file, "{s}");
     }
-
-    assert_duration_under("cold render", cold, max_cold);
-    assert_duration_under("warm render", warm, max_warm);
 }

@@ -76,25 +76,39 @@ pub(crate) fn resolve_container_path(
     }
     let input_path = Path::new(raw);
     if input_path.is_absolute() {
-        if raw.starts_with(&workspace.mount_path) {
-            return Ok(raw.to_string());
-        }
-        let canonical = input_path
-            .canonicalize()
-            .map_err(|e| format!("路径不可用：{e}"))?;
-        if !canonical.starts_with(&workspace.host_path) {
-            return Err("禁止访问 workspace 之外的路径".to_string());
-        }
-        let suffix = canonical
-            .strip_prefix(&workspace.host_path)
-            .map_err(|_| "路径不可用".to_string())?;
-        let mut out = PathBuf::from(&workspace.mount_path);
-        if !suffix.as_os_str().is_empty() {
-            out.push(suffix);
-        }
-        return Ok(out.to_string_lossy().to_string());
+        return resolve_absolute_path(raw, input_path, workspace);
     }
-    let mut out = PathBuf::from(&workspace.mount_path);
-    out.push(raw);
-    Ok(out.to_string_lossy().to_string())
+    Ok(resolve_relative_path(raw, workspace))
+}
+
+fn resolve_absolute_path(
+    raw: &str,
+    input_path: &Path,
+    workspace: &WorkspaceConfig,
+) -> Result<String, String> {
+    if raw.starts_with(&workspace.mount_path) {
+        return Ok(raw.to_string());
+    }
+    let canonical = input_path
+        .canonicalize()
+        .map_err(|e| format!("路径不可用：{e}"))?;
+    if !canonical.starts_with(&workspace.host_path) {
+        return Err("禁止访问 workspace 之外的路径".to_string());
+    }
+    let suffix = canonical
+        .strip_prefix(&workspace.host_path)
+        .map_err(|_| "路径不可用".to_string())?;
+    Ok(build_container_path(&workspace.mount_path, suffix))
+}
+
+fn resolve_relative_path(raw: &str, workspace: &WorkspaceConfig) -> String {
+    build_container_path(&workspace.mount_path, Path::new(raw))
+}
+
+fn build_container_path(mount_path: &str, suffix: &Path) -> String {
+    let mut out = PathBuf::from(mount_path);
+    if !suffix.as_os_str().is_empty() {
+        out.push(suffix);
+    }
+    out.to_string_lossy().to_string()
 }

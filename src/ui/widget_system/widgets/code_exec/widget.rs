@@ -1,0 +1,76 @@
+use crate::ui::jump::JumpRow;
+use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::lifecycle::{EventResult, Widget};
+use std::error::Error;
+
+use super::event::{handle_key_event, handle_mouse_event};
+use super::render::render_code_exec_overlay;
+
+pub(crate) struct CodeExecWidget {
+    pub(super) approve_btn: crate::ui::widget_system::widgets::button::ButtonWidget,
+    pub(super) deny_btn: crate::ui::widget_system::widgets::button::ButtonWidget,
+    pub(super) stop_btn: crate::ui::widget_system::widgets::button::ButtonWidget,
+    pub(super) exit_btn: crate::ui::widget_system::widgets::button::ButtonWidget,
+}
+
+impl CodeExecWidget {
+    pub(crate) fn new() -> Self {
+        Self {
+            approve_btn: crate::ui::widget_system::widgets::button::ButtonWidget::new("确认执行"),
+            deny_btn: crate::ui::widget_system::widgets::button::ButtonWidget::new("取消拒绝"),
+            stop_btn: crate::ui::widget_system::widgets::button::ButtonWidget::new("停止执行"),
+            exit_btn: crate::ui::widget_system::widgets::button::ButtonWidget::new("退出"),
+        }
+    }
+}
+
+impl Widget for CodeExecWidget {
+    fn layout(
+        &mut self,
+        _ctx: &mut LayoutCtx<'_>,
+        _layout: &FrameLayout,
+        _rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _layout: &FrameLayout,
+        _update: &UpdateOutput,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn event(
+        &mut self,
+        ctx: &mut EventCtx<'_>,
+        event: &crossterm::event::Event,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+        jump_rows: &[JumpRow],
+        _rect: ratatui::layout::Rect,
+    ) -> Result<EventResult, Box<dyn Error>> {
+        match event {
+            crossterm::event::Event::Mouse(m) => {
+                handle_mouse_event(self, ctx, layout, update, *m)
+            }
+            crossterm::event::Event::Key(_) => {
+                handle_key_event(ctx, layout, update, jump_rows, event)
+            }
+            _ => Ok(EventResult::ignored()),
+        }
+    }
+
+    fn render(
+        &mut self,
+        frame: &mut WidgetFrame<'_, '_, '_, '_>,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+        _rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        render_code_exec_overlay(self, frame, layout, update)
+    }
+}

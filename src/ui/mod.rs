@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod clipboard;
 mod code_exec_container;
 mod code_exec_container_env;

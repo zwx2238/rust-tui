@@ -21,7 +21,7 @@ impl<'a> ActiveTabBinding<'a> {
 }
 
 pub(crate) fn bind_active_tab<'a>(
-    tabs: &'a mut Vec<TabState>,
+    tabs: &'a mut [TabState],
     active_tab: usize,
 ) -> Option<ActiveTabBinding<'a>> {
     tabs.get_mut(active_tab).map(|tab| ActiveTabBinding { tab })
@@ -38,18 +38,39 @@ pub(crate) fn bind_event<'a>(
     layout: &FrameLayout,
     update: &UpdateOutput,
 ) -> EventBinding<'a> {
+    let EventCtx {
+        tabs,
+        active_tab,
+        categories,
+        active_category,
+        theme,
+        registry,
+        prompt_registry,
+        args,
+        view,
+        ..
+    } = ctx;
     let dispatch = DispatchContext {
-        tabs: ctx.tabs,
-        active_tab: ctx.active_tab,
-        categories: ctx.categories,
-        active_category: ctx.active_category,
+        tabs,
+        active_tab,
+        categories,
+        active_category,
         msg_width: layout.layout.msg_width,
-        theme: ctx.theme,
-        registry: ctx.registry,
-        prompt_registry: ctx.prompt_registry,
-        args: ctx.args,
+        theme,
+        registry,
+        prompt_registry,
+        args,
     };
-    let layout_ctx = LayoutContext {
+    let layout_ctx = build_layout(layout, update);
+    EventBinding {
+        dispatch,
+        layout: layout_ctx,
+        view,
+    }
+}
+
+fn build_layout(layout: &FrameLayout, update: &UpdateOutput) -> LayoutContext {
+    LayoutContext {
         size: layout.size,
         tabs_area: layout.layout.tabs_area,
         msg_area: layout.layout.msg_area,
@@ -57,10 +78,5 @@ pub(crate) fn bind_event<'a>(
         category_area: layout.layout.category_area,
         view_height: layout.layout.view_height,
         total_lines: update.active_data.total_lines,
-    };
-    EventBinding {
-        dispatch,
-        layout: layout_ctx,
-        view: ctx.view,
     }
 }

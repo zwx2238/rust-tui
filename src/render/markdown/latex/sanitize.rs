@@ -2,7 +2,11 @@ pub(crate) fn sanitize_tex(expr: &str) -> String {
     if !tex_filter_enabled() {
         return expr.to_string();
     }
-    let mut out = Vec::new();
+    let lines = collect_candidate_lines(expr);
+    filter_tex_lines(lines).join("\n")
+}
+
+fn collect_candidate_lines(expr: &str) -> Vec<&str> {
     let mut lines: Vec<&str> = expr.lines().collect();
     if let Some(start) = lines.iter().position(|l| l.contains("\\begin{cases}"))
         && let Some(end) = lines.iter().rposition(|l| l.contains("\\end{cases}"))
@@ -10,25 +14,33 @@ pub(crate) fn sanitize_tex(expr: &str) -> String {
     {
         lines = lines[start..=end].to_vec();
     }
+    lines
+}
+
+fn filter_tex_lines(lines: Vec<&str>) -> Vec<String> {
+    let mut out = Vec::new();
     for raw in lines {
-        let mut line = raw.replace('\r', "");
-        let trimmed = line.trim();
-        if trimmed == "]" || trimmed == "[" || trimmed == "\\]" || trimmed == "\\[" {
-            continue;
+        if let Some(line) = sanitize_tex_line(raw) {
+            out.push(line);
         }
-        line = strip_cjk_punct(&line);
-        if contains_cjk_letters(&line) {
-            continue;
-        }
-        if !is_mathish_line(&line) {
-            continue;
-        }
-        if line.ends_with(" \\") && !line.ends_with(" \\\\") {
-            line.push('\\');
-        }
-        out.push(line);
     }
-    out.join("\n")
+    out
+}
+
+fn sanitize_tex_line(raw: &str) -> Option<String> {
+    let mut line = raw.replace('\r', "");
+    let trimmed = line.trim();
+    if trimmed == "]" || trimmed == "[" || trimmed == "\\]" || trimmed == "\\[" {
+        return None;
+    }
+    line = strip_cjk_punct(&line);
+    if contains_cjk_letters(&line) || !is_mathish_line(&line) {
+        return None;
+    }
+    if line.ends_with(" \\") && !line.ends_with(" \\\\") {
+        line.push('\\');
+    }
+    Some(line)
 }
 
 fn tex_filter_enabled() -> bool {

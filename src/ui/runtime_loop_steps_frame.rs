@@ -22,8 +22,8 @@ pub(crate) fn frame_layout(
 }
 
 pub(crate) fn prepare_categories(
-    tabs: &[TabState],
-    active_tab: usize,
+    _tabs: &[TabState],
+    _active_tab: usize,
     categories: &mut Vec<String>,
     active_category: &mut usize,
 ) -> String {

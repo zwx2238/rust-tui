@@ -69,16 +69,16 @@ fn run_stream_updates(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> Result<(
 }
 
 fn build_active_data(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> ActiveFrameData {
-    active_frame_data(
-        ctx.tabs,
-        *ctx.active_tab,
-        ctx.args,
-        ctx.theme,
-        layout.layout.msg_width,
-        layout.layout.view_height,
-        layout.layout.input_area,
-        *ctx.startup_elapsed,
-    )
+    active_frame_data(crate::ui::runtime_loop_steps::ActiveFrameDataParams {
+        tabs: ctx.tabs,
+        active_tab: *ctx.active_tab,
+        args: ctx.args,
+        theme: ctx.theme,
+        msg_width: layout.layout.msg_width,
+        view_height: layout.layout.view_height,
+        input_area: layout.layout.input_area,
+        startup_elapsed: *ctx.startup_elapsed,
+    })
 }
 
 fn handle_pending_actions(ctx: &mut UpdateCtx<'_>, active_data: &ActiveFrameData) {

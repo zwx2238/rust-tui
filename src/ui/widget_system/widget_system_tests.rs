@@ -167,7 +167,8 @@ mod tests {
             system.update(&mut ctx, &layout).unwrap()
         };
         let mut ctx = event_ctx(state);
-        let _ = system.event(&mut ctx, &layout, &update, &[]).unwrap();
+        let event = crossterm::event::Event::Resize(0, 0);
+        let _ = system.event(&mut ctx, &layout, &update, &[], &event).unwrap();
     }
 
     #[test]

@@ -94,14 +94,8 @@ pub(crate) fn handle_code_exec_approve(
     if tab_state.app.code_exec_live.is_some() {
         return;
     }
-    let live = helpers::init_code_exec_live(&mut tab_state.app);
-    let cancel = helpers::init_cancel_flag(&mut tab_state.app);
-    let run_id = helpers::init_run_id(&mut tab_state.app);
-    let exec_code = if pending.language == "python" {
-        inject_requirements(&pending.code)
-    } else {
-        pending.code.clone()
-    };
+    let (live, cancel, run_id) = init_exec_state(tab_state);
+    let exec_code = build_exec_code(&pending);
     helpers::store_exec_code(&mut tab_state.app, &mut pending, exec_code);
     let workspace = match crate::ui::workspace::resolve_workspace(args) {
         Ok(val) => val,
@@ -110,6 +104,37 @@ pub(crate) fn handle_code_exec_approve(
             return;
         }
     };
+    spawn_exec_thread(workspace, pending, live, cancel, run_id);
+}
+
+fn init_exec_state(
+    tab_state: &mut TabState,
+) -> (
+    std::sync::Arc<std::sync::Mutex<crate::ui::state::CodeExecLive>>,
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    String,
+) {
+    let live = helpers::init_code_exec_live(&mut tab_state.app);
+    let cancel = helpers::init_cancel_flag(&mut tab_state.app);
+    let run_id = helpers::init_run_id(&mut tab_state.app);
+    (live, cancel, run_id)
+}
+
+fn build_exec_code(pending: &PendingCodeExec) -> String {
+    if pending.language == "python" {
+        inject_requirements(&pending.code)
+    } else {
+        pending.code.clone()
+    }
+}
+
+fn spawn_exec_thread(
+    workspace: crate::ui::workspace::WorkspaceConfig,
+    pending: PendingCodeExec,
+    live: std::sync::Arc<std::sync::Mutex<crate::ui::state::CodeExecLive>>,
+    cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    run_id: String,
+) {
     std::thread::spawn(move || {
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return;

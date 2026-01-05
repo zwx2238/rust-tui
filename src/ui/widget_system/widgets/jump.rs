@@ -45,7 +45,7 @@ impl Widget for JumpWidget {
         jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
-        let mut binding = bind_event(ctx, layout, update);
+        let binding = bind_event(ctx, layout, update);
         let mut controller = OverlayTableController {
             dispatch: binding.dispatch,
             layout: binding.layout,
@@ -62,46 +62,59 @@ impl Widget for JumpWidget {
         _update: &UpdateOutput,
         _rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        frame.jump_rows.clear();
-        if frame.view.overlay.is(crate::ui::overlay::OverlayKind::Jump) {
-            let rows = frame
-                .state
-                .with_active_tab(|tab| {
-                    build_jump_rows(
-                        &tab.app.messages,
-                        frame.state.msg_width,
-                        max_preview_width(frame.state.msg_area),
-                        tab.app.pending_assistant,
-                    )
-                })
-                .unwrap_or_default();
-            frame.jump_rows.extend(rows);
-        }
+        refresh_jump_rows(frame);
         clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
-        crate::ui::jump::draw_jump_layout(
-            frame.frame,
-            crate::ui::jump::JumpLayoutParams {
-                theme: frame.state.theme,
-                tab_labels: frame.state.tab_labels,
-                active_tab_pos: frame.state.active_tab_pos,
-                categories: frame.state.categories,
-                active_category: frame.state.active_category,
-                header_note: frame.state.header_note,
-                startup_text: frame.state.startup_text,
-                header_area: frame.state.header_area,
-                category_area: frame.state.category_area,
-                tabs_area: frame.state.tabs_area,
-                footer_area: frame.state.footer_area,
-            },
-        );
-        crate::ui::jump::draw_jump_table(
-            frame.frame,
-            frame.state.msg_area,
-            frame.jump_rows,
-            frame.view.jump.selected,
-            frame.state.theme,
-            frame.view.jump.scroll,
-        );
+        draw_jump_layout(frame);
+        draw_jump_table(frame);
         Ok(())
     }
+}
+
+fn refresh_jump_rows(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
+    frame.jump_rows.clear();
+    if !frame.view.overlay.is(crate::ui::overlay::OverlayKind::Jump) {
+        return;
+    }
+    let rows = frame
+        .state
+        .with_active_tab(|tab| {
+            build_jump_rows(
+                &tab.app.messages,
+                frame.state.msg_width,
+                max_preview_width(frame.state.msg_area),
+                tab.app.pending_assistant,
+            )
+        })
+        .unwrap_or_default();
+    frame.jump_rows.extend(rows);
+}
+
+fn draw_jump_layout(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
+    crate::ui::jump::draw_jump_layout(
+        frame.frame,
+        crate::ui::jump::JumpLayoutParams {
+            theme: frame.state.theme,
+            tab_labels: frame.state.tab_labels,
+            active_tab_pos: frame.state.active_tab_pos,
+            categories: frame.state.categories,
+            active_category: frame.state.active_category,
+            header_note: frame.state.header_note,
+            startup_text: frame.state.startup_text,
+            header_area: frame.state.header_area,
+            category_area: frame.state.category_area,
+            tabs_area: frame.state.tabs_area,
+            footer_area: frame.state.footer_area,
+        },
+    );
+}
+
+fn draw_jump_table(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
+    crate::ui::jump::draw_jump_table(
+        frame.frame,
+        frame.state.msg_area,
+        frame.jump_rows,
+        frame.view.jump.selected,
+        frame.state.theme,
+        frame.view.jump.scroll,
+    );
 }

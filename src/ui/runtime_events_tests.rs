@@ -194,6 +194,22 @@ mod tests {
 
     #[test]
     fn ctrl_c_copies_chat_selection() {
+        let mut tabs = build_chat_tabs();
+        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        let args = default_args();
+        let handled = crate::ui::runtime_events::handle_key_event(
+            key,
+            &mut tabs,
+            0,
+            &args,
+            40,
+            &theme(),
+        )
+        .unwrap();
+        assert!(!handled);
+    }
+
+    fn build_chat_tabs() -> Vec<TabState> {
         let mut tabs = vec![TabState::new(
             "id".into(),
             "默认".into(),
@@ -213,8 +229,11 @@ mod tests {
             start: (0, 0),
             end: (0, 1),
         });
-        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
-        let args = crate::args::Args {
+        tabs
+    }
+
+    fn default_args() -> crate::args::Args {
+        crate::args::Args {
             model: "m".to_string(),
             system: "sys".to_string(),
             base_url: "http://example.com".to_string(),
@@ -230,10 +249,7 @@ mod tests {
             yolo: false,
             read_only: false,
             wait_gdb: false,
-        };
-        let handled =
-            crate::ui::runtime_events::handle_key_event(key, &mut tabs, 0, &args, 40, &theme()).unwrap();
-        assert!(!handled);
+        }
     }
 
     #[test]

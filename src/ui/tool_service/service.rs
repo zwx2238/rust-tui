@@ -1,17 +1,19 @@
 use crate::args::Args;
 use crate::model_registry::{ModelProfile, ModelRegistry};
-use crate::types::{Message, ToolCall};
+use crate::types::ToolCall;
 use crate::ui::net::UiEvent;
-use crate::ui::runtime_code_exec::handle_code_exec_request;
-use crate::ui::runtime_code_exec::handle_bash_exec_request;
+use crate::ui::runtime_code_exec::{handle_bash_exec_request, handle_code_exec_request};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::tools::run_tool;
 use crate::ui::workspace::resolve_workspace;
-use std::fs::{create_dir_all, OpenOptions};
-use std::io::Write;
 use std::sync::mpsc;
-use std::time::{SystemTime, UNIX_EPOCH};
+
+use super::helpers::{
+    ToolApplyState, ToolKind, push_assistant_message, push_tool_disabled, push_tool_error,
+    push_tool_message, push_workspace_error,
+};
+use super::logging::log_modify_file_raw;
 
 pub struct ToolService<'a> {
     registry: &'a ModelRegistry,
@@ -30,22 +32,6 @@ impl<'a> ToolService<'a> {
             self.handle_tool_call(tab_state, tab_id, call, &mut state);
         }
         self.finalize_tool_calls(tab_state, tab_id, state);
-    }
-}
-
-struct ToolApplyState {
-    any_results: bool,
-    needs_approval: bool,
-    api_key: String,
-}
-
-impl ToolApplyState {
-    fn new(api_key: String) -> Self {
-        Self {
-            any_results: false,
-            needs_approval: false,
-            api_key,
-        }
     }
 }
 
@@ -77,20 +63,13 @@ impl<'a> ToolService<'a> {
         kind: ToolKind,
     ) {
         if !self.tool_enabled(kind) {
-            let msg = format!(r#"{{"error":"{} 未启用"}}"#, call.function.name);
-            push_tool_message(tab_state, call, msg);
-            state.any_results = true;
+            push_tool_disabled(tab_state, call, state);
             return;
         }
         let workspace = match resolve_workspace(self.args) {
             Ok(val) => val,
             Err(err) => {
-                push_tool_message(
-                    tab_state,
-                    call,
-                    format!(r#"{{"error":"{}"}}"#, err),
-                );
-                state.any_results = true;
+                push_workspace_error(tab_state, call, state, &err);
                 return;
             }
         };
@@ -108,7 +87,7 @@ impl<'a> ToolService<'a> {
         tab_id: usize,
         state: &mut ToolApplyState,
     ) {
-        self.log_modify_file_raw(call);
+        log_modify_file_raw(self.args, call);
         if self.reject_modify_file(tab_state, call, state) {
             return;
         }
@@ -254,81 +233,4 @@ impl<'a> ToolService<'a> {
             log_session_id,
         });
     }
-
-    fn log_modify_file_raw(&self, call: &ToolCall) {
-        if call.function.name != "modify_file" {
-            return;
-        }
-        let workspace = match resolve_workspace(self.args) {
-            Ok(val) => val,
-            Err(_) => return,
-        };
-        let log_dir = workspace.host_path.join(".deepchat");
-        if create_dir_all(&log_dir).is_err() {
-            return;
-        }
-        let log_path = log_dir.join("modify_file.log");
-        let mut file = match OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_path)
-        {
-            Ok(file) => file,
-            Err(_) => return,
-        };
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        let _ = writeln!(
-            file,
-            "ts={} id={} args={}",
-            ts,
-            call.id,
-            call.function.arguments
-        );
-    }
-}
-
-enum ToolKind {
-    WebSearch,
-    ReadFile,
-    ReadCode,
-    ListDir,
-}
-
-fn push_tool_message(tab_state: &mut TabState, call: &ToolCall, content: String) {
-    let idx = tab_state.app.messages.len();
-    tab_state.app.messages.push(Message {
-        role: crate::types::ROLE_TOOL.to_string(),
-        content,
-        tool_call_id: Some(call.id.clone()),
-        tool_calls: None,
-    });
-    tab_state.app.dirty_indices.push(idx);
-}
-
-fn push_tool_error(
-    tab_state: &mut TabState,
-    call: &ToolCall,
-    state: &mut ToolApplyState,
-    message: impl AsRef<str>,
-) {
-    push_tool_message(
-        tab_state,
-        call,
-        format!(r#"{{"error":"{}"}}"#, message.as_ref()),
-    );
-    state.any_results = true;
-}
-
-fn push_assistant_message(tab_state: &mut TabState, content: String) {
-    let idx = tab_state.app.messages.len();
-    tab_state.app.messages.push(Message {
-        role: crate::types::ROLE_ASSISTANT.to_string(),
-        content,
-        tool_call_id: None,
-        tool_calls: None,
-    });
-    tab_state.app.dirty_indices.push(idx);
 }

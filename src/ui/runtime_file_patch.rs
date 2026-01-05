@@ -173,6 +173,15 @@ fn apply_patch(diff: &str, args: &Args) -> Result<(), String> {
 }
 
 fn run_container_patch(container_id: &str, diff: &str) -> Result<(), String> {
+    let mut child = spawn_patch_process(container_id)?;
+    write_patch_input(&mut child, diff)?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("应用补丁失败：{e}"))?;
+    handle_patch_output(output)
+}
+
+fn spawn_patch_process(container_id: &str) -> Result<std::process::Child, String> {
     let mut cmd = Command::new("docker");
     cmd.arg("exec")
         .arg("-i")
@@ -183,25 +192,28 @@ fn run_container_patch(container_id: &str, diff: &str) -> Result<(), String> {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = cmd.spawn().map_err(|e| format!("应用补丁失败：{e}"))?;
+    cmd.spawn().map_err(|e| format!("应用补丁失败：{e}"))
+}
+
+fn write_patch_input(child: &mut std::process::Child, diff: &str) -> Result<(), String> {
     if let Some(mut stdin) = child.stdin.take() {
         stdin
             .write_all(diff.as_bytes())
             .map_err(|e| format!("应用补丁失败：{e}"))?;
     }
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("应用补丁失败：{e}"))?;
+    Ok(())
+}
+
+fn handle_patch_output(output: std::process::Output) -> Result<(), String> {
     if output.status.success() {
-        Ok(())
-    } else {
-        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(if err.is_empty() {
-            "应用补丁失败".to_string()
-        } else {
-            err
-        })
+        return Ok(());
     }
+    let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(if err.is_empty() {
+        "应用补丁失败".to_string()
+    } else {
+        err
+    })
 }
 
 fn escape_json_string(input: &str) -> String {

@@ -49,9 +49,26 @@ pub(crate) fn draw_code_exec_popup_base<'a, 'b>(
     params: &mut CodeExecPopupParams<'a, 'b>,
 ) {
     let layout = code_exec_popup_layout(params.area, params.reason_target.is_some());
+    render_popup_base_layer(f, params, layout);
+    render_panels(f, params, layout);
+    render_reason_if_needed(f, params, layout);
+}
+
+fn render_popup_base_layer<'a, 'b>(
+    f: &mut ratatui::Frame<'_>,
+    params: &CodeExecPopupParams<'a, 'b>,
+    layout: crate::ui::code_exec_popup_layout::CodeExecPopupLayout,
+) {
     let mask = popup_mask(params.area, layout.popup);
     render_mask(f, params.theme, mask);
     render_popup_base(f, params.theme, layout.popup, &build_title(params.live));
+}
+
+fn render_panels<'a, 'b>(
+    f: &mut ratatui::Frame<'_>,
+    params: &CodeExecPopupParams<'a, 'b>,
+    layout: crate::ui::code_exec_popup_layout::CodeExecPopupLayout,
+) {
     render_code_panel(
         f,
         params.theme,
@@ -76,6 +93,13 @@ pub(crate) fn draw_code_exec_popup_base<'a, 'b>(
         params.stderr_scroll,
         params.stderr_selection,
     );
+}
+
+fn render_reason_if_needed<'a, 'b>(
+    f: &mut ratatui::Frame<'_>,
+    params: &mut CodeExecPopupParams<'a, 'b>,
+    layout: crate::ui::code_exec_popup_layout::CodeExecPopupLayout,
+) {
     if let Some(target) = params.reason_target {
         draw_reason_input(
             f,

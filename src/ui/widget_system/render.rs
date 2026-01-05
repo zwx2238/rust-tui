@@ -6,12 +6,27 @@ use super::context::{RenderCtx, RenderState, UpdateOutput, WidgetFrame};
 use super::lifecycle::Widget;
 use super::widgets::RootWidget;
 
-pub(crate) fn render_root<'a>(
-    ctx: &'a mut RenderCtx<'a>,
-    layout: &'a FrameLayout,
-    update: &'a UpdateOutput,
+pub(crate) fn render_root(
+    ctx: &mut RenderCtx<'_>,
+    layout: &FrameLayout,
+    update: &UpdateOutput,
     root: &mut RootWidget,
 ) -> Result<Vec<JumpRow>, Box<dyn Error>> {
+    let mut jump_rows = Vec::new();
+    let result = draw_root(ctx, layout, update, root, &mut jump_rows);
+    note_elapsed(ctx.start_time, &mut *ctx.startup_elapsed);
+    ctx.terminal.hide_cursor()?;
+    result?;
+    Ok(jump_rows)
+}
+
+fn draw_root(
+    ctx: &mut RenderCtx<'_>,
+    layout: &FrameLayout,
+    update: &UpdateOutput,
+    root: &mut RootWidget,
+    jump_rows: &mut Vec<JumpRow>,
+) -> Result<(), Box<dyn Error>> {
     let terminal = &mut *ctx.terminal;
     let tabs = &mut *ctx.tabs;
     let active_tab = ctx.active_tab;
@@ -21,9 +36,6 @@ pub(crate) fn render_root<'a>(
     let registry = ctx.registry;
     let prompt_registry = ctx.prompt_registry;
     let view = &mut *ctx.view;
-    let start_time = ctx.start_time;
-    let startup_elapsed = &mut *ctx.startup_elapsed;
-    let mut jump_rows = Vec::new();
     let mut render_result: Result<(), Box<dyn Error>> = Ok(());
     terminal.draw(|f| {
         let mut render_state = RenderState {
@@ -54,14 +66,11 @@ pub(crate) fn render_root<'a>(
             frame: f,
             state: &mut render_state,
             view,
-            jump_rows: &mut jump_rows,
+            jump_rows,
         };
         if let Err(err) = root.render(&mut frame, layout, update, layout.size) {
             render_result = Err(err.to_string().into());
         }
     })?;
-    render_result?;
-    note_elapsed(start_time, startup_elapsed);
-    terminal.hide_cursor()?;
-    Ok(jump_rows)
+    render_result
 }

@@ -39,8 +39,8 @@ pub(crate) fn handle_tab_category_click(params: TabCategoryClickParams<'_>) -> b
 fn handle_category_click(
     mouse_x: u16,
     mouse_y: u16,
-    tabs: &mut [TabState],
-    active_tab: &mut usize,
+    _tabs: &mut [TabState],
+    _active_tab: &mut usize,
     categories: &[String],
     active_category: &mut usize,
     category_area: Rect,

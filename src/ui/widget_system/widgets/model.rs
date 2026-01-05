@@ -46,7 +46,7 @@ impl Widget for ModelWidget {
         jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
-        let mut binding = bind_event(ctx, layout, update);
+        let binding = bind_event(ctx, layout, update);
         let mut controller = OverlayTableController {
             dispatch: binding.dispatch,
             layout: binding.layout,

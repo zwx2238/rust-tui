@@ -193,7 +193,16 @@ mod tests {
             tool_call_id: None,
             tool_calls: None,
         });
-        let args = Args {
+        let args = default_args();
+        let ActiveFrameData {
+            text, total_lines, ..
+        } = prepare_active_frame(&mut tab, &args, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
+        assert!(total_lines >= 1);
+        assert!(!text.lines.is_empty());
+    }
+
+    fn default_args() -> Args {
+        Args {
             model: "m".to_string(),
             system: "sys".to_string(),
             base_url: "http://example.com".to_string(),
@@ -209,12 +218,7 @@ mod tests {
             yolo: false,
             read_only: false,
             wait_gdb: false,
-        };
-        let ActiveFrameData {
-            text, total_lines, ..
-        } = prepare_active_frame(&mut tab, &args, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
-        assert!(total_lines >= 1);
-        assert!(!text.lines.is_empty());
+        }
     }
 
     #[test]
