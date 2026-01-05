@@ -12,7 +12,7 @@ pub(crate) fn build_code_exec_tool_output(
     let mut text = String::new();
     text.push_str("[code_exec]\n");
     text.push_str(&format!("language: {}\n", pending.language));
-    append_code_block(&mut text, &pending.code);
+    append_code_block(&mut text, &pending.code, &pending.language);
     append_exit_code(&mut text, live.exit_code);
     append_output_block(&mut text, "stdout", &stdout_filtered, stdout_empty);
     append_output_block(&mut text, "stderr", &live.stderr, stderr_empty);
@@ -48,13 +48,20 @@ pub(crate) fn escape_json_string(input: &str) -> String {
         .replace('\t', "\\t")
 }
 
-fn append_code_block(out: &mut String, code: &str) {
+fn append_code_block(out: &mut String, code: &str, language: &str) {
     out.push_str("code:\n");
     if code.trim().is_empty() {
         out.push_str("(空)\n");
         return;
     }
-    out.push_str("```python\n");
+    let lang = if language.trim().is_empty() {
+        "text"
+    } else {
+        language
+    };
+    out.push_str("```");
+    out.push_str(lang);
+    out.push('\n');
     out.push_str(code);
     if !code.ends_with('\n') {
         out.push('\n');

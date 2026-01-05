@@ -174,6 +174,7 @@ mod tool_service_tests;
 mod tools;
 #[cfg(test)]
 mod tools_tests;
+pub(crate) mod workspace;
 mod widget_system;
 
 pub use runtime::run;

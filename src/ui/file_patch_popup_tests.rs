@@ -39,6 +39,7 @@ mod tests {
                     &pending(),
                     0,
                     Some(FilePatchHover::Apply),
+                    None,
                     &theme(),
                 );
             })

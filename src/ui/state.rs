@@ -109,6 +109,8 @@ pub struct App {
     pub pending_file_patch: Option<PendingFilePatch>,
     pub file_patch_scroll: usize,
     pub file_patch_hover: Option<FilePatchHover>,
+    pub file_patch_selecting: bool,
+    pub file_patch_selection: Option<crate::ui::selection::Selection>,
     pub pending_category_name: Option<String>,
     pub pending_open_conversation: Option<String>,
     pub total_prompt_tokens: u64,

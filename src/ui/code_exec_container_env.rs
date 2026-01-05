@@ -121,6 +121,24 @@ pub(crate) fn pip_extra_index_url() -> Option<String> {
     }
 }
 
+pub(crate) fn code_exec_image() -> String {
+    match std::env::var("DEEPCHAT_CODE_EXEC_IMAGE") {
+        Ok(value) => {
+            let v = value.trim();
+            if v.is_empty() {
+                default_code_exec_image()
+            } else {
+                v.to_string()
+            }
+        }
+        Err(_) => default_code_exec_image(),
+    }
+}
+
+fn default_code_exec_image() -> String {
+    "deepchat:latest".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{read_only_enabled, work_dir};

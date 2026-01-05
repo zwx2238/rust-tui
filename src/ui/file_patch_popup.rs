@@ -4,9 +4,10 @@ use crate::ui::file_patch_popup_layout::{
     FilePatchPopupLayout, OUTER_MARGIN, file_patch_popup_layout,
 };
 use crate::ui::file_patch_popup_text::{build_patch_text, patch_max_scroll};
+use crate::ui::selection::{Selection, apply_selection_to_text};
 use crate::ui::state::{FilePatchHover, PendingFilePatch};
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{
     Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
@@ -18,9 +19,10 @@ pub(crate) fn draw_file_patch_popup(
     pending: &PendingFilePatch,
     scroll: usize,
     hover: Option<FilePatchHover>,
+    selection: Option<Selection>,
     theme: &RenderTheme,
 ) {
-    draw_file_patch_popup_base(f, area, pending, scroll, theme);
+    draw_file_patch_popup_base(f, area, pending, scroll, selection, theme);
     let layout = file_patch_popup_layout(area);
     render_buttons(f, theme, layout, hover);
 }
@@ -30,6 +32,7 @@ pub(crate) fn draw_file_patch_popup_base(
     area: Rect,
     pending: &PendingFilePatch,
     scroll: usize,
+    selection: Option<Selection>,
     theme: &RenderTheme,
 ) {
     let layout = file_patch_popup_layout(area);
@@ -43,7 +46,7 @@ pub(crate) fn draw_file_patch_popup_base(
         scroll,
         theme,
     );
-    render_preview_panel(f, theme, layout, preview_text);
+    render_preview_panel(f, theme, layout, preview_text, selection, scroll);
     render_preview_scrollbar(f, theme, pending, layout, total_lines, scroll);
 }
 
@@ -94,8 +97,11 @@ fn render_preview_panel(
     f: &mut ratatui::Frame<'_>,
     theme: &RenderTheme,
     layout: FilePatchPopupLayout,
-    preview_text: Text<'_>,
+    preview_text: Text<'static>,
+    selection: Option<Selection>,
+    scroll: usize,
 ) {
+    let preview_text = apply_selection_if_needed(preview_text, scroll, selection);
     let preview_para = Paragraph::new(preview_text)
         .style(base_style(theme))
         .block(Block::default().borders(Borders::NONE));
@@ -164,4 +170,23 @@ fn button_style(
             .add_modifier(Modifier::BOLD),
         _ => base_style(theme),
     }
+}
+
+fn apply_selection_if_needed(
+    text: Text<'static>,
+    scroll: usize,
+    selection: Option<Selection>,
+) -> Text<'static> {
+    let Some(selection) = selection else {
+        return text;
+    };
+    if selection.is_empty() {
+        return text;
+    }
+    apply_selection_to_text(
+        &text,
+        scroll,
+        selection,
+        Style::default().bg(Color::DarkGray),
+    )
 }

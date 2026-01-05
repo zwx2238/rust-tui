@@ -1,16 +1,18 @@
 use crate::ui::code_exec_container_env::{
-    code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url, pip_target_dir,
-    prepare_pip_cache_dir, site_tmpfs_mb, tmp_dir, work_dir,
+    code_exec_image, code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url,
+    pip_target_dir, prepare_pip_cache_dir, site_tmpfs_mb, tmp_dir, work_dir,
 };
+use crate::ui::workspace::WorkspaceConfig;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub(super) fn start_container() -> Result<String, String> {
+pub(super) fn start_container(workspace: Option<&WorkspaceConfig>) -> Result<String, String> {
     prepare_pip_cache_dir();
     let run_id = new_container_run_id();
     let mut cmd = build_container_command(&run_id);
     add_pip_cache_mount(&mut cmd);
     add_pip_index_envs(&mut cmd);
+    add_workspace_mount(&mut cmd, workspace);
     apply_network_mode(&mut cmd);
     run_container_command(cmd)
 }
@@ -92,6 +94,19 @@ fn add_pip_cache_mount(cmd: &mut Command) {
         .arg(format!("{cache_dir}:{work_dir}/.cache/pip"));
 }
 
+fn add_workspace_mount(cmd: &mut Command, workspace: Option<&WorkspaceConfig>) {
+    let Some(workspace) = workspace else {
+        return;
+    };
+    cmd.arg("-v").arg(format!(
+        "{}:{}",
+        workspace.host_path.display(),
+        workspace.mount_path
+    ));
+    cmd.arg("-e")
+        .arg(format!("DEEPCHAT_WORKSPACE={}", workspace.mount_path));
+}
+
 fn add_pip_index_envs(cmd: &mut Command) {
     if let Some(index_url) = pip_index_url() {
         cmd.arg("-e").arg(format!("PIP_INDEX_URL={index_url}"));
@@ -116,7 +131,7 @@ fn apply_network_mode(cmd: &mut Command) {
 
 fn run_container_command(mut cmd: Command) -> Result<String, String> {
     let output = cmd
-        .arg("python:3.11-slim")
+        .arg(code_exec_image())
         .arg("sleep")
         .arg("infinity")
         .output()

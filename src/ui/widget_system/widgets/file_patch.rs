@@ -3,9 +3,12 @@ use crate::ui::file_patch_popup_layout::{FilePatchPopupLayout, file_patch_popup_
 use crate::ui::file_patch_popup_text::patch_max_scroll;
 use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::selection::{Selection, chat_position_from_mouse, extract_selection};
 use crate::ui::state::{FilePatchHover, PendingCommand};
 use ratatui::style::{Modifier, Style};
 use std::error::Error;
+
+use crate::ui::clipboard;
 
 use super::super::bindings::bind_event;
 use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
@@ -66,6 +69,26 @@ impl Widget for FilePatchWidget {
                     return Ok(EventResult::ignored());
                 };
                 let popup = file_patch_popup_layout(layout.size);
+                if is_mouse_drag(m.kind) {
+                    if let Some(tab_state) = ctx.tabs.get_mut(active_tab)
+                        && handle_file_patch_selection_drag(
+                            tab_state,
+                            &pending,
+                            popup,
+                            ctx.theme,
+                            *m,
+                        )
+                    {
+                        return Ok(EventResult::handled());
+                    }
+                }
+                if is_mouse_up(m.kind) {
+                    if let Some(tab_state) = ctx.tabs.get_mut(active_tab)
+                        && clear_file_patch_selection(tab_state)
+                    {
+                        return Ok(EventResult::handled());
+                    }
+                }
                 if is_mouse_moved(m.kind) {
                     if let Some(tab_state) = ctx.tabs.get_mut(active_tab) {
                         tab_state.app.file_patch_hover = hover_at(*m, popup);
@@ -87,6 +110,17 @@ impl Widget for FilePatchWidget {
                     }
                 }
                 if is_mouse_down(m.kind) {
+                    if let Some(tab_state) = ctx.tabs.get_mut(active_tab)
+                        && handle_file_patch_selection_start(
+                            tab_state,
+                            &pending,
+                            popup,
+                            ctx.theme,
+                            *m,
+                        )
+                    {
+                        return Ok(EventResult::handled());
+                    }
                     if handle_file_patch_buttons(
                         self,
                         ctx,
@@ -112,6 +146,16 @@ impl Widget for FilePatchWidget {
                 Ok(EventResult::ignored())
             }
             crossterm::event::Event::Key(_) => {
+                if let crossterm::event::Event::Key(key) = event
+                    && is_ctrl_c(*key)
+                {
+                    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab)
+                        && let Some(pending) = tab_state.app.pending_file_patch.clone()
+                        && copy_file_patch_selection(tab_state, &pending, layout, ctx.theme)
+                    {
+                        return Ok(EventResult::ignored());
+                    }
+                }
                 let mut binding = bind_event(ctx, layout, update);
                 let mut controller = OverlayTableController {
                     dispatch: binding.dispatch,
@@ -147,6 +191,7 @@ impl Widget for FilePatchWidget {
                 frame.frame.area(),
                 &pending,
                 tab_state.app.file_patch_scroll,
+                tab_state.app.file_patch_selection,
                 frame.state.theme,
             );
             tab_state.app.file_patch_hover
@@ -275,6 +320,94 @@ fn handle_file_patch_scroll(
     true
 }
 
+fn handle_file_patch_selection_start(
+    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    pending: &crate::ui::state::PendingFilePatch,
+    popup: FilePatchPopupLayout,
+    theme: &crate::render::RenderTheme,
+    m: crossterm::event::MouseEvent,
+) -> bool {
+    if !point_in_rect(m.column, m.row, popup.preview_area) {
+        return false;
+    }
+    let (text, _) = crate::ui::file_patch_popup_text::build_patch_text(
+        &pending.preview,
+        popup.preview_area.width,
+        popup.preview_area.height,
+        tab_state.app.file_patch_scroll,
+        theme,
+    );
+    let pos = selection_position_for_panel(
+        &text,
+        tab_state.app.file_patch_scroll,
+        popup.preview_area,
+        m,
+    );
+    tab_state.app.file_patch_selecting = true;
+    tab_state.app.file_patch_selection = Some(Selection { start: pos, end: pos });
+    true
+}
+
+fn handle_file_patch_selection_drag(
+    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    pending: &crate::ui::state::PendingFilePatch,
+    popup: FilePatchPopupLayout,
+    theme: &crate::render::RenderTheme,
+    m: crossterm::event::MouseEvent,
+) -> bool {
+    if !tab_state.app.file_patch_selecting {
+        return false;
+    }
+    let (text, _) = crate::ui::file_patch_popup_text::build_patch_text(
+        &pending.preview,
+        popup.preview_area.width,
+        popup.preview_area.height,
+        tab_state.app.file_patch_scroll,
+        theme,
+    );
+    let pos = selection_position_for_panel(
+        &text,
+        tab_state.app.file_patch_scroll,
+        popup.preview_area,
+        m,
+    );
+    let next = match tab_state.app.file_patch_selection {
+        Some(existing) => Selection {
+            start: existing.start,
+            end: pos,
+        },
+        None => Selection { start: pos, end: pos },
+    };
+    tab_state.app.file_patch_selection = Some(next);
+    true
+}
+
+fn clear_file_patch_selection(tab_state: &mut crate::ui::runtime_helpers::TabState) -> bool {
+    if !tab_state.app.file_patch_selecting {
+        return false;
+    }
+    tab_state.app.file_patch_selecting = false;
+    if tab_state
+        .app
+        .file_patch_selection
+        .map(|sel| sel.is_empty())
+        .unwrap_or(false)
+    {
+        tab_state.app.file_patch_selection = None;
+    }
+    true
+}
+
+fn selection_position_for_panel(
+    text: &ratatui::text::Text<'static>,
+    scroll: usize,
+    area: ratatui::layout::Rect,
+    m: crossterm::event::MouseEvent,
+) -> (usize, usize) {
+    let scroll_u16 = scroll.min(u16::MAX as usize) as u16;
+    chat_position_from_mouse(text, scroll_u16, area, m.column, m.row)
+}
+
 fn hover_at(m: crossterm::event::MouseEvent, popup: FilePatchPopupLayout) -> Option<FilePatchHover> {
     if point_in_rect(m.column, m.row, popup.apply_btn) {
         Some(FilePatchHover::Apply)
@@ -331,6 +464,19 @@ fn is_mouse_moved(kind: crossterm::event::MouseEventKind) -> bool {
     matches!(kind, crossterm::event::MouseEventKind::Moved)
 }
 
+fn is_mouse_up(kind: crossterm::event::MouseEventKind) -> bool {
+    matches!(kind, crossterm::event::MouseEventKind::Up(_))
+}
+
+fn is_mouse_drag(kind: crossterm::event::MouseEventKind) -> bool {
+    matches!(kind, crossterm::event::MouseEventKind::Drag(_))
+}
+
+fn is_ctrl_c(key: crossterm::event::KeyEvent) -> bool {
+    key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+        && key.code == crossterm::event::KeyCode::Char('c')
+}
+
 fn scroll_delta(kind: crossterm::event::MouseEventKind) -> Option<i32> {
     match kind {
         crossterm::event::MouseEventKind::ScrollUp => Some(-crate::ui::scroll::SCROLL_STEP_I32),
@@ -342,4 +488,26 @@ fn scroll_delta(kind: crossterm::event::MouseEventKind) -> Option<i32> {
 fn apply_scroll(current: &mut usize, delta: i32, max: usize) {
     let next = (i32::try_from(*current).unwrap_or(0) + delta).max(0) as usize;
     *current = next.min(max);
+}
+
+fn copy_file_patch_selection(
+    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    pending: &crate::ui::state::PendingFilePatch,
+    layout: &FrameLayout,
+    theme: &crate::render::RenderTheme,
+) -> bool {
+    let Some(selection) = tab_state.app.file_patch_selection else {
+        return false;
+    };
+    let popup = file_patch_popup_layout(layout.size);
+    let lines = crate::ui::file_patch_popup_text::patch_plain_lines(
+        &pending.preview,
+        popup.preview_area.width,
+        theme,
+    );
+    let text = extract_selection(&lines, selection);
+    if !text.is_empty() {
+        clipboard::set(&text);
+    }
+    true
 }

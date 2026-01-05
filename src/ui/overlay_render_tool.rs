@@ -95,9 +95,10 @@ fn render_file_patch_popup(
     clamp_patch_scroll(theme, parts.tab_state, &pending, layout);
     let scroll = parts.tab_state.app.file_patch_scroll;
     let hover = parts.tab_state.app.file_patch_hover;
+    let selection = parts.tab_state.app.file_patch_selection;
     let redraw = build_redraw_params(&mut parts);
     redraw_with_overlay(redraw, |f| {
-        draw_file_patch_popup(f, f.area(), &pending, scroll, hover, theme);
+        draw_file_patch_popup(f, f.area(), &pending, scroll, hover, selection, theme);
     })?;
     Ok(())
 }

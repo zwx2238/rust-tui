@@ -22,6 +22,7 @@ pub(super) fn build_enabled_tools(
     }
     if enable_code_exec {
         out.push("code_exec");
+        out.push("bash_exec");
     }
     if enable_read_file {
         out.push("read_file");

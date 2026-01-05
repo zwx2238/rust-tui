@@ -3,10 +3,15 @@ use crate::model_registry::{ModelProfile, ModelRegistry};
 use crate::types::{Message, ToolCall};
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_code_exec::handle_code_exec_request;
+use crate::ui::runtime_code_exec::handle_bash_exec_request;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::tools::run_tool;
+use crate::ui::workspace::resolve_workspace;
+use std::fs::{create_dir_all, OpenOptions};
+use std::io::Write;
 use std::sync::mpsc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct ToolService<'a> {
     registry: &'a ModelRegistry,
@@ -59,6 +64,7 @@ impl<'a> ToolService<'a> {
             "list_dir" => self.handle_simple_tool(call, tab_state, state, ToolKind::ListDir),
             "modify_file" => self.handle_modify_file(call, tab_state, tab_id, state),
             "code_exec" => self.handle_code_exec(call, tab_state, tab_id, state),
+            "bash_exec" => self.handle_bash_exec(call, tab_state, tab_id, state),
             _ => {}
         }
     }
@@ -76,8 +82,19 @@ impl<'a> ToolService<'a> {
             state.any_results = true;
             return;
         }
-        let root = tool_root(self.args.yolo_enabled());
-        let result = run_tool(call, &state.api_key, root.as_deref());
+        let workspace = match resolve_workspace(self.args) {
+            Ok(val) => val,
+            Err(err) => {
+                push_tool_message(
+                    tab_state,
+                    call,
+                    format!(r#"{{"error":"{}"}}"#, err),
+                );
+                state.any_results = true;
+                return;
+            }
+        };
+        let result = run_tool(call, &state.api_key, &workspace);
         push_tool_message(tab_state, call, result.content);
         if result.has_results {
             state.any_results = true;
@@ -91,6 +108,7 @@ impl<'a> ToolService<'a> {
         tab_id: usize,
         state: &mut ToolApplyState,
     ) {
+        self.log_modify_file_raw(call);
         if self.reject_modify_file(tab_state, call, state) {
             return;
         }
@@ -112,6 +130,23 @@ impl<'a> ToolService<'a> {
             return;
         }
         match handle_code_exec_request(tab_state, call) {
+            Ok(()) => self.apply_code_exec(tab_state, tab_id, state),
+            Err(err) => push_tool_error(tab_state, call, state, err),
+        }
+    }
+
+    fn handle_bash_exec(
+        &self,
+        call: &ToolCall,
+        tab_state: &mut TabState,
+        tab_id: usize,
+        state: &mut ToolApplyState,
+    ) {
+        if !self.args.code_exec_enabled() {
+            push_tool_error(tab_state, call, state, "bash_exec 未启用");
+            return;
+        }
+        match handle_bash_exec_request(tab_state, call) {
             Ok(()) => self.apply_code_exec(tab_state, tab_id, state),
             Err(err) => push_tool_error(tab_state, call, state, err),
         }
@@ -219,6 +254,40 @@ impl<'a> ToolService<'a> {
             log_session_id,
         });
     }
+
+    fn log_modify_file_raw(&self, call: &ToolCall) {
+        if call.function.name != "modify_file" {
+            return;
+        }
+        let workspace = match resolve_workspace(self.args) {
+            Ok(val) => val,
+            Err(_) => return,
+        };
+        let log_dir = workspace.host_path.join(".deepchat");
+        if create_dir_all(&log_dir).is_err() {
+            return;
+        }
+        let log_path = log_dir.join("modify_file.log");
+        let mut file = match OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+        {
+            Ok(file) => file,
+            Err(_) => return,
+        };
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let _ = writeln!(
+            file,
+            "ts={} id={} args={}",
+            ts,
+            call.id,
+            call.function.arguments
+        );
+    }
 }
 
 enum ToolKind {
@@ -226,14 +295,6 @@ enum ToolKind {
     ReadFile,
     ReadCode,
     ListDir,
-}
-
-fn tool_root(yolo: bool) -> Option<std::path::PathBuf> {
-    if yolo {
-        std::env::current_dir().ok()
-    } else {
-        None
-    }
 }
 
 fn push_tool_message(tab_state: &mut TabState, call: &ToolCall, content: String) {

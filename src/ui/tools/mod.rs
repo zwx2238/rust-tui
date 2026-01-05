@@ -1,5 +1,8 @@
 use crate::types::ToolCall;
-use std::path::{Path, PathBuf};
+use crate::ui::code_exec_container::ensure_container_cached;
+use crate::ui::workspace::{WorkspaceConfig, resolve_container_path};
+use std::io::Write;
+use std::process::Command;
 
 mod web_search;
 use web_search::run_web_search;
@@ -14,18 +17,22 @@ pub(crate) struct CodeExecRequest {
     pub code: String,
 }
 
-pub(crate) fn run_tool(call: &ToolCall, tavily_api_key: &str, root: Option<&Path>) -> ToolResult {
+pub(crate) fn run_tool(
+    call: &ToolCall,
+    tavily_api_key: &str,
+    workspace: &WorkspaceConfig,
+) -> ToolResult {
     if call.function.name == "web_search" {
         return run_web_search(&call.function.arguments, tavily_api_key);
     }
     if call.function.name == "read_file" {
-        return run_read_file(&call.function.arguments, false, root);
+        return run_read_file(&call.function.arguments, false, workspace);
     }
     if call.function.name == "read_code" {
-        return run_read_file(&call.function.arguments, true, root);
+        return run_read_file(&call.function.arguments, true, workspace);
     }
     if call.function.name == "list_dir" {
-        return run_list_dir(&call.function.arguments, root);
+        return run_list_dir(&call.function.arguments, workspace);
     }
     ToolResult {
         content: format!("未知工具：{}", call.function.name),
@@ -40,17 +47,20 @@ pub(super) fn tool_err(msg: String) -> ToolResult {
     }
 }
 
-fn run_read_file(args_json: &str, with_line_numbers: bool, root: Option<&Path>) -> ToolResult {
+fn run_read_file(
+    args_json: &str,
+    with_line_numbers: bool,
+    workspace: &WorkspaceConfig,
+) -> ToolResult {
     let args = match parse_read_file_args(args_json) {
         Ok(val) => val,
         Err(err) => return err,
     };
-    if let Some(root) = root
-        && let Err(err) = enforce_root(&args.path, root)
-    {
-        return tool_err(format!("read_file 读取失败：{err}"));
-    }
-    let content = match read_file_content(&args.path, args.max_bytes) {
+    let path = match resolve_container_path(&args.path, workspace) {
+        Ok(val) => val,
+        Err(err) => return tool_err(format!("read_file 读取失败：{err}")),
+    };
+    let content = match read_file_content(&path, args.max_bytes, workspace) {
         Ok(val) => val,
         Err(err) => return err,
     };
@@ -100,15 +110,43 @@ fn parse_read_file_args(args_json: &str) -> Result<ReadFileArgs, ToolResult> {
     })
 }
 
-fn read_file_content(path: &str, max_bytes: usize) -> Result<String, ToolResult> {
-    let meta = std::fs::metadata(path).map_err(|e| tool_err(format!("read_file 读取失败：{e}")))?;
-    if meta.is_file() && meta.len() as usize > max_bytes {
-        return Err(tool_err(format!(
-            "read_file 文件过大：{} bytes",
-            meta.len()
-        )));
-    }
-    std::fs::read_to_string(path).map_err(|e| tool_err(format!("read_file 读取失败：{e}")))
+fn read_file_content(
+    path: &str,
+    max_bytes: usize,
+    workspace: &WorkspaceConfig,
+) -> Result<String, ToolResult> {
+    let container_id = match ensure_container_cached(workspace) {
+        Ok(id) => id,
+        Err(err) => return Err(tool_err(err)),
+    };
+    let script = r#"
+import json, os, sys
+args = json.load(sys.stdin)
+path = args["path"]
+max_bytes = int(args.get("max_bytes", 0))
+try:
+    st = os.stat(path)
+except Exception as e:
+    print(f"read_file 读取失败：{e}", file=sys.stderr)
+    sys.exit(2)
+if max_bytes > 0 and st.st_size > max_bytes:
+    print(f"read_file 文件过大：{st.st_size} bytes", file=sys.stderr)
+    sys.exit(3)
+try:
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        data = f.read()
+except Exception as e:
+    print(f"read_file 读取失败：{e}", file=sys.stderr)
+    sys.exit(4)
+print(data)
+"#;
+    let args_json = serde_json::json!({
+        "path": path,
+        "max_bytes": max_bytes,
+    })
+    .to_string();
+    let output = run_container_python(&container_id, script, args_json.as_bytes())?;
+    Ok(output)
 }
 
 fn slice_lines<'a>(
@@ -204,19 +242,27 @@ pub(crate) fn parse_code_exec_args(args_json: &str) -> Result<CodeExecRequest, S
     })
 }
 
-fn enforce_root(path: &str, root: &Path) -> Result<(), String> {
-    let target = PathBuf::from(path);
-    let root = root
-        .canonicalize()
-        .map_err(|e| format!("根目录不可用：{e}"))?;
-    let canonical = target
-        .canonicalize()
-        .map_err(|e| format!("路径不可用：{e}"))?;
-    if canonical.starts_with(&root) {
-        Ok(())
-    } else {
-        Err("禁止读取工作区外的文件".to_string())
+pub(crate) fn parse_bash_exec_args(args_json: &str) -> Result<CodeExecRequest, String> {
+    #[derive(serde::Deserialize)]
+    struct Args {
+        command: Option<String>,
+        code: Option<String>,
     }
+    let args: Args =
+        serde_json::from_str(args_json).map_err(|e| format!("bash_exec 参数解析失败：{e}"))?;
+    let command = args
+        .command
+        .or(args.code)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if command.is_empty() {
+        return Err("bash_exec 参数 command 不能为空".to_string());
+    }
+    Ok(CodeExecRequest {
+        language: "bash".to_string(),
+        code: command,
+    })
 }
 
 struct ListDirArgs {
@@ -227,81 +273,19 @@ struct ListDirArgs {
     include_hidden: bool,
 }
 
-fn run_list_dir(args_json: &str, root: Option<&Path>) -> ToolResult {
+fn run_list_dir(args_json: &str, workspace: &WorkspaceConfig) -> ToolResult {
     let args = match parse_list_dir_args(args_json) {
         Ok(val) => val,
         Err(err) => return err,
     };
-    if let Some(root) = root
-        && let Err(err) = enforce_root(&args.path, root)
-    {
-        return tool_err(format!("list_dir 读取失败：{err}"));
-    }
-    let base = PathBuf::from(&args.path);
-    let meta = match std::fs::metadata(&base) {
+    let path = match resolve_container_path(&args.path, workspace) {
         Ok(val) => val,
         Err(err) => return tool_err(format!("list_dir 读取失败：{err}")),
     };
-    if !meta.is_dir() {
-        return tool_err("list_dir 读取失败：不是目录".to_string());
-    }
-    let root_canon = match root {
-        Some(root) => match root.canonicalize() {
-            Ok(val) => Some(val),
-            Err(err) => return tool_err(format!("list_dir 读取失败：根目录不可用：{err}")),
-        },
-        None => None,
+    let (entries, truncated) = match list_dir_container(&path, &args, workspace) {
+        Ok(val) => val,
+        Err(err) => return err,
     };
-    let mut entries: Vec<String> = Vec::new();
-    let mut truncated = false;
-    let mut stack: Vec<(PathBuf, String, usize)> = vec![(base.clone(), String::new(), 0)];
-    while let Some((dir, rel_prefix, depth)) = stack.pop() {
-        let read_dir = match std::fs::read_dir(&dir) {
-            Ok(val) => val,
-            Err(err) => return tool_err(format!("list_dir 读取失败：{err}")),
-        };
-        for entry in read_dir {
-            let entry = match entry {
-                Ok(val) => val,
-                Err(err) => return tool_err(format!("list_dir 读取失败：{err}")),
-            };
-            let path = entry.path();
-            if let Some(root) = root_canon.as_ref()
-                && !is_under_root(&path, root)
-            {
-                continue;
-            }
-            let name = entry.file_name().to_string_lossy().to_string();
-            if !args.include_hidden && name.starts_with('.') {
-                continue;
-            }
-            let rel_path = if rel_prefix.is_empty() {
-                name
-            } else {
-                format!("{}/{}", rel_prefix, name)
-            };
-            let file_type = match entry.file_type() {
-                Ok(val) => val,
-                Err(err) => return tool_err(format!("list_dir 读取失败：{err}")),
-            };
-            let display = if file_type.is_dir() {
-                format!("{}/", rel_path)
-            } else {
-                rel_path.clone()
-            };
-            entries.push(display);
-            if entries.len() >= args.max_entries {
-                truncated = true;
-                break;
-            }
-            if args.recursive && file_type.is_dir() && depth < args.max_depth {
-                stack.push((path, rel_path, depth + 1));
-            }
-        }
-        if truncated {
-            break;
-        }
-    }
     let out = format_list_dir_output(&args, entries, truncated);
     ToolResult {
         content: out,
@@ -358,9 +342,111 @@ fn format_list_dir_output(args: &ListDirArgs, entries: Vec<String>, truncated: b
     out
 }
 
-fn is_under_root(path: &Path, root: &Path) -> bool {
-    match path.canonicalize() {
-        Ok(canon) => canon.starts_with(root),
-        Err(_) => false,
+fn list_dir_container(
+    path: &str,
+    args: &ListDirArgs,
+    workspace: &WorkspaceConfig,
+) -> Result<(Vec<String>, bool), ToolResult> {
+    let container_id = match ensure_container_cached(workspace) {
+        Ok(id) => id,
+        Err(err) => return Err(tool_err(err)),
+    };
+    let script = r#"
+import json, os, sys
+args = json.load(sys.stdin)
+path = args["path"]
+recursive = bool(args.get("recursive", False))
+max_entries = int(args.get("max_entries", 2000))
+max_depth = int(args.get("max_depth", 4))
+include_hidden = bool(args.get("include_hidden", False))
+if not os.path.isdir(path):
+    print("list_dir 读取失败：不是目录", file=sys.stderr)
+    sys.exit(2)
+entries = []
+truncated = False
+stack = [(path, "", 0)]
+while stack:
+    base, rel_prefix, depth = stack.pop()
+    try:
+        items = list(os.scandir(base))
+    except Exception as e:
+        print(f"list_dir 读取失败：{e}", file=sys.stderr)
+        sys.exit(3)
+    for item in items:
+        name = item.name
+        if not include_hidden and name.startswith('.'):
+            continue
+        rel = name if not rel_prefix else f"{rel_prefix}/{name}"
+        if item.is_dir(follow_symlinks=False):
+            display = rel + "/"
+        else:
+            display = rel
+        entries.append(display)
+        if len(entries) >= max_entries:
+            truncated = True
+            break
+        if recursive and item.is_dir(follow_symlinks=False) and depth < max_depth:
+            stack.append((item.path, rel, depth + 1))
+    if truncated:
+        break
+print(json.dumps({"entries": entries, "truncated": truncated}, ensure_ascii=False))
+"#;
+    let args_json = serde_json::json!({
+        "path": path,
+        "recursive": args.recursive,
+        "max_entries": args.max_entries,
+        "max_depth": args.max_depth,
+        "include_hidden": args.include_hidden,
+    })
+    .to_string();
+    let output = run_container_python(&container_id, script, args_json.as_bytes())?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&output).map_err(|e| tool_err(format!("list_dir 解析失败：{e}")))?;
+    let entries = parsed
+        .get("entries")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| tool_err("list_dir 解析失败：entries 无效".to_string()))?
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect::<Vec<_>>();
+    let truncated = parsed
+        .get("truncated")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    Ok((entries, truncated))
+}
+
+fn run_container_python(
+    container_id: &str,
+    script: &str,
+    input: &[u8],
+) -> Result<String, ToolResult> {
+    let output = Command::new("docker")
+        .arg("exec")
+        .arg("-i")
+        .arg(container_id)
+        .arg("python")
+        .arg("-c")
+        .arg(script)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input)?;
+            }
+            child.wait_with_output()
+        })
+        .map_err(|e| tool_err(format!("Docker 执行失败：{e}")))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(tool_err(if err.is_empty() {
+            "Docker 执行失败".to_string()
+        } else {
+            err
+        }))
     }
 }

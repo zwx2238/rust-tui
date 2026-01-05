@@ -68,6 +68,7 @@ mod tests {
             log_requests: None,
             perf: false,
             question_set: None,
+            workspace: "/tmp/deepchat-workspace".to_string(),
             yolo: false,
             read_only: false,
             wait_gdb: false,

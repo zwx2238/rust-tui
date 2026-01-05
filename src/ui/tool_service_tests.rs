@@ -5,7 +5,97 @@ mod tests {
     use crate::types::{ToolCall, ToolFunctionCall};
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::tool_service::ToolService;
+    use crate::test_support::{env_lock, restore_env, set_env};
+    use std::path::PathBuf;
     use std::sync::mpsc;
+
+    const DOCKER_SCRIPT: &str = r#"#!/bin/sh
+cmd="$1"
+shift
+case "$cmd" in
+  inspect)
+    echo "true"
+    exit 0
+    ;;
+  run)
+    echo "dummy-container"
+    exit 0
+    ;;
+  exec)
+    if [ "$1" = "-i" ]; then shift; fi
+    shift
+    if [ "$1" = "python" ] && [ "$2" = "-c" ]; then
+      script="$3"
+      input="$(cat)"
+      if [ -n "$DEEPCHAT_WORKSPACE" ]; then
+        input="$(printf "%s" "$input" | python - <<'PY'
+import json, os, sys
+ws = os.environ.get("DEEPCHAT_WORKSPACE")
+data = json.load(sys.stdin)
+if ws and isinstance(data, dict) and isinstance(data.get("path"), str):
+    if data["path"].startswith("/workspace"):
+        suffix = data["path"][len("/workspace"):].lstrip("/")
+        data["path"] = os.path.join(ws, suffix)
+print(json.dumps(data, ensure_ascii=False))
+PY
+)"
+      fi
+      printf "%s" "$input" | python -c "$script"
+      exit $?
+    fi
+    cat >/dev/null
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+"#;
+
+    struct FakeDocker {
+        dir: PathBuf,
+        prev_path: Option<String>,
+        prev_workspace: Option<String>,
+    }
+
+    impl Drop for FakeDocker {
+        fn drop(&mut self) {
+            restore_env("PATH", self.prev_path.take());
+            restore_env("DEEPCHAT_WORKSPACE", self.prev_workspace.take());
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
+    }
+
+    fn setup_fake_docker(workspace: &str) -> FakeDocker {
+        let dir = std::env::temp_dir().join(format!(
+            "deepchat-docker-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bin = dir.join("docker");
+        std::fs::write(&bin, DOCKER_SCRIPT).unwrap();
+        let _ = std::process::Command::new("chmod")
+            .arg("+x")
+            .arg(&bin)
+            .status();
+        let prev_path = set_env(
+            "PATH",
+            &format!(
+                "{}:{}",
+                dir.to_string_lossy(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        );
+        let prev_workspace = set_env("DEEPCHAT_WORKSPACE", workspace);
+        FakeDocker {
+            dir,
+            prev_path,
+            prev_workspace,
+        }
+    }
 
     fn registry_empty_key() -> ModelRegistry {
         ModelRegistry {
@@ -32,6 +122,7 @@ mod tests {
             log_requests: None,
             perf: false,
             question_set: None,
+            workspace: "/tmp/deepchat-workspace".to_string(),
             yolo,
             read_only: false,
             wait_gdb: false,
@@ -83,12 +174,15 @@ mod tests {
 
     #[test]
     fn read_file_enabled_reads_file() {
+        let _guard = env_lock().lock().unwrap();
         let registry = registry_empty_key();
         let args = args(None, false);
+        let _ = std::fs::create_dir_all(&args.workspace);
+        let _docker = setup_fake_docker(&args.workspace);
         let (tx, _rx) = mpsc::channel();
         let service = ToolService::new(&registry, &args, &tx);
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
-        let path = std::env::temp_dir().join("deepchat_read_file.txt");
+        let path = PathBuf::from(&args.workspace).join("deepchat_read_file.txt");
         std::fs::write(&path, "hello").unwrap();
         let calls = vec![tool_call(
             "read_file",
@@ -99,7 +193,7 @@ mod tests {
             tab.app
                 .messages
                 .iter()
-                .any(|m| m.content.contains("[read_file]"))
+                .any(|m| m.content.contains("hello"))
         );
         let _ = std::fs::remove_file(&path);
     }
@@ -144,12 +238,15 @@ mod tests {
 
     #[test]
     fn read_code_enabled_reads_file_with_numbers() {
+        let _guard = env_lock().lock().unwrap();
         let registry = registry_empty_key();
         let args = args(None, false);
+        let _ = std::fs::create_dir_all(&args.workspace);
+        let _docker = setup_fake_docker(&args.workspace);
         let (tx, _rx) = mpsc::channel();
         let service = ToolService::new(&registry, &args, &tx);
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
-        let path = std::env::temp_dir().join("deepchat_read_code.rs");
+        let path = PathBuf::from(&args.workspace).join("deepchat_read_code.rs");
         std::fs::write(&path, "line1\nline2").unwrap();
         let calls = vec![tool_call(
             "read_code",

@@ -10,7 +10,7 @@ use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_rea
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::state::{CodeExecReasonTarget, PendingCodeExec};
-use crate::ui::tools::parse_code_exec_args;
+use crate::ui::tools::{parse_bash_exec_args, parse_code_exec_args};
 use std::sync::mpsc;
 use std::time::Instant;
 
@@ -22,6 +22,26 @@ pub(crate) fn handle_code_exec_request(
         return Err("已有待审批的代码执行请求".to_string());
     }
     let request = parse_code_exec_args(&call.function.arguments)?;
+    tab_state.app.pending_code_exec = Some(PendingCodeExec {
+        call_id: call.id.clone(),
+        language: request.language,
+        code: request.code,
+        exec_code: None,
+        requested_at: Instant::now(),
+        stop_reason: None,
+    });
+    helpers::reset_code_exec_ui(&mut tab_state.app);
+    Ok(())
+}
+
+pub(crate) fn handle_bash_exec_request(
+    tab_state: &mut TabState,
+    call: &crate::types::ToolCall,
+) -> Result<(), String> {
+    if tab_state.app.pending_code_exec.is_some() {
+        return Err("已有待审批的代码执行请求".to_string());
+    }
+    let request = parse_bash_exec_args(&call.function.arguments)?;
     tab_state.app.pending_code_exec = Some(PendingCodeExec {
         call_id: call.id.clone(),
         language: request.language,
@@ -65,7 +85,7 @@ pub(crate) fn handle_code_exec_approve(
     tab_state: &mut TabState,
     _tab_id: usize,
     _registry: &crate::model_registry::ModelRegistry,
-    _args: &Args,
+    args: &Args,
     _tx: &mpsc::Sender<UiEvent>,
 ) {
     let Some(mut pending) = pending::clone_pending_or_notify(&mut tab_state.app) else {
@@ -77,13 +97,24 @@ pub(crate) fn handle_code_exec_approve(
     let live = helpers::init_code_exec_live(&mut tab_state.app);
     let cancel = helpers::init_cancel_flag(&mut tab_state.app);
     let run_id = helpers::init_run_id(&mut tab_state.app);
-    let exec_code = inject_requirements(&pending.code);
+    let exec_code = if pending.language == "python" {
+        inject_requirements(&pending.code)
+    } else {
+        pending.code.clone()
+    };
     helpers::store_exec_code(&mut tab_state.app, &mut pending, exec_code);
+    let workspace = match crate::ui::workspace::resolve_workspace(args) {
+        Ok(val) => val,
+        Err(err) => {
+            helpers::mark_exec_error(&live, err);
+            return;
+        }
+    };
     std::thread::spawn(move || {
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return;
         }
-        let container_id = match ensure_container_cached() {
+        let container_id = match ensure_container_cached(&workspace) {
             Ok(id) => id,
             Err(err) => {
                 helpers::mark_exec_error(&live, err);

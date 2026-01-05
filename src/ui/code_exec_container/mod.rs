@@ -5,17 +5,21 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::ui::code_exec_container_env::{pip_target_dir, run_dir, tmp_dir};
+use crate::ui::workspace::WorkspaceConfig;
 
 mod container_start;
 use container_start::{is_container_running, start_container};
 
-pub(crate) fn ensure_container(container_id: &mut Option<String>) -> Result<String, String> {
+pub(crate) fn ensure_container(
+    container_id: &mut Option<String>,
+    workspace: &WorkspaceConfig,
+) -> Result<String, String> {
     if let Some(id) = container_id.as_ref()
         && is_container_running(id)
     {
         return Ok(id.clone());
     }
-    let id = start_container()?;
+    let id = start_container(Some(workspace))?;
     *container_id = Some(id.clone());
     Ok(id)
 }
@@ -26,7 +30,9 @@ fn cached_container() -> &'static Mutex<Option<String>> {
     CONTAINER_CACHE.get_or_init(|| Mutex::new(None))
 }
 
-pub(crate) fn ensure_container_cached() -> Result<String, String> {
+pub(crate) fn ensure_container_cached(
+    workspace: &WorkspaceConfig,
+) -> Result<String, String> {
     let mut guard = cached_container()
         .lock()
         .map_err(|_| "Docker 启动失败：容器缓存锁异常".to_string())?;
@@ -35,7 +41,7 @@ pub(crate) fn ensure_container_cached() -> Result<String, String> {
     {
         return Ok(id.clone());
     }
-    let id = start_container()?;
+    let id = start_container(Some(workspace))?;
     *guard = Some(id.clone());
     Ok(id)
 }
@@ -60,6 +66,26 @@ pub(crate) fn run_python_in_container_stream(
     Ok(())
 }
 
+pub(crate) fn run_bash_in_container_stream(
+    container_id: &str,
+    run_id: &str,
+    code: &str,
+    live: Arc<Mutex<CodeExecLive>>,
+    cancel: Arc<AtomicBool>,
+) -> Result<(), String> {
+    let finished = Arc::new(AtomicBool::new(false));
+    write_script_file(container_id, run_id, "sh", code)?;
+    let mut child = spawn_bash_exec(container_id, run_id)?;
+    let (stdout, stderr) = take_child_pipes(&mut child)?;
+    let t_out = spawn_stream_reader(stdout, Arc::clone(&live), OutputTarget::Stdout);
+    let t_err = spawn_stream_reader(stderr, Arc::clone(&live), OutputTarget::Stderr);
+    let killer = spawn_cancel_watcher(container_id, run_id, &live, &cancel, &finished);
+    let status = child.wait().map_err(|e| format!("Docker 执行失败：{e}"))?;
+    finalize_exec(status.code(), &live, &finished, t_out, t_err, killer);
+    let _ = remove_script_file(container_id, run_id, "sh");
+    Ok(())
+}
+
 enum OutputTarget {
     Stdout,
     Stderr,
@@ -73,6 +99,19 @@ fn spawn_python_exec(container_id: &str, run_id: &str) -> Result<std::process::C
         .arg("python")
         .arg("-u")
         .arg(code_path(run_id))
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    cmd.spawn().map_err(|e| format!("Docker 执行失败：{e}"))
+}
+
+fn spawn_bash_exec(container_id: &str, run_id: &str) -> Result<std::process::Child, String> {
+    let mut cmd = Command::new("docker");
+    cmd.arg("exec")
+        .arg("-i")
+        .arg(container_id)
+        .arg("bash")
+        .arg(script_path(run_id, "sh"))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -181,7 +220,7 @@ pub(crate) fn stop_exec(container_id: &str, run_id: &str) -> bool {
         .arg(container_id)
         .arg("sh")
         .arg("-lc")
-        .arg(format!("pkill -f {}", code_path(run_id)))
+        .arg(format!("pkill -f {}/{}.", run_dir(), run_id))
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
@@ -193,7 +232,7 @@ fn write_code_file(container_id: &str, run_id: &str, code: &str) -> Result<(), S
     let tmp_dir = tmp_dir();
     let site_dir = pip_target_dir();
     ensure_container_dirs(container_id, &run_dir, &tmp_dir, &site_dir);
-    write_code_via_stdin(container_id, run_id, code)
+    write_code_via_stdin(container_id, &code_path(run_id), code)
 }
 
 fn ensure_container_dirs(container_id: &str, run_dir: &str, tmp_dir: &str, site_dir: &str) {
@@ -206,14 +245,14 @@ fn ensure_container_dirs(container_id: &str, run_dir: &str, tmp_dir: &str, site_
         .status();
 }
 
-fn write_code_via_stdin(container_id: &str, run_id: &str, code: &str) -> Result<(), String> {
+fn write_code_via_stdin(container_id: &str, path: &str, code: &str) -> Result<(), String> {
     let mut cmd = Command::new("docker");
     cmd.arg("exec")
         .arg("-i")
         .arg(container_id)
         .arg("sh")
         .arg("-lc")
-        .arg(format!("cat > {}", code_path(run_id)))
+        .arg(format!("cat > {}", path))
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -247,6 +286,36 @@ fn remove_code_file(container_id: &str, run_id: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn write_script_file(
+    container_id: &str,
+    run_id: &str,
+    ext: &str,
+    code: &str,
+) -> Result<(), String> {
+    let run_dir = run_dir();
+    let tmp_dir = tmp_dir();
+    let site_dir = pip_target_dir();
+    ensure_container_dirs(container_id, &run_dir, &tmp_dir, &site_dir);
+    write_code_via_stdin(container_id, &script_path(run_id, ext), code)
+}
+
+fn remove_script_file(container_id: &str, run_id: &str, ext: &str) -> Result<(), String> {
+    let _ = Command::new("docker")
+        .arg("exec")
+        .arg(container_id)
+        .arg("sh")
+        .arg("-lc")
+        .arg(format!("rm -f {}", script_path(run_id, ext)))
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    Ok(())
+}
+
 fn code_path(run_id: &str) -> String {
-    format!("{}/{}.py", run_dir(), run_id)
+    script_path(run_id, "py")
+}
+
+fn script_path(run_id: &str, ext: &str) -> String {
+    format!("{}/{}.{}", run_dir(), run_id, ext)
 }

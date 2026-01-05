@@ -3,6 +3,8 @@ use crate::types::Message;
 use crate::ui::net::UiEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
+use crate::ui::workspace::resolve_workspace;
+use crate::ui::code_exec_container::ensure_container_cached;
 use crate::ui::state::PendingFilePatch;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -23,9 +25,12 @@ pub(crate) fn handle_file_patch_request(
     }
     let args: PatchArgs = serde_json::from_str(&call.function.arguments)
         .map_err(|e| format!("modify_file 参数解析失败：{e}"))?;
-    let diff = args.diff.trim().to_string();
-    if diff.is_empty() {
+    if args.diff.trim().is_empty() {
         return Err("modify_file 参数 diff 不能为空".to_string());
+    }
+    let mut diff = args.diff.clone();
+    if !diff.ends_with('\n') {
+        diff.push('\n');
     }
     let preview = render_diff_preview(&diff);
     tab_state.app.pending_file_patch = Some(PendingFilePatch {
@@ -36,6 +41,8 @@ pub(crate) fn handle_file_patch_request(
     });
     tab_state.app.file_patch_scroll = 0;
     tab_state.app.file_patch_hover = None;
+    tab_state.app.file_patch_selecting = false;
+    tab_state.app.file_patch_selection = None;
     Ok(())
 }
 
@@ -49,7 +56,7 @@ pub(crate) fn handle_file_patch_apply(
     let Some(pending) = tab_state.app.pending_file_patch.take() else {
         return;
     };
-    let message = build_apply_message(&pending, apply_patch(&pending.diff));
+    let message = build_apply_message(&pending, apply_patch(&pending.diff, args));
     push_tool_message(&mut tab_state.app, message, pending.call_id);
     reset_patch_ui(&mut tab_state.app);
     start_followup(tab_state, tab_id, registry, args, tx);
@@ -102,6 +109,8 @@ fn push_tool_message(app: &mut crate::ui::state::App, content: String, call_id: 
 fn reset_patch_ui(app: &mut crate::ui::state::App) {
     app.file_patch_scroll = 0;
     app.file_patch_hover = None;
+    app.file_patch_selecting = false;
+    app.file_patch_selection = None;
 }
 
 fn start_followup(
@@ -157,13 +166,22 @@ fn render_diff_preview(diff: &str) -> String {
     diff.to_string()
 }
 
-fn apply_patch(diff: &str) -> Result<(), String> {
-    let mut cmd = Command::new("git");
-    cmd.arg("apply")
-        .arg("--whitespace=nowarn")
-        .arg("-")
+fn apply_patch(diff: &str, args: &Args) -> Result<(), String> {
+    let workspace = resolve_workspace(args)?;
+    let container_id = ensure_container_cached(&workspace)?;
+    run_container_patch(&container_id, diff)
+}
+
+fn run_container_patch(container_id: &str, diff: &str) -> Result<(), String> {
+    let mut cmd = Command::new("docker");
+    cmd.arg("exec")
+        .arg("-i")
+        .arg(container_id)
+        .arg("sh")
+        .arg("-lc")
+        .arg("cd \"$DEEPCHAT_WORKSPACE\" && git apply --whitespace=nowarn -p1")
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = cmd.spawn().map_err(|e| format!("应用补丁失败：{e}"))?;
     if let Some(mut stdin) = child.stdin.take() {

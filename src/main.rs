@@ -25,6 +25,8 @@ fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         debug::wait_for_gdb_attach()?;
     }
     apply_env_from_args(&args);
+    crate::ui::workspace::resolve_workspace(&args)
+        .map_err(|e| format!("workspace 校验失败：{e}"))?;
     if maybe_list_question_sets(&args)? {
         return Ok(());
     }
@@ -94,13 +96,28 @@ mod tests {
     use crate::args::Args;
     use crate::test_support::{env_lock, restore_env, set_env};
     use clap::Parser;
+    use std::path::PathBuf;
+
+    fn temp_workspace_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("deepchat-ws-{name}"));
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
 
     #[test]
     fn run_with_args_sets_network_env_for_yolo() {
         let _guard = env_lock().lock().unwrap();
         let prev = std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok();
         restore_env("DEEPCHAT_CODE_EXEC_NETWORK", None);
-        let args = Args::parse_from(["bin", "--question-set", "list", "--yolo"]);
+        let ws = temp_workspace_dir("yolo");
+        let args = Args::parse_from([
+            "bin",
+            "--question-set",
+            "list",
+            "--yolo",
+            "--workspace",
+            ws.to_string_lossy().as_ref(),
+        ]);
         let result = run_with_args(args);
         assert!(result.is_ok());
         assert_eq!(
@@ -115,7 +132,15 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let prev = std::env::var("DEEPCHAT_READ_ONLY").ok();
         restore_env("DEEPCHAT_READ_ONLY", None);
-        let args = Args::parse_from(["bin", "--question-set", "list", "--read-only"]);
+        let ws = temp_workspace_dir("ro");
+        let args = Args::parse_from([
+            "bin",
+            "--question-set",
+            "list",
+            "--read-only",
+            "--workspace",
+            ws.to_string_lossy().as_ref(),
+        ]);
         let result = run_with_args(args);
         assert!(result.is_ok());
         assert_eq!(
@@ -127,7 +152,14 @@ mod tests {
 
     #[test]
     fn run_with_args_reports_config_error() {
-        let args = Args::parse_from(["bin", "--config", "/tmp/deepchat-missing-config.json"]);
+        let ws = temp_workspace_dir("cfg");
+        let args = Args::parse_from([
+            "bin",
+            "--config",
+            "/tmp/deepchat-missing-config.json",
+            "--workspace",
+            ws.to_string_lossy().as_ref(),
+        ]);
         let result = run_with_args(args);
         assert!(result.is_err());
     }
@@ -138,7 +170,14 @@ mod tests {
         let temp = std::env::temp_dir().join("deepchat-question-set");
         let _ = std::fs::create_dir_all(&temp);
         let prev = set_env("HOME", &temp.to_string_lossy());
-        let args = Args::parse_from(["bin", "--question-set", "list"]);
+        let ws = temp_workspace_dir("qs");
+        let args = Args::parse_from([
+            "bin",
+            "--question-set",
+            "list",
+            "--workspace",
+            ws.to_string_lossy().as_ref(),
+        ]);
         let result = run_with_args(args);
         assert!(result.is_ok());
         restore_env("HOME", prev);

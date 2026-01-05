@@ -47,6 +47,10 @@ pub struct Args {
     #[arg(long)]
     pub question_set: Option<String>,
 
+    /// 显式指定工作区目录（将挂载到容器内 /workspace）
+    #[arg(long)]
+    pub workspace: String,
+
     /// YOLO 模式：工具调用无需用户同意（包含代码执行/文件修改等）
     #[arg(long, default_value_t = false)]
     pub yolo: bool,
@@ -131,7 +135,7 @@ mod tests {
 
     #[test]
     fn default_flags() {
-        let args = Args::parse_from(["bin"]);
+        let args = Args::parse_from(["bin", "--workspace", "/tmp"]);
         assert!(!args.web_search_enabled());
         assert!(args.code_exec_enabled());
         assert!(args.read_file_enabled());
@@ -143,7 +147,13 @@ mod tests {
 
     #[test]
     fn enable_expression_toggles() {
-        let args = Args::parse_from(["bin", "--enable", "web_search,-read_file"]);
+        let args = Args::parse_from([
+            "bin",
+            "--enable",
+            "web_search,-read_file",
+            "--workspace",
+            "/tmp",
+        ]);
         assert!(args.web_search_enabled());
         assert!(!args.read_file_enabled());
         assert!(args.code_exec_enabled());
@@ -151,7 +161,7 @@ mod tests {
 
     #[test]
     fn read_only_disables_modify_file_only() {
-        let args = Args::parse_from(["bin", "--read-only"]);
+        let args = Args::parse_from(["bin", "--read-only", "--workspace", "/tmp"]);
         assert!(args.code_exec_enabled());
         assert!(!args.modify_file_enabled());
     }

@@ -6,8 +6,9 @@ mod tests {
     };
     use crate::ui::state::CodeExecLive;
     use std::fs;
-    use std::sync::{Arc, Mutex, atomic::AtomicBool};
-    use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::{Arc, Mutex, atomic::AtomicBool};
+use std::time::{SystemTime, UNIX_EPOCH};
+use crate::ui::workspace::WorkspaceConfig;
 
     const DOCKER_SCRIPT: &str = r#"#!/bin/sh
 cmd="$1"
@@ -76,12 +77,22 @@ esac
         (dir, prev_path)
     }
 
+    fn workspace() -> WorkspaceConfig {
+        let dir = std::env::temp_dir().join("deepchat-workspace-test");
+        let _ = fs::create_dir_all(&dir);
+        WorkspaceConfig {
+            host_path: dir,
+            mount_path: "/workspace".to_string(),
+        }
+    }
+
     #[test]
     fn ensure_container_uses_fake_docker() {
         let _guard = env_lock().lock().unwrap();
         let (dir, prev_path) = setup_fake_docker();
         let mut container_id = None;
-        let id = ensure_container(&mut container_id).unwrap();
+        let ws = workspace();
+        let id = ensure_container(&mut container_id, &ws).unwrap();
         assert_eq!(id, "dummy-container");
         restore_env("PATH", prev_path);
         let _ = fs::remove_dir_all(&dir);
