@@ -1,4 +1,5 @@
 use crate::render::{RenderTheme, count_message_lines, label_for_role};
+use crate::render::MessageLayout;
 use crate::types::Message;
 use crate::ui::draw::{draw_categories, draw_footer, draw_header, draw_tabs};
 use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};
@@ -35,6 +36,25 @@ pub fn build_jump_rows(
         ) {
             rows.push(row);
         }
+    }
+    rows
+}
+
+pub fn build_jump_rows_from_layouts(
+    messages: &[Message],
+    layouts: &[MessageLayout],
+) -> Vec<JumpRow> {
+    let mut rows = Vec::with_capacity(layouts.len());
+    for layout in layouts {
+        let Some(msg) = messages.get(layout.index) else {
+            continue;
+        };
+        rows.push(JumpRow {
+            index: layout.index + 1,
+            role: msg.role.clone(),
+            preview: String::new(),
+            scroll: layout.label_line.min(u16::MAX as usize) as u16,
+        });
     }
     rows
 }
