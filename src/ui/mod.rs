@@ -10,6 +10,7 @@ mod overlay_table_state;
 mod runtime;
 mod runtime_code_exec;
 mod runtime_dispatch;
+mod runtime_events_mouse_handlers;
 mod runtime_loop;
 mod runtime_loop_helpers;
 mod runtime_session;
@@ -19,16 +20,12 @@ mod tool_service;
 mod tools;
 mod widget_system;
 
-#[path = "commands/mod.rs"]
-mod commands_domain;
-#[path = "interaction/mod.rs"]
+mod commands;
 mod interaction;
-#[path = "popup/mod.rs"]
 mod popup;
-#[path = "runtime_impl/mod.rs"]
 mod runtime_impl;
 
-use commands_domain::{command_input, command_suggestions, commands};
+use commands::{command_input, command_suggestions};
 use interaction::{
     clipboard, input, input_click, input_thread, jump, scroll, scroll_debug, selection,
     selection_state, shortcut_help, shortcuts, text_utils,

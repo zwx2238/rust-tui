@@ -1,16 +1,14 @@
-#[path = "code_exec_popup_render.rs"]
-mod code_exec_popup_render;
-
 use crate::render::RenderTheme;
 use crate::ui::code_exec_popup_layout::code_exec_popup_layout;
 use crate::ui::state::{CodeExecReasonTarget, PendingCodeExec};
 use ratatui::layout::Rect;
 use tui_textarea::TextArea;
 
-use code_exec_popup_render::{
-    build_title, draw_reason_input, popup_mask, render_code_panel, render_mask, render_popup_base,
-    render_stderr_panel, render_stdout_panel,
+use super::code_exec_popup_render_base::{
+    popup_mask, render_code_panel, render_mask, render_popup_base, render_stderr_panel,
+    render_stdout_panel,
 };
+use super::code_exec_popup_render_buttons::{build_title, draw_reason_input};
 
 pub(crate) struct CodeExecPopupParams<'a, 'b> {
     pub area: Rect,

@@ -1,6 +1,4 @@
-#[path = "runtime_loop_steps_frame.rs"]
 mod runtime_loop_steps_frame;
-#[path = "runtime_loop_steps_stream.rs"]
 mod runtime_loop_steps_stream;
 
 pub(crate) use runtime_loop_steps_frame::{

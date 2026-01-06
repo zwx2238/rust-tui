@@ -1,4 +1,5 @@
-#[path = "commands_suggestions.rs"]
+pub(super) mod command_input;
+pub(super) mod command_suggestions;
 mod commands_suggestions;
 
 pub(crate) use commands_suggestions::command_suggestions_for_input;

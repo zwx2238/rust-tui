@@ -210,5 +210,4 @@ fn send_chunk(
 }
 
 #[cfg(test)]
-#[path = "net_logging_tests.rs"]
 mod net_logging_tests;

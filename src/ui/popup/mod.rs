@@ -1,5 +1,7 @@
 pub(super) mod code_exec_popup;
 pub(super) mod code_exec_popup_layout;
+mod code_exec_popup_render_base;
+mod code_exec_popup_render_buttons;
 pub(super) mod code_exec_popup_text;
 pub(super) mod file_patch_popup;
 pub(super) mod file_patch_popup_layout;

@@ -1,8 +1,5 @@
-#[path = "runtime_events_key.rs"]
 mod runtime_events_key;
-#[path = "runtime_events_mouse.rs"]
 mod runtime_events_mouse;
-#[path = "runtime_events_tabs.rs"]
 mod runtime_events_tabs;
 
 pub(crate) use runtime_events_key::handle_key_event;
