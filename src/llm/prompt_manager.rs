@@ -11,24 +11,7 @@ pub fn extract_system(messages: &[UiMessage]) -> String {
 }
 
 pub fn augment_system(base: &str) -> String {
-    let mut out = String::new();
-    if !base.trim().is_empty() {
-        out.push_str(base.trim());
-    }
-    if !out.is_empty() {
-        out.push_str("\n\n");
-    }
-    out.push_str("提示：公式渲染使用 txc，支持 LaTeX 子集，复杂公式可能无法渲染。");
-    out.push_str(
-        "\n\n工具约束：modify_file 仅接受 Git unified diff。必须包含 diff --git 行、---/+++ 行、\
-@@ -a,b +c,d @@ hunk 头，并保持逐行换行。严禁使用 *** Begin Patch 或缺失 a/ b/ 前缀。",
-    );
-    if std::env::var("DEEPCHAT_READ_ONLY").is_ok() {
-        out.push_str(
-            "\n\n只读模式：禁止文件修改工具；代码执行仍可用，但仅允许在沙箱工作目录内写入临时文件。",
-        );
-    }
-    out
+    base.trim().to_string()
 }
 
 pub fn build_history_and_prompt(
@@ -105,7 +88,6 @@ fn map_history_message(
 #[cfg(test)]
 mod tests {
     use super::{augment_system, build_history_and_prompt, extract_system};
-    use crate::test_support::{env_lock, restore_env, set_env};
     use crate::types::Message as UiMessage;
     use crate::types::{ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
     use rig::completion::Message;
@@ -138,12 +120,10 @@ mod tests {
     }
 
     #[test]
-    fn augment_system_adds_read_only_note() {
-        let _guard = env_lock().lock().unwrap();
-        let prev = set_env("DEEPCHAT_READ_ONLY", "1");
-        let out = augment_system("base");
-        assert!(out.contains("只读模式"));
-        restore_env("DEEPCHAT_READ_ONLY", prev);
+    fn augment_system_returns_trimmed_base() {
+        assert_eq!(augment_system("base"), "base");
+        assert_eq!(augment_system("  base  "), "base");
+        assert_eq!(augment_system(""), "");
     }
 
     #[test]
