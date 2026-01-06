@@ -115,7 +115,6 @@ pub(super) fn args(enable: Option<String>, yolo: bool) -> Args {
         system: "sys".to_string(),
         base_url: "http://example.com".to_string(),
         show_reasoning: false,
-        config: None,
         resume: None,
         replay_fork_last: false,
         enable,

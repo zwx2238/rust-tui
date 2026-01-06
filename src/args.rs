@@ -1,7 +1,35 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(author, version, about)]
+#[command(author, version, about, subcommand_negates_reqs = true)]
+pub struct Cli {
+    /// 配置文件路径（JSON），默认：~/.config/deepseek/config.json
+    #[arg(long, global = true)]
+    pub config: Option<String>,
+
+    #[command(subcommand)]
+    pub command: Option<Command>,
+
+    #[command(flatten)]
+    pub args: Args,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// 模型管理（写入 config.json）
+    Model {
+        #[command(subcommand)]
+        command: ModelCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ModelCommand {
+    /// 交互式添加/更新模型（包含 api_key）
+    Add,
+}
+
+#[derive(clap::Args, Debug, Clone)]
 pub struct Args {
     /// 模型名称
     #[arg(long, default_value = "deepseek-chat")]
@@ -18,10 +46,6 @@ pub struct Args {
     /// 显示 reasoning_content（如果返回）
     #[arg(long, default_value_t = false)]
     pub show_reasoning: bool,
-
-    /// 配置文件路径（JSON），默认：~/.config/deepseek/config.json
-    #[arg(long)]
-    pub config: Option<String>,
 
     /// 恢复会话 ID/路径（恢复后可继续对话）
     #[arg(long, alias = "replay")]
@@ -48,7 +72,9 @@ pub struct Args {
     pub question_set: Option<String>,
 
     /// 显式指定工作区目录（将挂载到容器内 /workspace）
-    #[arg(long)]
+    ///
+    /// 说明：当使用子命令（如 `model add`）时，workspace 不需要设置。
+    #[arg(long, default_value = "")]
     pub workspace: String,
 
     /// YOLO 模式：工具调用无需用户同意（包含代码执行/文件修改等）
@@ -130,39 +156,49 @@ impl Args {
 
 #[cfg(test)]
 mod tests {
-    use super::Args;
+    use super::{Cli, ModelCommand};
     use clap::Parser;
 
     #[test]
     fn default_flags() {
-        let args = Args::parse_from(["bin", "--workspace", "/tmp"]);
-        assert!(!args.web_search_enabled());
-        assert!(args.code_exec_enabled());
-        assert!(args.read_file_enabled());
-        assert!(args.read_code_enabled());
-        assert!(args.modify_file_enabled());
-        assert!(!args.yolo_enabled());
-        assert!(!args.read_only_enabled());
+        let cli = Cli::parse_from(["bin", "--workspace", "/tmp"]);
+        assert!(!cli.args.web_search_enabled());
+        assert!(cli.args.code_exec_enabled());
+        assert!(cli.args.read_file_enabled());
+        assert!(cli.args.read_code_enabled());
+        assert!(cli.args.modify_file_enabled());
+        assert!(!cli.args.yolo_enabled());
+        assert!(!cli.args.read_only_enabled());
     }
 
     #[test]
     fn enable_expression_toggles() {
-        let args = Args::parse_from([
+        let cli = Cli::parse_from([
             "bin",
             "--enable",
             "web_search,-read_file",
             "--workspace",
             "/tmp",
         ]);
-        assert!(args.web_search_enabled());
-        assert!(!args.read_file_enabled());
-        assert!(args.code_exec_enabled());
+        assert!(cli.args.web_search_enabled());
+        assert!(!cli.args.read_file_enabled());
+        assert!(cli.args.code_exec_enabled());
     }
 
     #[test]
     fn read_only_disables_modify_file_only() {
-        let args = Args::parse_from(["bin", "--read-only", "--workspace", "/tmp"]);
-        assert!(args.code_exec_enabled());
-        assert!(!args.modify_file_enabled());
+        let cli = Cli::parse_from(["bin", "--read-only", "--workspace", "/tmp"]);
+        assert!(cli.args.code_exec_enabled());
+        assert!(!cli.args.modify_file_enabled());
+    }
+
+    #[test]
+    fn subcommand_does_not_require_workspace() {
+        let cli = Cli::parse_from(["bin", "model", "add"]);
+        let Some(super::Command::Model { command }) = cli.command else {
+            panic!("expected model subcommand");
+        };
+        assert!(matches!(command, ModelCommand::Add));
+        assert_eq!(cli.args.workspace, "");
     }
 }

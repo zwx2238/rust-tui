@@ -2,12 +2,12 @@
 //!
 //! 提供应用程序配置的加载、解析和管理功能。
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub theme: String,
@@ -17,7 +17,7 @@ pub struct Config {
     pub tavily_api_key: String,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct ModelItem {
     pub key: String,
@@ -41,15 +41,21 @@ pub fn load_config(path: &PathBuf) -> Result<Config, Box<dyn std::error::Error>>
     Ok(cfg)
 }
 
+pub fn save_config(path: &PathBuf, cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    validate_config(cfg)?;
+    let parent = path.parent().ok_or("配置路径无效：缺少父目录")?;
+    fs::create_dir_all(parent)?;
+    let text = serde_json::to_string_pretty(cfg)?;
+    fs::write(path, text)?;
+    Ok(())
+}
+
 fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.theme.trim().is_empty() {
         return Err("配置文件错误：theme 不能为空".into());
     }
     if cfg.prompts_dir.trim().is_empty() {
         return Err("配置文件错误：prompts_dir 不能为空".into());
-    }
-    if cfg.tavily_api_key.trim().is_empty() {
-        return Err("配置文件错误：tavily_api_key 不能为空".into());
     }
     if cfg.models.is_empty() {
         return Err("配置文件错误：models 不能为空".into());

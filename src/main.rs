@@ -12,7 +12,8 @@ mod test_support;
 mod types;
 mod ui;
 
-use args::Args;
+mod cli;
+use args::{Args, Cli, Command, ModelCommand};
 use clap::Parser;
 use config::{Config, default_config_path, load_config};
 use question_set::{list_question_sets, question_sets_dir};
@@ -20,7 +21,7 @@ use render::theme_from_config;
 use std::env;
 use std::path::{Path, PathBuf};
 
-fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
+fn run_with_args(args: crate::args::Args, cfg_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     if args.wait_gdb {
         debug::wait_for_gdb_attach()?;
     }
@@ -30,7 +31,7 @@ fn run_with_args(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     if maybe_list_question_sets(&args)? {
         return Ok(());
     }
-    let cfg_path = config_path_from_args(&args)?;
+    let cfg_path = config_path_from_cli(cfg_override)?;
     let cfg = load_config_with_path(&cfg_path)?;
     let theme = theme_from_config(&cfg)?;
     ui::run(args, cfg, &theme)?;
@@ -73,8 +74,8 @@ fn print_question_sets(sets: &[String], dir: &Path) {
     println!("目录：{}", dir.display());
 }
 
-fn config_path_from_args(args: &Args) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    match args.config.as_deref() {
+fn config_path_from_cli(cfg: Option<&str>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    match cfg {
         Some(p) => Ok(PathBuf::from(p)),
         None => default_config_path(),
     }
@@ -86,14 +87,19 @@ fn load_config_with_path(cfg_path: &PathBuf) -> Result<Config, Box<dyn std::erro
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    run_with_args(args)
+    let cli = Cli::parse();
+    match cli.command {
+        Some(Command::Model { command }) => match command {
+            ModelCommand::Add => cli::model::run_add(cli.config.as_deref()),
+        },
+        None => run_with_args(cli.args, cli.config.as_deref()),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::run_with_args;
-    use crate::args::Args;
+    use crate::args::Cli;
     use crate::test_support::{env_lock, restore_env, set_env};
     use clap::Parser;
     use std::path::PathBuf;
@@ -110,7 +116,7 @@ mod tests {
         let prev = std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok();
         restore_env("DEEPCHAT_CODE_EXEC_NETWORK", None);
         let ws = temp_workspace_dir("yolo");
-        let args = Args::parse_from([
+        let cli = Cli::parse_from([
             "bin",
             "--question-set",
             "list",
@@ -118,7 +124,7 @@ mod tests {
             "--workspace",
             ws.to_string_lossy().as_ref(),
         ]);
-        let result = run_with_args(args);
+        let result = run_with_args(cli.args, cli.config.as_deref());
         assert!(result.is_ok());
         assert_eq!(
             std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok().as_deref(),
@@ -133,7 +139,7 @@ mod tests {
         let prev = std::env::var("DEEPCHAT_READ_ONLY").ok();
         restore_env("DEEPCHAT_READ_ONLY", None);
         let ws = temp_workspace_dir("ro");
-        let args = Args::parse_from([
+        let cli = Cli::parse_from([
             "bin",
             "--question-set",
             "list",
@@ -141,7 +147,7 @@ mod tests {
             "--workspace",
             ws.to_string_lossy().as_ref(),
         ]);
-        let result = run_with_args(args);
+        let result = run_with_args(cli.args, cli.config.as_deref());
         assert!(result.is_ok());
         assert_eq!(
             std::env::var("DEEPCHAT_READ_ONLY").ok().as_deref(),
@@ -153,14 +159,14 @@ mod tests {
     #[test]
     fn run_with_args_reports_config_error() {
         let ws = temp_workspace_dir("cfg");
-        let args = Args::parse_from([
+        let cli = Cli::parse_from([
             "bin",
             "--config",
             "/tmp/deepchat-missing-config.json",
             "--workspace",
             ws.to_string_lossy().as_ref(),
         ]);
-        let result = run_with_args(args);
+        let result = run_with_args(cli.args, cli.config.as_deref());
         assert!(result.is_err());
     }
 
@@ -171,14 +177,14 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp);
         let prev = set_env("HOME", &temp.to_string_lossy());
         let ws = temp_workspace_dir("qs");
-        let args = Args::parse_from([
+        let cli = Cli::parse_from([
             "bin",
             "--question-set",
             "list",
             "--workspace",
             ws.to_string_lossy().as_ref(),
         ]);
-        let result = run_with_args(args);
+        let result = run_with_args(cli.args, cli.config.as_deref());
         assert!(result.is_ok());
         restore_env("HOME", prev);
     }

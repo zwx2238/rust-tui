@@ -1,4 +1,4 @@
-use crate::args::Args;
+use crate::args::Cli;
 use crate::config::{Config, ModelItem};
 use crate::render::RenderTheme;
 use crate::test_support::{env_lock, restore_env, set_env};
@@ -50,7 +50,7 @@ fn run_rejects_resume_and_question_set() {
     fs::write(dir.join("default.txt"), "sys").unwrap();
     let ws = temp_dir("workspace");
     let cfg = config_with_prompts(&dir);
-    let mut args = Args::parse_from(["bin", "--workspace", ws.to_string_lossy().as_ref()]);
+    let mut args = Cli::parse_from(["bin", "--workspace", ws.to_string_lossy().as_ref()]).args;
     args.resume = Some("abc".to_string());
     args.question_set = Some("list".to_string());
     let result = run(args, cfg, &theme());
@@ -66,7 +66,7 @@ fn run_fails_on_missing_session() {
     fs::write(dir.join("default.txt"), "sys").unwrap();
     let ws = temp_dir("workspace");
     let cfg = config_with_prompts(&dir);
-    let mut args = Args::parse_from(["bin", "--workspace", ws.to_string_lossy().as_ref()]);
+    let mut args = Cli::parse_from(["bin", "--workspace", ws.to_string_lossy().as_ref()]).args;
     args.resume = Some("missing-session".to_string());
     let result = run(args, cfg, &theme());
     assert!(result.is_err());
