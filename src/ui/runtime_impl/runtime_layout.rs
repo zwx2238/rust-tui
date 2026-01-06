@@ -15,15 +15,11 @@ pub(crate) struct LayoutInfo {
     pub(crate) view_height: u16,
 }
 
-pub(crate) fn compute_layout(
+pub(crate) fn compute_layout_from_measures(
     size: Rect,
-    view: &ViewState,
-    tabs: &[TabState],
-    active_tab: usize,
-    categories: &[String],
+    input_height: u16,
+    sidebar_width: u16,
 ) -> LayoutInfo {
-    let input_height = compute_input_height(size, view, tabs, active_tab);
-    let sidebar_width = compute_sidebar_width(categories, size.width);
     let (header_area, category_area, tabs_area, msg_area, input_area, footer_area) =
         layout_chunks(size, input_height, sidebar_width);
     let msg_width = inner_width(msg_area, 1);
@@ -47,7 +43,12 @@ pub(crate) fn compute_sidebar_width(categories: &[String], total_width: u16) -> 
     desired.min(max_allowed)
 }
 
-fn compute_input_height(size: Rect, view: &ViewState, tabs: &[TabState], active_tab: usize) -> u16 {
+pub(crate) fn compute_input_height(
+    size: Rect,
+    view: &ViewState,
+    tabs: &[TabState],
+    active_tab: usize,
+) -> u16 {
     if view.overlay.uses_simple_layout() {
         return 0;
     }

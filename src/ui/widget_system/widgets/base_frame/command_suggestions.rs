@@ -1,7 +1,7 @@
 use crate::ui::command_suggestions::{draw_command_suggestions, handle_command_suggestion_click};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::widget_system::context::{
-    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+    EventCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
@@ -9,15 +9,6 @@ use std::error::Error;
 pub(super) struct CommandSuggestionsWidget;
 
 impl Widget for CommandSuggestionsWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
     fn update(
         &mut self,
         _ctx: &mut UpdateCtx<'_>,

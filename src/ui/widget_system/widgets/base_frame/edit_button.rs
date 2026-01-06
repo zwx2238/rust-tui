@@ -3,7 +3,7 @@ use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::widget_system::bindings::bind_event;
 use crate::ui::widget_system::context::{
-    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+    EventCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use ratatui::style::{Color, Modifier, Style};
@@ -58,15 +58,6 @@ impl EditButtonWidget {
 }
 
 impl Widget for EditButtonWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
     fn update(
         &mut self,
         ctx: &mut UpdateCtx<'_>,

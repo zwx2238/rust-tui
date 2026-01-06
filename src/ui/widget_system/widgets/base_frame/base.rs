@@ -2,6 +2,8 @@ use crate::ui::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
+use crate::ui::widget_system::BoxConstraints;
+use ratatui::layout::Size;
 use crate::ui::widget_system::widget_pod::WidgetPod;
 use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
 use std::error::Error;
@@ -26,6 +28,8 @@ pub(crate) struct BaseFrameWidget {
     pub(super) input: WidgetPod<InputWidget>,
     pub(super) footer: WidgetPod<FooterWidget>,
     pub(super) command_suggestions: WidgetPod<CommandSuggestionsWidget>,
+    measured_input_height: u16,
+    measured_sidebar_width: u16,
 }
 
 impl BaseFrameWidget {
@@ -40,26 +44,39 @@ impl BaseFrameWidget {
             input: WidgetPod::new(InputWidget),
             footer: WidgetPod::new(FooterWidget),
             command_suggestions: WidgetPod::new(CommandSuggestionsWidget),
+            measured_input_height: 0,
+            measured_sidebar_width: 8,
         }
+    }
+
+    pub(crate) fn measured_input_height(&self) -> u16 {
+        self.measured_input_height
+    }
+
+    pub(crate) fn measured_sidebar_width(&self) -> u16 {
+        self.measured_sidebar_width
     }
 }
 
 impl Widget for BaseFrameWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        layout: &FrameLayout,
-        rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        self.global_keys.set_rect(rect);
-        self.header.set_rect(layout.layout.header_area);
-        self.tabs.set_rect(layout.layout.tabs_area);
-        self.categories.set_rect(layout.layout.category_area);
-        self.messages.set_rect(layout.layout.msg_area);
-        self.edit_button.set_rect(layout.layout.msg_area);
-        self.input.set_rect(layout.layout.input_area);
-        self.footer.set_rect(layout.layout.footer_area);
-        self.command_suggestions.set_rect(rect);
+    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+        let cat_size = self.categories.measure(ctx, BoxConstraints::loose(bc.max))?;
+        let input_size = self.input.measure(ctx, BoxConstraints::loose(bc.max))?;
+        self.measured_sidebar_width = cat_size.width;
+        self.measured_input_height = input_size.height;
+        Ok(bc.max)
+    }
+
+    fn place(&mut self, ctx: &mut LayoutCtx<'_>, layout: &FrameLayout, rect: ratatui::layout::Rect) -> Result<(), Box<dyn Error>> {
+        self.global_keys.place(ctx, layout, rect)?;
+        self.header.place(ctx, layout, layout.layout.header_area)?;
+        self.tabs.place(ctx, layout, layout.layout.tabs_area)?;
+        self.categories.place(ctx, layout, layout.layout.category_area)?;
+        self.messages.place(ctx, layout, layout.layout.msg_area)?;
+        self.edit_button.place(ctx, layout, layout.layout.msg_area)?;
+        self.input.place(ctx, layout, layout.layout.input_area)?;
+        self.footer.place(ctx, layout, layout.layout.footer_area)?;
+        self.command_suggestions.place(ctx, layout, rect)?;
         Ok(())
     }
 

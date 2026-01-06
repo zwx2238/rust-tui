@@ -1,9 +1,11 @@
 use crate::ui::draw::draw_categories;
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::BoxConstraints;
 use crate::ui::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
+use ratatui::layout::Size;
 use std::error::Error;
 
 use super::helpers::handle_tab_category_mouse_down;
@@ -11,13 +13,12 @@ use super::helpers::handle_tab_category_mouse_down;
 pub(super) struct CategoriesWidget;
 
 impl Widget for CategoriesWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+        let width = crate::ui::runtime_layout::compute_sidebar_width(ctx.categories, bc.max.width);
+        Ok(Size {
+            width,
+            height: bc.max.height,
+        })
     }
 
     fn update(

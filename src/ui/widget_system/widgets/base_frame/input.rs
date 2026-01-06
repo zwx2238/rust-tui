@@ -2,11 +2,13 @@ use crate::ui::draw_input::{InputDrawParams, draw_input};
 use crate::ui::runtime_events::{handle_key_event, handle_mouse_event, handle_paste_event};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::Focus;
+use crate::ui::widget_system::BoxConstraints;
 use crate::ui::widget_system::bindings::{bind_active_tab, bind_event};
 use crate::ui::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
+use ratatui::layout::Size;
 use std::error::Error;
 
 use super::helpers::point_in_rect;
@@ -14,13 +16,18 @@ use super::helpers::point_in_rect;
 pub(super) struct InputWidget;
 
 impl Widget for InputWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+        let rect = ratatui::layout::Rect::new(0, 0, bc.max.width, bc.max.height);
+        let height = crate::ui::runtime_layout::compute_input_height(
+            rect,
+            ctx.view,
+            ctx.tabs,
+            ctx.active_tab,
+        );
+        Ok(Size {
+            width: bc.max.width,
+            height,
+        })
     }
 
     fn update(

@@ -1,24 +1,10 @@
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_layout::{LayoutInfo, compute_layout};
-use crate::ui::runtime_view::ViewState;
-use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
+use crate::ui::runtime_layout::LayoutInfo;
+use ratatui::layout::Rect;
 
 pub(crate) struct FrameLayout {
     pub(crate) size: Rect,
     pub(crate) layout: LayoutInfo,
-}
-
-pub(crate) fn frame_layout(
-    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    view: &ViewState,
-    tabs: &[TabState],
-    active_tab: usize,
-    categories: &[String],
-) -> Result<FrameLayout, Box<dyn std::error::Error>> {
-    let size = terminal.size()?;
-    let size = Rect::new(0, 0, size.width, size.height);
-    let layout = compute_layout(size, view, tabs, active_tab, categories);
-    Ok(FrameLayout { size, layout })
 }
 
 pub(crate) fn prepare_categories(

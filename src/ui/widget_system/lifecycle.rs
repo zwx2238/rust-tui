@@ -1,6 +1,8 @@
 use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::box_constraints::BoxConstraints;
 use crossterm::event::Event;
+use ratatui::layout::{Rect, Size};
 use std::error::Error;
 
 use super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
@@ -35,12 +37,23 @@ impl EventResult {
 }
 
 pub(crate) trait Widget {
-    fn layout(
+    fn measure(
+        &mut self,
+        _ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
+        Ok(bc.constrain(bc.max))
+    }
+
+    fn place(
         &mut self,
         _ctx: &mut LayoutCtx<'_>,
         _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>>;
+        _rect: Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
     fn update(
         &mut self,
         _ctx: &mut UpdateCtx<'_>,
@@ -54,13 +67,13 @@ pub(crate) trait Widget {
         _layout: &FrameLayout,
         _update: &UpdateOutput,
         _jump_rows: &[JumpRow],
-        _rect: ratatui::layout::Rect,
+        _rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>>;
     fn render(
         &mut self,
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        _rect: Rect,
     ) -> Result<(), Box<dyn Error>>;
 }

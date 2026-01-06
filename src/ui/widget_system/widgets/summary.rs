@@ -3,7 +3,7 @@ use crate::ui::runtime_loop_steps::FrameLayout;
 use std::error::Error;
 
 use super::super::bindings::bind_event;
-use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use super::super::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use super::super::lifecycle::{EventResult, Widget};
 use super::overlay_table::{OverlayTableController, clamp_overlay_tables};
 
@@ -18,15 +18,6 @@ impl SummaryWidget {
 }
 
 impl Widget for SummaryWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
     fn update(
         &mut self,
         _ctx: &mut UpdateCtx<'_>,

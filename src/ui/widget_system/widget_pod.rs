@@ -1,7 +1,9 @@
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::box_constraints::BoxConstraints;
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crossterm::event::Event;
 use ratatui::layout::Rect;
+use ratatui::layout::Size;
 use std::error::Error;
 
 use super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
@@ -19,18 +21,26 @@ impl<W: Widget> WidgetPod<W> {
         }
     }
 
-    pub(crate) fn set_rect(&mut self, rect: Rect) {
-        self.rect = rect;
+    pub(crate) fn widget(&self) -> &W {
+        &self.widget
     }
 
-    pub(crate) fn layout(
+    pub(crate) fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
+        self.widget.measure(ctx, bc)
+    }
+
+    pub(crate) fn place(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
         layout: &FrameLayout,
         rect: Rect,
     ) -> Result<(), Box<dyn Error>> {
         self.rect = rect;
-        self.widget.layout(ctx, layout, rect)
+        self.widget.place(ctx, layout, rect)
     }
 
     pub(crate) fn update(

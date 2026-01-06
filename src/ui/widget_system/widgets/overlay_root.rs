@@ -2,6 +2,8 @@ use crate::ui::overlay::OverlayKind;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
+use crate::ui::widget_system::BoxConstraints;
+use ratatui::layout::Size;
 use std::error::Error;
 
 use crate::ui::runtime_events::handle_tab_category_click;
@@ -47,19 +49,30 @@ impl OverlayRootWidget {
 }
 
 impl Widget for OverlayRootWidget {
-    fn layout(
+    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+        let _ = self.summary.measure(ctx, bc)?;
+        let _ = self.jump.measure(ctx, bc)?;
+        let _ = self.model.measure(ctx, bc)?;
+        let _ = self.prompt.measure(ctx, bc)?;
+        let _ = self.code_exec.measure(ctx, bc)?;
+        let _ = self.file_patch.measure(ctx, bc)?;
+        let _ = self.help.measure(ctx, bc)?;
+        Ok(bc.max)
+    }
+
+    fn place(
         &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
+        ctx: &mut LayoutCtx<'_>,
+        layout: &FrameLayout,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        self.summary.set_rect(rect);
-        self.jump.set_rect(rect);
-        self.model.set_rect(rect);
-        self.prompt.set_rect(rect);
-        self.code_exec.set_rect(rect);
-        self.file_patch.set_rect(rect);
-        self.help.set_rect(rect);
+        self.summary.place(ctx, layout, rect)?;
+        self.jump.place(ctx, layout, rect)?;
+        self.model.place(ctx, layout, rect)?;
+        self.prompt.place(ctx, layout, rect)?;
+        self.code_exec.place(ctx, layout, rect)?;
+        self.file_patch.place(ctx, layout, rect)?;
+        self.help.place(ctx, layout, rect)?;
         Ok(())
     }
 

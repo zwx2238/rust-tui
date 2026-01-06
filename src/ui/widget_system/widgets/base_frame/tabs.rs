@@ -1,7 +1,7 @@
 use crate::ui::draw::draw_tabs;
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::widget_system::context::{
-    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+    EventCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
@@ -11,15 +11,6 @@ use super::helpers::handle_tab_category_mouse_down;
 pub(super) struct TabsWidget;
 
 impl Widget for TabsWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        _rect: ratatui::layout::Rect,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
     fn update(
         &mut self,
         _ctx: &mut UpdateCtx<'_>,

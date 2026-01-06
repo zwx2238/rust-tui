@@ -1,7 +1,8 @@
 use std::error::Error;
 
 use crate::ui::widget_system::widget_pod::WidgetPod;
-use crate::ui::widget_system::{EventResult, Widget};
+use crate::ui::widget_system::{BoxConstraints, EventResult, Widget};
+use ratatui::layout::Size;
 
 use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use super::base_frame::{BaseFrameWidget, NoticeWidget};
@@ -21,18 +22,30 @@ impl RootWidget {
             notice: WidgetPod::new(NoticeWidget),
         }
     }
+
+    pub(crate) fn base_layout_measures(&self) -> (u16, u16) {
+        let base = self.base.widget();
+        (base.measured_input_height(), base.measured_sidebar_width())
+    }
 }
 
 impl Widget for RootWidget {
-    fn layout(
+    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+        let _ = self.base.measure(ctx, bc)?;
+        let _ = self.overlay.measure(ctx, bc)?;
+        let _ = self.notice.measure(ctx, bc)?;
+        Ok(bc.max)
+    }
+
+    fn place(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
         layout: &crate::ui::runtime_loop_steps::FrameLayout,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        self.base.layout(ctx, layout, rect)?;
-        self.overlay.layout(ctx, layout, rect)?;
-        self.notice.layout(ctx, layout, rect)?;
+        self.base.place(ctx, layout, rect)?;
+        self.overlay.place(ctx, layout, rect)?;
+        self.notice.place(ctx, layout, rect)?;
         Ok(())
     }
 

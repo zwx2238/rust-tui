@@ -1,3 +1,4 @@
+mod box_constraints;
 mod context;
 mod lifecycle;
 mod render;
@@ -9,6 +10,7 @@ mod widgets;
 use std::error::Error;
 
 pub(crate) use context::{EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput};
+pub(crate) use box_constraints::BoxConstraints;
 pub(crate) use lifecycle::{EventResult, Widget};
 use render::render_root;
 use widgets::{FrameLifecycle, RootWidget};
@@ -30,8 +32,23 @@ impl WidgetSystem {
         &mut self,
         ctx: &mut LayoutCtx<'_>,
     ) -> Result<crate::ui::runtime_loop_steps::FrameLayout, Box<dyn Error>> {
-        let layout = self.frame.layout(ctx)?;
-        self.root.layout(ctx, &layout, layout.size)?;
+        let size = ctx.terminal.size()?;
+        let size = ratatui::layout::Rect::new(0, 0, size.width, size.height);
+        let bc = BoxConstraints::tight(ratatui::layout::Size {
+            width: size.width,
+            height: size.height,
+        });
+        let _ = self.root.measure(ctx, bc)?;
+        let (input_height, sidebar_width) = self.root.base_layout_measures();
+        let layout = crate::ui::runtime_loop_steps::FrameLayout {
+            size,
+            layout: crate::ui::runtime_layout::compute_layout_from_measures(
+                size,
+                input_height,
+                sidebar_width,
+            ),
+        };
+        self.root.place(ctx, &layout, size)?;
         Ok(layout)
     }
 

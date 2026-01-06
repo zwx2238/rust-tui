@@ -56,12 +56,7 @@ impl ButtonWidget {
 }
 
 impl Widget for ButtonWidget {
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
-        rect: Rect,
-    ) -> Result<(), Box<dyn Error>> {
+    fn place(&mut self, _ctx: &mut LayoutCtx<'_>, _layout: &FrameLayout, rect: Rect) -> Result<(), Box<dyn Error>> {
         self.rect = rect;
         Ok(())
     }

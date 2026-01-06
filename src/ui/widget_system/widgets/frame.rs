@@ -1,28 +1,15 @@
 use crate::ui::runtime_loop_steps::{
-    FrameLayout, ProcessStreamUpdatesParams, active_frame_data, frame_layout, handle_pending_line,
+    FrameLayout, ProcessStreamUpdatesParams, active_frame_data, handle_pending_line,
     header_note, prepare_categories, process_stream_updates, tab_labels_and_pos,
 };
 use crate::ui::runtime_tick::{ActiveFrameData, apply_preheat_results};
 use std::error::Error;
 
-use super::super::context::{LayoutCtx, UpdateCtx, UpdateOutput};
+use super::super::context::{UpdateCtx, UpdateOutput};
 
 pub(crate) struct FrameLifecycle;
 
 impl FrameLifecycle {
-    pub(crate) fn layout(
-        &mut self,
-        ctx: &mut LayoutCtx<'_>,
-    ) -> Result<FrameLayout, Box<dyn Error>> {
-        frame_layout(
-            ctx.terminal,
-            ctx.view,
-            ctx.tabs,
-            ctx.active_tab,
-            ctx.categories,
-        )
-    }
-
     pub(crate) fn update(
         &mut self,
         ctx: &mut UpdateCtx<'_>,
