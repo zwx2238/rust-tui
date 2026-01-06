@@ -82,8 +82,24 @@ fn paste_clipboard(app: &mut App) {
     if let Some(text) = clipboard::get() {
         app.input.set_yank_text(text);
         app.input.paste();
+    } else {
+        maybe_notice_clipboard_unavailable(app);
     }
     refresh_command_suggestions(app);
+}
+
+fn maybe_notice_clipboard_unavailable(app: &mut App) {
+    if !is_ssh() {
+        return;
+    }
+    crate::ui::notice::push_notice(
+        app,
+        "无法读取系统剪贴板（可能是 SSH/无图形环境）。请使用终端粘贴：Ctrl+Shift+V 或 Shift+Insert",
+    );
+}
+
+fn is_ssh() -> bool {
+    std::env::var_os("SSH_CONNECTION").is_some() || std::env::var_os("SSH_TTY").is_some()
 }
 
 fn handle_command_suggestion_nav(key: KeyEvent, app: &mut App) -> bool {
