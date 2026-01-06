@@ -18,12 +18,6 @@ impl<A: Widget, B: Widget> Stack2<A, B> {
             b: WidgetPod::new(b),
         }
     }
-
-    pub(crate) fn a_rect(&self) -> Rect {
-        self.a.rect()
-    }
-
-    // b_rect intentionally omitted until needed.
 }
 
 impl<A: Widget, B: Widget> Widget for Stack2<A, B> {

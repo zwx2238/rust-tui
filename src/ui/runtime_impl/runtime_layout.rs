@@ -35,6 +35,17 @@ pub(crate) fn compute_sidebar_width(categories: &[String], total_width: u16) -> 
     desired.min(max_allowed)
 }
 
+pub(crate) fn compute_history_width(total_width: u16) -> u16 {
+    let min_msg_width = 20u16;
+    let collapse_below = 40u16;
+    if total_width < collapse_below {
+        return 0;
+    }
+    let desired = 24u16;
+    let max_allowed = total_width.saturating_sub(min_msg_width);
+    desired.min(max_allowed)
+}
+
 pub(crate) fn compute_input_height(
     size: Rect,
     view: &ViewState,

@@ -62,7 +62,7 @@ const SHORTCUTS: &[Shortcut] = &[
     Shortcut {
         scope: ShortcutScope::Chat,
         keys: "F2",
-        description: "消息跳转页",
+        description: "消息跳转（右侧历史可点击）",
     },
     Shortcut {
         scope: ShortcutScope::Chat,

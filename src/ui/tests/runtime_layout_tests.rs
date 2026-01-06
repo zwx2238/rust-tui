@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::ui::runtime_helpers::TabState;
-    use crate::ui::runtime_layout::{compute_input_height, compute_sidebar_width};
+    use crate::ui::runtime_layout::{compute_history_width, compute_input_height, compute_sidebar_width};
     use crate::ui::runtime_view::ViewState;
     use ratatui::layout::Rect;
 
@@ -11,6 +11,16 @@ mod tests {
         let width = compute_sidebar_width(&categories, 80);
         assert!(width >= 8);
         assert!(width <= 20);
+    }
+
+    #[test]
+    fn history_width_clamped() {
+        assert_eq!(compute_history_width(120), 24);
+        assert_eq!(compute_history_width(44), 24);
+        assert_eq!(compute_history_width(40), 20);
+        assert_eq!(compute_history_width(39), 0);
+        assert_eq!(compute_history_width(20), 0);
+        assert_eq!(compute_history_width(0), 0);
     }
 
     #[test]

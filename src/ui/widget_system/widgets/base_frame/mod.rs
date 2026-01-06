@@ -8,6 +8,7 @@ mod global_key;
 mod header;
 mod helpers;
 mod input;
+mod message_history;
 mod messages;
 mod notice;
 mod tabs;

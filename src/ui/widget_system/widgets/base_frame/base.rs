@@ -16,11 +16,13 @@ use super::footer::FooterWidget;
 use super::global_key::GlobalKeyWidget;
 use super::header::HeaderWidget;
 use super::input::InputWidget;
+use super::message_history::MessageHistoryWidget;
 use super::messages::MessagesWidget;
 use super::tabs::TabsWidget;
 
 type MsgLayer = Stack2<MessagesWidget, EditButtonWidget>;
-type Main = Flex3<TabsWidget, MsgLayer, InputWidget>;
+type MsgRow = Flex2<MsgLayer, MessageHistoryWidget>;
+type Main = Flex3<TabsWidget, MsgRow, InputWidget>;
 type Body = Flex2<CategoriesWidget, Main>;
 type Root = Flex3<HeaderWidget, Body, FooterWidget>;
 
@@ -33,10 +35,15 @@ pub(crate) struct BaseFrameWidget {
 impl BaseFrameWidget {
     pub(crate) fn new() -> Self {
         let msg_layer = MsgLayer::new(MessagesWidget, EditButtonWidget::new());
+        let msg_row = MsgRow::new(
+            FlexAxis::Horizontal,
+            (msg_layer, FlexParam::Flex(1)),
+            (MessageHistoryWidget, FlexParam::Intrinsic),
+        );
         let main = Main::new(
             FlexAxis::Vertical,
             (TabsWidget, FlexParam::Fixed(1)),
-            (msg_layer, FlexParam::Flex(1)),
+            (msg_row, FlexParam::Flex(1)),
             (InputWidget, FlexParam::Intrinsic),
         );
         let body = Body::new(
@@ -130,8 +137,8 @@ fn build_layout_info(root: &Root) -> LayoutInfo {
     let category_area = body.a_rect();
     let main = body.b_widget();
     let tabs_area = main.a_rect();
-    let msg_layer = main.b_widget();
-    let msg_area = msg_layer.a_rect();
+    let msg_row = main.b_widget();
+    let msg_area = msg_row.a_rect();
     let input_area = main.c_rect();
     LayoutInfo {
         header_area,
