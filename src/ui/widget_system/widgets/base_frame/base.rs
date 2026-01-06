@@ -1,13 +1,14 @@
-use crate::ui::widget_system::context::{
-    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
-};
+use crate::ui::draw::{inner_height, inner_width};
+use crate::ui::runtime_layout::LayoutInfo;
+use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
-use crate::ui::widget_system::BoxConstraints;
-use ratatui::layout::Size;
 use crate::ui::widget_system::widget_pod::WidgetPod;
+use crate::ui::widget_system::BoxConstraints;
 use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
+use ratatui::layout::Size;
 use std::error::Error;
 
+use crate::ui::widget_system::widgets::layout::{Flex2, Flex3, FlexAxis, FlexParam, Stack2};
 use super::categories::CategoriesWidget;
 use super::command_suggestions::CommandSuggestionsWidget;
 use super::edit_button::EditButtonWidget;
@@ -18,65 +19,61 @@ use super::input::InputWidget;
 use super::messages::MessagesWidget;
 use super::tabs::TabsWidget;
 
+type MsgLayer = Stack2<MessagesWidget, EditButtonWidget>;
+type Main = Flex3<TabsWidget, MsgLayer, InputWidget>;
+type Body = Flex2<CategoriesWidget, Main>;
+type Root = Flex3<HeaderWidget, Body, FooterWidget>;
+
 pub(crate) struct BaseFrameWidget {
     pub(super) global_keys: WidgetPod<GlobalKeyWidget>,
-    pub(super) header: WidgetPod<HeaderWidget>,
-    pub(super) tabs: WidgetPod<TabsWidget>,
-    pub(super) categories: WidgetPod<CategoriesWidget>,
-    pub(super) messages: WidgetPod<MessagesWidget>,
-    pub(super) edit_button: WidgetPod<EditButtonWidget>,
-    pub(super) input: WidgetPod<InputWidget>,
-    pub(super) footer: WidgetPod<FooterWidget>,
+    pub(super) root: WidgetPod<Root>,
     pub(super) command_suggestions: WidgetPod<CommandSuggestionsWidget>,
-    measured_input_height: u16,
-    measured_sidebar_width: u16,
 }
 
 impl BaseFrameWidget {
     pub(crate) fn new() -> Self {
+        let msg_layer = MsgLayer::new(MessagesWidget, EditButtonWidget::new());
+        let main = Main::new(
+            FlexAxis::Vertical,
+            (TabsWidget, FlexParam::Fixed(1)),
+            (msg_layer, FlexParam::Flex(1)),
+            (InputWidget, FlexParam::Intrinsic),
+        );
+        let body = Body::new(
+            FlexAxis::Horizontal,
+            (CategoriesWidget, FlexParam::Intrinsic),
+            (main, FlexParam::Flex(1)),
+        );
+        let root = Root::new(
+            FlexAxis::Vertical,
+            (HeaderWidget, FlexParam::Fixed(1)),
+            (body, FlexParam::Flex(1)),
+            (FooterWidget, FlexParam::Fixed(1)),
+        );
         Self {
             global_keys: WidgetPod::new(GlobalKeyWidget),
-            header: WidgetPod::new(HeaderWidget),
-            tabs: WidgetPod::new(TabsWidget),
-            categories: WidgetPod::new(CategoriesWidget),
-            messages: WidgetPod::new(MessagesWidget),
-            edit_button: WidgetPod::new(EditButtonWidget::new()),
-            input: WidgetPod::new(InputWidget),
-            footer: WidgetPod::new(FooterWidget),
+            root: WidgetPod::new(root),
             command_suggestions: WidgetPod::new(CommandSuggestionsWidget),
-            measured_input_height: 0,
-            measured_sidebar_width: 8,
         }
-    }
-
-    pub(crate) fn measured_input_height(&self) -> u16 {
-        self.measured_input_height
-    }
-
-    pub(crate) fn measured_sidebar_width(&self) -> u16 {
-        self.measured_sidebar_width
     }
 }
 
 impl Widget for BaseFrameWidget {
     fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
-        let cat_size = self.categories.measure(ctx, BoxConstraints::loose(bc.max))?;
-        let input_size = self.input.measure(ctx, BoxConstraints::loose(bc.max))?;
-        self.measured_sidebar_width = cat_size.width;
-        self.measured_input_height = input_size.height;
-        Ok(bc.max)
+        let _ = self.root.measure(ctx, bc)?;
+        Ok(bc.constrain(bc.max))
     }
 
-    fn place(&mut self, ctx: &mut LayoutCtx<'_>, layout: &FrameLayout, rect: ratatui::layout::Rect) -> Result<(), Box<dyn Error>> {
+    fn place(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        layout: &mut FrameLayout,
+        rect: ratatui::layout::Rect,
+    ) -> Result<(), Box<dyn Error>> {
         self.global_keys.place(ctx, layout, rect)?;
-        self.header.place(ctx, layout, layout.layout.header_area)?;
-        self.tabs.place(ctx, layout, layout.layout.tabs_area)?;
-        self.categories.place(ctx, layout, layout.layout.category_area)?;
-        self.messages.place(ctx, layout, layout.layout.msg_area)?;
-        self.edit_button.place(ctx, layout, layout.layout.msg_area)?;
-        self.input.place(ctx, layout, layout.layout.input_area)?;
-        self.footer.place(ctx, layout, layout.layout.footer_area)?;
+        self.root.place(ctx, layout, rect)?;
         self.command_suggestions.place(ctx, layout, rect)?;
+        layout.layout = build_layout_info(self.root.widget());
         Ok(())
     }
 
@@ -87,14 +84,8 @@ impl Widget for BaseFrameWidget {
         update: &UpdateOutput,
     ) -> Result<(), Box<dyn Error>> {
         self.global_keys.update(ctx, layout, update)?;
-        self.header.update(ctx, layout, update)?;
-        self.tabs.update(ctx, layout, update)?;
-        self.categories.update(ctx, layout, update)?;
-        self.messages.update(ctx, layout, update)?;
-        self.edit_button.update(ctx, layout, update)?;
-        self.input.update(ctx, layout, update)?;
+        self.root.update(ctx, layout, update)?;
         self.command_suggestions.update(ctx, layout, update)?;
-        self.footer.update(ctx, layout, update)?;
         Ok(())
     }
 
@@ -126,14 +117,30 @@ impl Widget for BaseFrameWidget {
         update: &UpdateOutput,
         _rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        self.header.render(frame, layout, update)?;
-        self.categories.render(frame, layout, update)?;
-        self.tabs.render(frame, layout, update)?;
-        self.messages.render(frame, layout, update)?;
-        self.edit_button.render(frame, layout, update)?;
-        self.input.render(frame, layout, update)?;
+        self.root.render(frame, layout, update)?;
         self.command_suggestions.render(frame, layout, update)?;
-        self.footer.render(frame, layout, update)?;
         Ok(())
+    }
+}
+
+fn build_layout_info(root: &Root) -> LayoutInfo {
+    let header_area = root.a_rect();
+    let footer_area = root.c_rect();
+    let body = root.b_widget();
+    let category_area = body.a_rect();
+    let main = body.b_widget();
+    let tabs_area = main.a_rect();
+    let msg_layer = main.b_widget();
+    let msg_area = msg_layer.a_rect();
+    let input_area = main.c_rect();
+    LayoutInfo {
+        header_area,
+        category_area,
+        tabs_area,
+        msg_area,
+        input_area,
+        footer_area,
+        msg_width: inner_width(msg_area, 1),
+        view_height: inner_height(msg_area, 0),
     }
 }

@@ -15,6 +15,7 @@ pub(super) fn render_code_exec_overlay(
     frame: &mut WidgetFrame<'_, '_, '_, '_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
+    rect: ratatui::layout::Rect,
 ) -> Result<(), Box<dyn Error>> {
     let active_tab = frame.state.active_tab;
     let pending = match frame
@@ -31,15 +32,14 @@ pub(super) fn render_code_exec_overlay(
         .tabs
         .get_mut(active_tab)
         .expect("active_tab should remain valid");
-    let area = frame.frame.area();
-    let popup = code_exec_popup_layout(area, tab_state.app.code_exec_reason_target.is_some());
+    let popup = code_exec_popup_layout(rect, tab_state.app.code_exec_reason_target.is_some());
     let live_snapshot = prepare_code_exec_overlay(frame.state.theme, tab_state, &pending, popup);
     let hover = tab_state.app.code_exec_hover;
     let reason_target = tab_state.app.code_exec_reason_target;
     let mut reason_input = std::mem::take(&mut tab_state.app.code_exec_reason_input);
     {
         let mut params = build_params(
-            area,
+            rect,
             frame.state.theme,
             tab_state,
             &pending,
@@ -53,7 +53,7 @@ pub(super) fn render_code_exec_overlay(
         widget,
         frame,
         super::buttons::CodeExecButtonsRenderParams {
-            area: frame.frame.area(),
+            area: rect,
             hover,
             reason_target,
             live: live_snapshot.as_ref(),

@@ -60,8 +60,8 @@ impl Widget for CodeExecWidget {
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        render_code_exec_overlay(self, frame, layout, update)
+        render_code_exec_overlay(self, frame, layout, update, rect)
     }
 }

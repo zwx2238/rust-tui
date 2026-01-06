@@ -22,11 +22,6 @@ impl RootWidget {
             notice: WidgetPod::new(NoticeWidget),
         }
     }
-
-    pub(crate) fn base_layout_measures(&self) -> (u16, u16) {
-        let base = self.base.widget();
-        (base.measured_input_height(), base.measured_sidebar_width())
-    }
 }
 
 impl Widget for RootWidget {
@@ -40,7 +35,7 @@ impl Widget for RootWidget {
     fn place(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &mut crate::ui::runtime_loop_steps::FrameLayout,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         self.base.place(ctx, layout, rect)?;

@@ -48,7 +48,7 @@ pub(crate) trait Widget {
     fn place(
         &mut self,
         _ctx: &mut LayoutCtx<'_>,
-        _layout: &FrameLayout,
+        _layout: &mut FrameLayout,
         _rect: Rect,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())
@@ -76,4 +76,54 @@ pub(crate) trait Widget {
         _update: &UpdateOutput,
         _rect: Rect,
     ) -> Result<(), Box<dyn Error>>;
+}
+
+impl Widget for Box<dyn Widget> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
+        (**self).measure(ctx, bc)
+    }
+
+    fn place(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        layout: &mut FrameLayout,
+        rect: Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        (**self).place(ctx, layout, rect)
+    }
+
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx<'_>,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+    ) -> Result<(), Box<dyn Error>> {
+        (**self).update(ctx, layout, update)
+    }
+
+    fn event(
+        &mut self,
+        ctx: &mut EventCtx<'_>,
+        event: &Event,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+        jump_rows: &[JumpRow],
+        rect: Rect,
+    ) -> Result<EventResult, Box<dyn Error>> {
+        (**self).event(ctx, event, layout, update, jump_rows, rect)
+    }
+
+    fn render(
+        &mut self,
+        frame: &mut WidgetFrame<'_, '_, '_, '_>,
+        layout: &FrameLayout,
+        update: &UpdateOutput,
+        rect: Rect,
+    ) -> Result<(), Box<dyn Error>> {
+        (**self).render(frame, layout, update, rect)
+    }
 }

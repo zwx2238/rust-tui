@@ -52,12 +52,12 @@ impl Widget for PromptWidget {
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
         draw_prompt_popup(
             frame.frame,
-            frame.frame.area(),
+            rect,
             frame.state.prompts,
             frame.view.prompt.selected,
             frame.view.prompt.scroll,

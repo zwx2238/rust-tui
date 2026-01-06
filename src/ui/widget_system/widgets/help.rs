@@ -52,12 +52,12 @@ impl Widget for HelpWidget {
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
         draw_shortcut_help(
             frame.frame,
-            frame.frame.area(),
+            rect,
             frame.view.help.selected,
             frame.view.help.scroll,
             frame.state.theme,

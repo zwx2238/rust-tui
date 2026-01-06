@@ -39,16 +39,11 @@ impl WidgetSystem {
             height: size.height,
         });
         let _ = self.root.measure(ctx, bc)?;
-        let (input_height, sidebar_width) = self.root.base_layout_measures();
-        let layout = crate::ui::runtime_loop_steps::FrameLayout {
+        let mut layout = crate::ui::runtime_loop_steps::FrameLayout {
             size,
-            layout: crate::ui::runtime_layout::compute_layout_from_measures(
-                size,
-                input_height,
-                sidebar_width,
-            ),
+            layout: crate::ui::runtime_layout::empty_layout_info(),
         };
-        self.root.place(ctx, &layout, size)?;
+        self.root.place(ctx, &mut layout, size)?;
         Ok(layout)
     }
 

@@ -52,12 +52,12 @@ impl Widget for ModelWidget {
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
         draw_model_popup(
             frame.frame,
-            frame.frame.area(),
+            rect,
             frame.state.models,
             frame.view.model.selected,
             frame.view.model.scroll,

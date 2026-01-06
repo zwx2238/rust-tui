@@ -25,6 +25,10 @@ impl<W: Widget> WidgetPod<W> {
         &self.widget
     }
 
+    pub(crate) fn rect(&self) -> Rect {
+        self.rect
+    }
+
     pub(crate) fn measure(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
@@ -36,7 +40,7 @@ impl<W: Widget> WidgetPod<W> {
     pub(crate) fn place(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
-        layout: &FrameLayout,
+        layout: &mut FrameLayout,
         rect: Rect,
     ) -> Result<(), Box<dyn Error>> {
         self.rect = rect;

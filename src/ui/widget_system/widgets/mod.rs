@@ -5,6 +5,7 @@ mod file_patch;
 mod frame;
 mod help;
 mod jump;
+mod layout;
 mod model;
 mod overlay_root;
 mod overlay_table;

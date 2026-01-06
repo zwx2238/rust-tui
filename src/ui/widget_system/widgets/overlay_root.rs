@@ -63,7 +63,7 @@ impl Widget for OverlayRootWidget {
     fn place(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
-        layout: &FrameLayout,
+        layout: &mut FrameLayout,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         self.summary.place(ctx, layout, rect)?;

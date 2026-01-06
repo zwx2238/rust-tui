@@ -51,10 +51,10 @@ impl Widget for SummaryWidget {
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
-        let layout = summary_layout(frame);
+        let layout = summary_layout(rect, frame.state.categories);
         let rows = summary_rows(frame, &layout);
         draw_summary_layout(frame, &layout);
         draw_summary_table(frame, &layout, &rows);
@@ -63,14 +63,12 @@ impl Widget for SummaryWidget {
     }
 }
 
-fn summary_layout(
-    frame: &WidgetFrame<'_, '_, '_, '_>,
-) -> crate::ui::summary::layout::SummaryLayout {
+fn summary_layout(rect: ratatui::layout::Rect, categories: &[String]) -> crate::ui::summary::layout::SummaryLayout {
     let size = ratatui::layout::Size {
-        width: frame.frame.area().width,
-        height: frame.frame.area().height,
+        width: rect.width,
+        height: rect.height,
     };
-    crate::ui::summary::layout::build_summary_layout(size, frame.state.categories)
+    crate::ui::summary::layout::build_summary_layout(size, categories)
 }
 
 fn summary_rows(

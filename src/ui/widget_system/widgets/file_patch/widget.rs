@@ -59,12 +59,12 @@ impl Widget for FilePatchWidget {
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _rect: ratatui::layout::Rect,
+        rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        let hover = render_popup(frame)?;
+        let hover = render_popup(frame, rect)?;
         render_buttons(
             self,
-            frame.frame.area(),
+            rect,
             hover,
             frame.state.theme,
             frame,
@@ -77,6 +77,7 @@ impl Widget for FilePatchWidget {
 
 fn render_popup(
     frame: &mut WidgetFrame<'_, '_, '_, '_>,
+    rect: ratatui::layout::Rect,
 ) -> Result<Option<crate::ui::state::FilePatchHover>, Box<dyn Error>> {
     let active_tab = frame.state.active_tab;
     let Some(tab_state) = frame.state.tabs.get_mut(active_tab) else {
@@ -85,11 +86,11 @@ fn render_popup(
     let Some(pending) = tab_state.app.pending_file_patch.clone() else {
         return Ok(None);
     };
-    let popup = file_patch_popup_layout(frame.frame.area());
+    let popup = file_patch_popup_layout(rect);
     clamp_patch_scroll(frame.state.theme, tab_state, &pending, popup);
     draw_file_patch_popup_base(
         frame.frame,
-        frame.frame.area(),
+        rect,
         &pending,
         tab_state.app.file_patch_scroll,
         tab_state.app.file_patch_selection,

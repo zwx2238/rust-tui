@@ -1,4 +1,3 @@
-use crate::ui::draw::{inner_height, inner_width, layout_chunks};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_view::ViewState;
 use ratatui::layout::Rect;
@@ -15,24 +14,17 @@ pub(crate) struct LayoutInfo {
     pub(crate) view_height: u16,
 }
 
-pub(crate) fn compute_layout_from_measures(
-    size: Rect,
-    input_height: u16,
-    sidebar_width: u16,
-) -> LayoutInfo {
-    let (header_area, category_area, tabs_area, msg_area, input_area, footer_area) =
-        layout_chunks(size, input_height, sidebar_width);
-    let msg_width = inner_width(msg_area, 1);
-    let view_height = inner_height(msg_area, 0);
+pub(crate) fn empty_layout_info() -> LayoutInfo {
+    let z = Rect::new(0, 0, 0, 0);
     LayoutInfo {
-        header_area,
-        category_area,
-        tabs_area,
-        msg_area,
-        input_area,
-        footer_area,
-        msg_width,
-        view_height,
+        header_area: z,
+        category_area: z,
+        tabs_area: z,
+        msg_area: z,
+        input_area: z,
+        footer_area: z,
+        msg_width: 0,
+        view_height: 0,
     }
 }
 

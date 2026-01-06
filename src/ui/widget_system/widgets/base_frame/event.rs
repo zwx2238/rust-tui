@@ -6,7 +6,7 @@ use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
 use std::error::Error;
 
 use super::base::BaseFrameWidget;
-use super::helpers::{pod_event_handled, scrollbar_hit};
+use super::helpers::pod_event_handled;
 
 impl BaseFrameWidget {
     pub(super) fn handle_key(
@@ -89,151 +89,17 @@ impl BaseFrameWidget {
         jump_rows: &[JumpRow],
         m: crossterm::event::MouseEvent,
     ) -> Result<EventResult, Box<dyn Error>> {
-        if self.handle_command_suggestions(ctx, layout, update, jump_rows, m)? {
-            return Ok(EventResult::handled());
-        }
-        if self.route_tab_category_input(ctx, layout, update, jump_rows, m)? {
-            return Ok(EventResult::handled());
-        }
-        if self.handle_edit_button(ctx, layout, update, jump_rows, m)? {
-            return Ok(EventResult::handled());
-        }
-        if self.route_messages(ctx, layout, update, jump_rows, m)? {
-            return Ok(EventResult::handled());
-        }
-        Ok(EventResult::ignored())
-    }
-
-    fn handle_command_suggestions(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        pod_event_handled(
+        if pod_event_handled(
             &mut self.command_suggestions,
             ctx,
             &crossterm::event::Event::Mouse(m),
             layout,
             update,
             jump_rows,
-        )
-    }
-
-    fn route_tab_category_input(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        if self.tabs.contains(m.column, m.row) {
-            return self.route_tab_mouse(ctx, layout, update, jump_rows, m);
+        )? {
+            return Ok(EventResult::handled());
         }
-        if self.categories.contains(m.column, m.row) {
-            return self.route_category_mouse(ctx, layout, update, jump_rows, m);
-        }
-        if self.input.contains(m.column, m.row) {
-            return self.route_input_mouse(ctx, layout, update, jump_rows, m);
-        }
-        Ok(false)
-    }
-
-    fn route_tab_mouse(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        pod_event_handled(
-            &mut self.tabs,
-            ctx,
-            &crossterm::event::Event::Mouse(m),
-            layout,
-            update,
-            jump_rows,
-        )
-    }
-
-    fn route_category_mouse(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        pod_event_handled(
-            &mut self.categories,
-            ctx,
-            &crossterm::event::Event::Mouse(m),
-            layout,
-            update,
-            jump_rows,
-        )
-    }
-
-    fn route_input_mouse(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        pod_event_handled(
-            &mut self.input,
-            ctx,
-            &crossterm::event::Event::Mouse(m),
-            layout,
-            update,
-            jump_rows,
-        )
-    }
-
-    fn handle_edit_button(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        pod_event_handled(
-            &mut self.edit_button,
-            ctx,
-            &crossterm::event::Event::Mouse(m),
-            layout,
-            update,
-            jump_rows,
-        )
-    }
-
-    fn route_messages(
-        &mut self,
-        ctx: &mut EventCtx<'_>,
-        layout: &FrameLayout,
-        update: &UpdateOutput,
-        jump_rows: &[JumpRow],
-        m: crossterm::event::MouseEvent,
-    ) -> Result<bool, Box<dyn Error>> {
-        if self.messages.contains(m.column, m.row)
-            || scrollbar_hit(layout.layout.msg_area, m.column, m.row)
-        {
-            return pod_event_handled(
-                &mut self.messages,
-                ctx,
-                &crossterm::event::Event::Mouse(m),
-                layout,
-                update,
-                jump_rows,
-            );
-        }
-        Ok(false)
+        self.root
+            .event(ctx, &crossterm::event::Event::Mouse(m), layout, update, jump_rows)
     }
 }
