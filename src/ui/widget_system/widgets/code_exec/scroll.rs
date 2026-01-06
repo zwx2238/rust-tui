@@ -1,8 +1,8 @@
 use crate::ui::code_exec_popup_layout::CodeExecPopupLayout;
 use crate::ui::code_exec_popup_text::{code_max_scroll, stderr_max_scroll, stdout_max_scroll};
 
-use super::helpers::{apply_scroll, point_in_rect};
 use super::helpers::code_exec_output;
+use super::helpers::{apply_scroll, point_in_rect};
 
 pub(super) fn handle_code_exec_scroll(
     m: crossterm::event::MouseEvent,
@@ -58,7 +58,11 @@ fn scroll_stdout(
         popup.stdout_text_area.height,
         theme,
     );
-    apply_scroll(&mut tab_state.app.code_exec_stdout_scroll, delta, max_scroll);
+    apply_scroll(
+        &mut tab_state.app.code_exec_stdout_scroll,
+        delta,
+        max_scroll,
+    );
     true
 }
 
@@ -75,6 +79,10 @@ fn scroll_stderr(
         popup.stderr_text_area.height,
         theme,
     );
-    apply_scroll(&mut tab_state.app.code_exec_stderr_scroll, delta, max_scroll);
+    apply_scroll(
+        &mut tab_state.app.code_exec_stderr_scroll,
+        delta,
+        max_scroll,
+    );
     true
 }

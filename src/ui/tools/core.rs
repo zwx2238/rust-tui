@@ -1,10 +1,10 @@
 use crate::types::ToolCall;
 use crate::ui::workspace::WorkspaceConfig;
 
+use super::ToolResult;
 use super::list_dir::run_list_dir;
 use super::read_file::run_read_file;
 use super::web_search::run_web_search;
-use super::ToolResult;
 
 pub(crate) fn run_tool(
     call: &ToolCall,

@@ -1,5 +1,7 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::{draw_categories, draw_footer, draw_header, draw_tabs, inner_area, layout_chunks};
+use crate::ui::draw::{
+    draw_categories, draw_footer, draw_header, draw_tabs, inner_area, layout_chunks,
+};
 use crate::ui::runtime_layout::compute_sidebar_width;
 use ratatui::layout::Rect;
 

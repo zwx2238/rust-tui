@@ -17,7 +17,12 @@ fn modify_file_blocked_in_read_only_mode() {
         r#"{"diff":"diff --git a/a b/a\n","path":"a"}"#,
     )];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("read_only")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("read_only"))
+    );
 }
 
 #[test]
@@ -29,7 +34,12 @@ fn modify_file_invalid_json_reports_error() {
     let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
     let calls = vec![tool_call("modify_file", "{")];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("modify_file 参数解析失败")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("modify_file 参数解析失败"))
+    );
 }
 
 #[test]
@@ -40,5 +50,10 @@ fn empty_tool_calls_adds_fallback_message() {
     let service = ToolService::new(&registry, &args, &tx);
     let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
     service.apply_tool_calls(&mut tab, 0, &[]);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("未找到可靠结果")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("未找到可靠结果"))
+    );
 }

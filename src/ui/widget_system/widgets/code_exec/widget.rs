@@ -1,6 +1,8 @@
 use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
 
@@ -54,9 +56,7 @@ impl Widget for CodeExecWidget {
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {
-            crossterm::event::Event::Mouse(m) => {
-                handle_mouse_event(self, ctx, layout, update, *m)
-            }
+            crossterm::event::Event::Mouse(m) => handle_mouse_event(self, ctx, layout, update, *m),
             crossterm::event::Event::Key(_) => {
                 handle_key_event(ctx, layout, update, jump_rows, event)
             }

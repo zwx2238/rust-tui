@@ -26,15 +26,14 @@ pub(crate) fn patch_max_scroll(
     max_scroll(&md, width, height, theme)
 }
 
-pub(crate) fn patch_plain_lines(
-    preview: &str,
-    width: u16,
-    theme: &RenderTheme,
-) -> Vec<String> {
+pub(crate) fn patch_plain_lines(preview: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
     let wrapped = wrap_text(preview, width);
     let md = patch_to_markdown(&wrapped);
     let lines = render_markdown_lines(&md, width.max(1) as usize, theme, false, false);
-    lines.into_iter().map(|line| line_to_string(&line)).collect()
+    lines
+        .into_iter()
+        .map(|line| line_to_string(&line))
+        .collect()
 }
 
 fn build_text(

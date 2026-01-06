@@ -36,7 +36,11 @@ pub(super) fn write_script_file(
     write_code_via_stdin(container_id, &script_path(run_id, ext), code)
 }
 
-pub(super) fn remove_script_file(container_id: &str, run_id: &str, ext: &str) -> Result<(), String> {
+pub(super) fn remove_script_file(
+    container_id: &str,
+    run_id: &str,
+    ext: &str,
+) -> Result<(), String> {
     let _ = Command::new("docker")
         .arg("exec")
         .arg(container_id)

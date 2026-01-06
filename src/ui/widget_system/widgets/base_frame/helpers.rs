@@ -1,16 +1,13 @@
 use crate::ui::runtime_events::handle_tab_category_click;
 use crate::ui::widget_system::bindings::bind_event;
+use crate::ui::widget_system::context::{EventCtx, UpdateOutput};
 use crate::ui::widget_system::lifecycle::EventResult;
 use crate::ui::widget_system::widget_pod::WidgetPod;
 use crate::ui::{runtime_events, runtime_loop_steps::FrameLayout};
-use crate::ui::widget_system::context::{EventCtx, UpdateOutput};
 use std::error::Error;
 
 pub(super) fn point_in_rect(column: u16, row: u16, rect: ratatui::layout::Rect) -> bool {
-    column >= rect.x
-        && column < rect.x + rect.width
-        && row >= rect.y
-        && row < rect.y + rect.height
+    column >= rect.x && column < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
 }
 
 pub(super) fn scrollbar_hit(area: ratatui::layout::Rect, column: u16, row: u16) -> bool {

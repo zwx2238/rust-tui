@@ -5,8 +5,8 @@ use crate::ui::runtime_helpers::{PreheatTask, TabState};
 use crate::ui::runtime_tick::ActiveFrameData;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::state::App;
-use ratatui::{Terminal, backend::CrosstermBackend};
 use ratatui::layout::Rect;
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::sync::mpsc;
 use std::time::Instant;
 

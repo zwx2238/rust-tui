@@ -30,14 +30,7 @@ pub(crate) fn handle_mouse_drag(params: MouseDragParams<'_>) {
         return;
     }
     if tab_state.app.chat_selecting {
-        drag_chat_selection(
-            tab_state,
-            msg_area,
-            msg_width,
-            view_height,
-            m,
-            theme,
-        );
+        drag_chat_selection(tab_state, msg_area, msg_width, view_height, m, theme);
     }
 }
 
@@ -51,13 +44,7 @@ fn drag_scrollbar_if_needed(
     if !tab_state.app.scrollbar_dragging {
         return false;
     }
-    drag_scrollbar(
-        tab_state,
-        msg_area,
-        view_height,
-        total_lines,
-        m,
-    );
+    drag_scrollbar(tab_state, msg_area, view_height, total_lines, m);
     true
 }
 

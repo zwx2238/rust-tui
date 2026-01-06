@@ -93,7 +93,14 @@ mod tests {
         let (preheat_tx, _preheat_rx) = mpsc::channel();
         WidgetTestState {
             terminal,
-            tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
+            tabs: vec![TabState::new(
+                "id".into(),
+                "默认".into(),
+                "",
+                false,
+                "m1",
+                "p1",
+            )],
             active_tab: 0,
             categories: vec!["默认".to_string()],
             active_category: 0,
@@ -164,7 +171,9 @@ mod tests {
         };
         let mut ctx = event_ctx(state);
         let event = crossterm::event::Event::Resize(0, 0);
-        let _ = system.event(&mut ctx, &layout, &update, &[], &event).unwrap();
+        let _ = system
+            .event(&mut ctx, &layout, &update, &[], &event)
+            .unwrap();
     }
 
     #[test]

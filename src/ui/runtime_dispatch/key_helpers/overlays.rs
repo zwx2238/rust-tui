@@ -1,6 +1,6 @@
+use super::super::nav::handle_nav_key;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::runtime_dispatch::DispatchContext;
-use super::super::nav::handle_nav_key;
 use crate::ui::runtime_view::{ViewAction, ViewState, handle_view_key};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 

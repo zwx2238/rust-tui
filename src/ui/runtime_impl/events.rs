@@ -1,13 +1,18 @@
-use crate::ui::runtime_helpers::PreheatResult;
 use crate::types::{ToolCall, Usage};
+use crate::ui::runtime_helpers::PreheatResult;
 use crossterm::event::Event as CrosstermEvent;
 use std::sync::mpsc::Sender;
 
 pub(crate) enum LlmEvent {
     Chunk(String),
     Error(String),
-    Done { usage: Option<Usage> },
-    ToolCalls { calls: Vec<ToolCall>, usage: Option<Usage> },
+    Done {
+        usage: Option<Usage>,
+    },
+    ToolCalls {
+        calls: Vec<ToolCall>,
+        usage: Option<Usage>,
+    },
 }
 
 pub(crate) struct UiEvent {
@@ -63,4 +68,3 @@ pub(crate) fn send_llm(tx: &Sender<RuntimeEvent>, tab: usize, request_id: u64, e
 pub(crate) fn send_preheat(tx: &Sender<RuntimeEvent>, result: PreheatResult) {
     let _ = tx.send(RuntimeEvent::Preheat(result));
 }
-

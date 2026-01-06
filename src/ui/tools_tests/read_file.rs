@@ -1,6 +1,6 @@
+use crate::test_support::env_lock;
 use crate::types::{ToolCall, ToolFunctionCall};
 use crate::ui::tools::run_tool;
-use crate::test_support::env_lock;
 use std::fs;
 
 use super::support::{setup_fake_docker, temp_dir, workspace};

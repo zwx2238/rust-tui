@@ -1,9 +1,9 @@
 use super::{RenderSnapshot, RunLoopParams, should_stop_after_iteration};
 use crate::ui::events::EventBatch;
 use crate::ui::runtime_helpers::PreheatResult;
+use crate::ui::runtime_loop::{event_wait, snapshot};
 use crate::ui::runtime_view::ViewState;
 use crate::ui::widget_system::WidgetSystem;
-use crate::ui::runtime_loop::{event_wait, snapshot};
 
 pub(super) fn run_loop(params: &mut RunLoopParams<'_>) -> Result<(), Box<dyn std::error::Error>> {
     let mut state = LoopState::init(params)?;
@@ -34,8 +34,13 @@ impl LoopState {
         let mut view = ViewState::new();
         let mut widget_system = WidgetSystem::new();
         let mut events = EventBatch::new();
-        let snapshot =
-            snapshot::build_snapshot(params, &mut view, &mut widget_system, &mut startup_elapsed, &mut events)?;
+        let snapshot = snapshot::build_snapshot(
+            params,
+            &mut view,
+            &mut widget_system,
+            &mut startup_elapsed,
+            &mut events,
+        )?;
         Ok(Self {
             startup_elapsed,
             view,
@@ -142,7 +147,9 @@ fn dispatch_one_input(
     )
 }
 
-fn apply_preheat_results(preheat: &mut Vec<PreheatResult>, tabs: &mut [crate::ui::runtime_helpers::TabState]) {
+fn apply_preheat_results(
+    preheat: &mut Vec<PreheatResult>,
+    tabs: &mut [crate::ui::runtime_helpers::TabState],
+) {
     crate::ui::runtime_tick::apply_preheat_results(preheat, tabs);
 }
-

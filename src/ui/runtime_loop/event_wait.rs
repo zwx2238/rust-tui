@@ -90,4 +90,3 @@ fn input_event_dirty(ev: &CrosstermEvent) -> bool {
             | CrosstermEvent::Paste(_)
     )
 }
-

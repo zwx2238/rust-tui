@@ -1,12 +1,12 @@
 use crate::ui::code_exec_popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
+use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::{CodeExecHover, CodeExecReasonTarget};
 use crate::ui::widget_system::context::{UpdateOutput, WidgetFrame};
 use crate::ui::widget_system::lifecycle::Widget;
-use crate::ui::runtime_loop_steps::FrameLayout;
 use ratatui::style::{Modifier, Style};
 
-use super::mode::{CodeExecButtonsMode, resolve_code_exec_mode};
 use super::super::widget::CodeExecWidget;
+use super::mode::{CodeExecButtonsMode, resolve_code_exec_mode};
 
 pub(in super::super) struct CodeExecButtonsRenderParams<'a> {
     pub(in super::super) area: ratatui::layout::Rect,

@@ -5,10 +5,10 @@ mod tests {
         ensure_container, run_python_in_container_stream, stop_exec,
     };
     use crate::ui::state::CodeExecLive;
+    use crate::ui::workspace::WorkspaceConfig;
     use std::fs;
-use std::sync::{Arc, Mutex, atomic::AtomicBool};
-use std::time::{SystemTime, UNIX_EPOCH};
-use crate::ui::workspace::WorkspaceConfig;
+    use std::sync::{Arc, Mutex, atomic::AtomicBool};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     const DOCKER_SCRIPT: &str = r#"#!/bin/sh
 cmd="$1"

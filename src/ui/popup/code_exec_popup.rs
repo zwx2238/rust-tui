@@ -8,8 +8,8 @@ use ratatui::layout::Rect;
 use tui_textarea::TextArea;
 
 use code_exec_popup_render::{
-    build_title, draw_reason_input, popup_mask, render_code_panel,
-    render_mask, render_popup_base, render_stderr_panel, render_stdout_panel,
+    build_title, draw_reason_input, popup_mask, render_code_panel, render_mask, render_popup_base,
+    render_stderr_panel, render_stdout_panel,
 };
 
 pub(crate) struct CodeExecPopupParams<'a, 'b> {

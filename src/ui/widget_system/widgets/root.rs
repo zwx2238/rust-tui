@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use crate::ui::widget_system::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
+use crate::ui::widget_system::{EventResult, Widget};
 
+use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use super::base_frame::{BaseFrameWidget, NoticeWidget};
 use super::overlay_root::OverlayRootWidget;
-use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 
 pub(crate) struct RootWidget {
     base: WidgetPod<BaseFrameWidget>,
@@ -58,9 +58,7 @@ impl Widget for RootWidget {
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         if ctx.view.overlay.active.is_some() {
-            return self
-                .overlay
-                .event(ctx, event, layout, update, jump_rows);
+            return self.overlay.event(ctx, event, layout, update, jump_rows);
         }
         self.base.event(ctx, event, layout, update, jump_rows)
     }

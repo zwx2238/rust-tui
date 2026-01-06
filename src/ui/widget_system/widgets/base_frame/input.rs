@@ -1,10 +1,12 @@
-use crate::ui::draw_input::{draw_input, InputDrawParams};
+use crate::ui::draw_input::{InputDrawParams, draw_input};
 use crate::ui::runtime_events::{handle_key_event, handle_mouse_event, handle_paste_event};
+use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::Focus;
 use crate::ui::widget_system::bindings::{bind_active_tab, bind_event};
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
-use crate::ui::runtime_loop_steps::FrameLayout;
 use std::error::Error;
 
 use super::helpers::point_in_rect;
@@ -40,9 +42,7 @@ impl Widget for InputWidget {
         rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {
-            crossterm::event::Event::Mouse(m) => {
-                handle_input_mouse(ctx, layout, update, rect, *m)
-            }
+            crossterm::event::Event::Mouse(m) => handle_input_mouse(ctx, layout, update, rect, *m),
             crossterm::event::Event::Key(key) => handle_input_key(ctx, layout, *key),
             crossterm::event::Event::Paste(paste) => handle_input_paste(ctx, paste),
             _ => Ok(EventResult::ignored()),
@@ -130,10 +130,7 @@ fn handle_input_key(
     Ok(EventResult::ignored())
 }
 
-fn handle_input_paste(
-    ctx: &mut EventCtx<'_>,
-    paste: &str,
-) -> Result<EventResult, Box<dyn Error>> {
+fn handle_input_paste(ctx: &mut EventCtx<'_>, paste: &str) -> Result<EventResult, Box<dyn Error>> {
     handle_paste_event(paste, ctx.tabs, *ctx.active_tab);
     Ok(EventResult::handled())
 }

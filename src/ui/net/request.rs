@@ -1,10 +1,7 @@
 use crate::types::Message;
-use crate::ui::events::{send_llm, LlmEvent, RuntimeEvent};
+use crate::ui::events::{LlmEvent, RuntimeEvent, send_llm};
 use std::sync::mpsc::Sender;
-use std::sync::{
-    Arc,
-    atomic::AtomicBool,
-};
+use std::sync::{Arc, atomic::AtomicBool};
 use tokio::runtime::Runtime;
 
 use super::helpers::handle_request_error;

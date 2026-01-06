@@ -11,10 +11,10 @@
 //! - `util` - 工具函数
 
 mod cache;
-#[cfg(test)]
-mod cache_tests;
 mod layout;
 mod markdown;
+#[cfg(test)]
+mod tests;
 mod theme;
 mod util;
 

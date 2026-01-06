@@ -1,9 +1,9 @@
 use crate::llm::rig::{build_completion_request, openai_completion_model, prepare_rig_context};
-use futures::StreamExt;
 use crate::types::ToolCall;
+use crate::ui::events::RuntimeEvent;
+use futures::StreamExt;
 use rig::completion::AssistantContent;
 use rig::streaming::StreamedAssistantContent;
-use crate::ui::events::RuntimeEvent;
 use std::sync::mpsc::Sender;
 use std::sync::{
     Arc,

@@ -1,7 +1,9 @@
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
-use crate::ui::widget_system::lifecycle::{EventResult, Widget};
-use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::draw::draw_header;
+use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
+use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
 
 pub(super) struct HeaderWidget;

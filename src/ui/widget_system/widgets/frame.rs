@@ -14,7 +14,13 @@ impl FrameLifecycle {
         &mut self,
         ctx: &mut LayoutCtx<'_>,
     ) -> Result<FrameLayout, Box<dyn Error>> {
-        frame_layout(ctx.terminal, ctx.view, ctx.tabs, ctx.active_tab, ctx.categories)
+        frame_layout(
+            ctx.terminal,
+            ctx.view,
+            ctx.tabs,
+            ctx.active_tab,
+            ctx.categories,
+        )
     }
 
     pub(crate) fn update(

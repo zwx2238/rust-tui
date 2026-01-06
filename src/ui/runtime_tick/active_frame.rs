@@ -80,8 +80,14 @@ fn update_text_and_scroll(
     label_suffixes: &[(usize, String)],
 ) -> (Text<'static>, usize) {
     let prev_scroll = tab_state.app.scroll;
-    let (mut text, total) =
-        render_active_text(tab_state, messages, theme, msg_width, view_height, label_suffixes);
+    let (mut text, total) = render_active_text(
+        tab_state,
+        messages,
+        theme,
+        msg_width,
+        view_height,
+        label_suffixes,
+    );
     update_scroll(&mut tab_state.app, total, view_height);
     if tab_state.app.scroll != prev_scroll {
         text = refresh_text_after_scroll(

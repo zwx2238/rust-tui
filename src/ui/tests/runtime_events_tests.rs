@@ -197,15 +197,9 @@ mod tests {
         let mut tabs = build_chat_tabs();
         let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
         let args = default_args();
-        let handled = crate::ui::runtime_events::handle_key_event(
-            key,
-            &mut tabs,
-            0,
-            &args,
-            40,
-            &theme(),
-        )
-        .unwrap();
+        let handled =
+            crate::ui::runtime_events::handle_key_event(key, &mut tabs, 0, &args, 40, &theme())
+                .unwrap();
         assert!(!handled);
     }
 

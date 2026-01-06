@@ -1,11 +1,11 @@
 use crate::args::Args;
 use crate::types::Message;
+use crate::ui::code_exec_container::ensure_container_cached;
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
-use crate::ui::workspace::resolve_workspace;
-use crate::ui::code_exec_container::ensure_container_cached;
 use crate::ui::state::PendingFilePatch;
+use crate::ui::workspace::resolve_workspace;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;

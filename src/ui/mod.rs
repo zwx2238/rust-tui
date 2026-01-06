@@ -1,160 +1,108 @@
+#[path = "interaction/clipboard.rs"]
 mod clipboard;
 mod code_exec_container;
 mod code_exec_container_env;
-#[cfg(test)]
-mod code_exec_container_tests;
+#[path = "popup/code_exec_popup.rs"]
 mod code_exec_popup;
+#[path = "popup/code_exec_popup_layout.rs"]
 mod code_exec_popup_layout;
-#[cfg(test)]
-mod code_exec_popup_layout_tests;
+#[path = "popup/code_exec_popup_text.rs"]
 mod code_exec_popup_text;
-#[cfg(test)]
-mod code_exec_popup_text_tests;
+#[path = "commands/command_input.rs"]
 mod command_input;
-#[cfg(test)]
-mod command_input_tests;
+#[path = "commands/command_suggestions.rs"]
 mod command_suggestions;
-#[cfg(test)]
-mod command_suggestions_tests;
+#[path = "commands/commands.rs"]
 mod commands;
-#[cfg(test)]
-mod commands_tests;
 mod draw;
 mod draw_input;
-#[cfg(test)]
-mod draw_tests;
-mod file_patch_popup;
-mod file_patch_popup_layout;
-#[cfg(test)]
-mod file_patch_popup_layout_tests;
-mod file_patch_popup_text;
-#[cfg(test)]
-mod file_patch_popup_text_tests;
-mod input;
-mod input_click;
-#[cfg(test)]
-mod input_click_tests;
-#[cfg(test)]
-mod input_tests;
-mod jump;
-#[cfg(test)]
-mod jump_tests;
-mod logic;
-#[cfg(test)]
-mod logic_tests;
-mod model_popup;
-#[cfg(test)]
-mod model_prompt_popup_tests;
+#[path = "runtime_impl/events.rs"]
 mod events;
+#[path = "popup/file_patch_popup.rs"]
+mod file_patch_popup;
+#[path = "popup/file_patch_popup_layout.rs"]
+mod file_patch_popup_layout;
+#[path = "popup/file_patch_popup_text.rs"]
+mod file_patch_popup_text;
+#[path = "interaction/input.rs"]
+mod input;
+#[path = "interaction/input_click.rs"]
+mod input_click;
+#[path = "interaction/input_thread.rs"]
 mod input_thread;
+#[path = "interaction/jump.rs"]
+mod jump;
+#[path = "runtime_impl/logic.rs"]
+mod logic;
+#[path = "popup/model_popup.rs"]
+mod model_popup;
 mod net;
 mod notice;
-#[cfg(test)]
-mod notice_tests;
 mod overlay;
 mod overlay_table;
 mod overlay_table_state;
-#[cfg(test)]
-mod overlay_table_state_tests;
-#[cfg(test)]
-mod overlay_table_tests;
-#[cfg(test)]
-mod overlay_tests;
+#[path = "runtime_impl/perf.rs"]
 mod perf;
+#[path = "popup/prompt_popup.rs"]
 mod prompt_popup;
 mod runtime;
 mod runtime_code_exec;
+#[path = "runtime_impl/runtime_code_exec_helpers.rs"]
 mod runtime_code_exec_helpers;
+#[path = "runtime_impl/runtime_code_exec_output.rs"]
 mod runtime_code_exec_output;
 #[cfg(test)]
-mod runtime_code_exec_output_tests;
-#[cfg(test)]
-mod runtime_code_exec_tests;
-#[cfg(test)]
-mod runtime_context_tests;
-#[cfg(test)]
+#[path = "runtime_impl/runtime_context.rs"]
 mod runtime_context;
 mod runtime_dispatch;
-#[cfg(test)]
-mod runtime_dispatch_nav_tests;
-#[cfg(test)]
-mod runtime_dispatch_tabs_tests;
+#[path = "runtime_impl/runtime_events.rs"]
 mod runtime_events;
+#[path = "runtime_impl/runtime_events_helpers.rs"]
 mod runtime_events_helpers;
-#[cfg(test)]
-mod runtime_events_helpers_tests;
-#[cfg(test)]
-mod runtime_events_more_tests;
-#[cfg(test)]
-mod runtime_events_tests;
+#[path = "runtime_impl/runtime_file_patch.rs"]
 mod runtime_file_patch;
-#[cfg(test)]
-mod runtime_file_patch_tests;
+#[path = "runtime_impl/runtime_helpers.rs"]
 mod runtime_helpers;
-#[cfg(test)]
-mod runtime_helpers_tests;
+#[path = "runtime_impl/runtime_layout.rs"]
 mod runtime_layout;
-#[cfg(test)]
-mod runtime_layout_tests;
 mod runtime_loop;
 mod runtime_loop_helpers;
-#[cfg(test)]
-mod runtime_loop_helpers_more_tests;
-#[cfg(test)]
-mod runtime_loop_helpers_tests;
+#[path = "runtime_impl/runtime_loop_steps.rs"]
 mod runtime_loop_steps;
-#[cfg(test)]
-mod runtime_loop_tests;
+#[path = "runtime_impl/runtime_requests.rs"]
 mod runtime_requests;
-#[cfg(test)]
-mod runtime_requests_tests;
 mod runtime_session;
-#[cfg(test)]
-mod runtime_session_tests;
-#[cfg(test)]
-mod runtime_tests;
 mod runtime_tick;
-#[cfg(test)]
-mod runtime_tick_tests;
+#[path = "runtime_impl/runtime_view.rs"]
 mod runtime_view;
+#[path = "runtime_impl/runtime_view_handlers.rs"]
 mod runtime_view_handlers;
-#[cfg(test)]
-mod runtime_view_handlers_tests;
-#[cfg(test)]
-mod runtime_view_tests;
+#[path = "runtime_impl/runtime_yolo.rs"]
 mod runtime_yolo;
-#[cfg(test)]
-mod runtime_yolo_tests;
+#[path = "interaction/scroll.rs"]
 mod scroll;
+#[path = "interaction/scroll_debug.rs"]
 mod scroll_debug;
-#[cfg(test)]
-mod scroll_debug_tests;
-#[cfg(test)]
-mod scroll_tests;
+#[path = "interaction/selection.rs"]
 mod selection;
+#[path = "interaction/selection_state.rs"]
 mod selection_state;
-#[cfg(test)]
-mod selection_tests;
+#[path = "interaction/shortcut_help.rs"]
 mod shortcut_help;
-#[cfg(test)]
-mod shortcut_help_tests;
+#[path = "interaction/shortcuts.rs"]
 mod shortcuts;
-#[cfg(test)]
-mod shortcuts_tests;
+#[path = "runtime_impl/state.rs"]
 mod state;
-#[cfg(test)]
-mod state_tests;
 mod summary;
-#[cfg(test)]
-mod summary_tests;
+#[path = "interaction/text_utils.rs"]
 mod text_utils;
 mod tool_service;
-#[cfg(test)]
-mod tool_service_tests;
 mod tools;
-#[cfg(test)]
-mod tools_tests;
-pub(crate) mod workspace;
 mod widget_system;
+#[path = "runtime_impl/workspace.rs"]
+pub(crate) mod workspace;
+
+#[cfg(test)]
+mod tests;
 
 pub use runtime::run;

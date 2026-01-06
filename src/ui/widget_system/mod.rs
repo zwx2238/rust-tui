@@ -2,15 +2,13 @@ mod context;
 mod lifecycle;
 mod render;
 mod widget_pod;
-mod widgets;
 #[cfg(test)]
 mod widget_system_tests;
+mod widgets;
 
 use std::error::Error;
 
-pub(crate) use context::{
-    EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput,
-};
+pub(crate) use context::{EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput};
 pub(crate) use lifecycle::{EventResult, Widget};
 use render::render_root;
 use widgets::{FrameLifecycle, RootWidget};
@@ -64,7 +62,9 @@ impl WidgetSystem {
         jump_rows: &[crate::ui::jump::JumpRow],
         event: &crossterm::event::Event,
     ) -> Result<bool, Box<dyn Error>> {
-        let result = self.root.event(ctx, event, layout, update, jump_rows, layout.size)?;
+        let result = self
+            .root
+            .event(ctx, event, layout, update, jump_rows, layout.size)?;
         Ok(result.quit)
     }
 

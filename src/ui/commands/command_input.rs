@@ -47,10 +47,7 @@ fn handle_simple_commands(line: &str, app: &mut App) -> Result<bool, Box<dyn std
     Ok(false)
 }
 
-fn handle_command_action(
-    line: &str,
-    app: &mut App,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_command_action(line: &str, app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let (cmd, arg) = split_cmd(line);
     match cmd {
         "/category" => handle_category(app, arg),

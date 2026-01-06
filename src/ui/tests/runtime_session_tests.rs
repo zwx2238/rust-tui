@@ -6,11 +6,11 @@ mod tests {
     use crate::model_registry::{ModelProfile, ModelRegistry};
     use crate::session::SessionData;
     use crate::test_support::{env_lock, restore_env, set_env};
+    use crate::ui::events::RuntimeEvent;
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::runtime_session::{
         fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
     };
-    use crate::ui::events::RuntimeEvent;
     use std::fs;
     use std::sync::mpsc;
 

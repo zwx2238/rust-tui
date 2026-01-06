@@ -12,13 +12,13 @@ use super::helpers::{
     is_ctrl_c, is_mouse_down, is_mouse_drag, is_mouse_moved, is_mouse_up, point_in_rect,
     scroll_delta,
 };
+use super::render::hover_at;
 use super::scroll::handle_code_exec_scroll;
 use super::selection::{
     clear_code_exec_selection, copy_code_exec_selection, handle_code_exec_selection_drag,
     handle_code_exec_selection_start,
 };
 use super::widget::CodeExecWidget;
-use super::render::hover_at;
 
 pub(super) fn handle_mouse_event(
     widget: &mut CodeExecWidget,
@@ -30,7 +30,9 @@ pub(super) fn handle_mouse_event(
     let Some(state) = mouse_state(ctx, layout) else {
         return Ok(EventResult::ignored());
     };
-    Ok(handle_mouse_with_state(widget, ctx, layout, update, m, state))
+    Ok(handle_mouse_with_state(
+        widget, ctx, layout, update, m, state,
+    ))
 }
 
 pub(super) fn handle_key_event(
@@ -163,7 +165,11 @@ fn try_scroll(
     None
 }
 
-fn handle_drag(ctx: &mut EventCtx<'_>, state: &MouseState, m: crossterm::event::MouseEvent) -> bool {
+fn handle_drag(
+    ctx: &mut EventCtx<'_>,
+    state: &MouseState,
+    m: crossterm::event::MouseEvent,
+) -> bool {
     if let Some(tab_state) = ctx.tabs.get_mut(state.active_tab) {
         return handle_code_exec_selection_drag(
             tab_state,

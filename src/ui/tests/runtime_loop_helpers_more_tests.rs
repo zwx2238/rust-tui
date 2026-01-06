@@ -5,12 +5,12 @@ mod tests {
     use crate::model_registry::{ModelProfile, ModelRegistry};
     use crate::session::SessionLocation;
     use crate::test_support::{env_lock, restore_env, set_env};
+    use crate::ui::events::RuntimeEvent;
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::runtime_loop_helpers::{HandlePendingCommandParams, handle_pending_command};
     use crate::ui::state::PendingCommand;
     use std::fs;
     use std::sync::mpsc;
-    use crate::ui::events::RuntimeEvent;
 
     struct PendingCtx {
         tabs: Vec<TabState>,

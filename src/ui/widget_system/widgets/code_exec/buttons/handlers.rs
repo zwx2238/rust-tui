@@ -1,12 +1,12 @@
+use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCommand};
 use crate::ui::widget_system::context::{EventCtx, UpdateOutput};
 use crate::ui::widget_system::lifecycle::Widget;
-use crate::ui::runtime_loop_steps::FrameLayout;
 
-use super::mode::{CodeExecButtonsMode, resolve_code_exec_mode};
-use super::render::configure_buttons;
 use super::super::helpers::point_in_rect;
 use super::super::widget::CodeExecWidget;
+use super::mode::{CodeExecButtonsMode, resolve_code_exec_mode};
+use super::render::configure_buttons;
 
 pub(in super::super) struct CodeExecButtonParams<'a> {
     pub(in super::super) active_tab: usize,
@@ -149,7 +149,11 @@ fn read_button_state(
                 .as_ref()
                 .and_then(|live| live.lock().ok())
                 .map(|live| live.clone());
-            (tab.app.code_exec_hover, tab.app.code_exec_reason_target, live)
+            (
+                tab.app.code_exec_hover,
+                tab.app.code_exec_reason_target,
+                live,
+            )
         })
         .unwrap_or((None, None, None))
 }
@@ -179,11 +183,7 @@ fn handle_approve_click(
     false
 }
 
-fn handle_deny_click(
-    ctx: &mut EventCtx<'_>,
-    active_tab: usize,
-    mode: CodeExecButtonsMode,
-) -> bool {
+fn handle_deny_click(ctx: &mut EventCtx<'_>, active_tab: usize, mode: CodeExecButtonsMode) -> bool {
     if let Some(tab_state) = ctx.tabs.get_mut(active_tab) {
         return handle_code_exec_deny(tab_state, mode);
     }

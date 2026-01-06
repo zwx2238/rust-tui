@@ -7,9 +7,9 @@ mod tests {
     use crate::ui::runtime_helpers::{PreheatResult, TabState};
     use crate::ui::runtime_tick::{
         ActiveFrameData, apply_preheat_results, build_exec_header_note,
-        collect_stream_events_from_batch,
-        preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay,
-        sync_file_patch_overlay, update_code_exec_results, update_tab_widths,
+        collect_stream_events_from_batch, preheat_inactive_tabs, prepare_active_frame,
+        sync_code_exec_overlay, sync_file_patch_overlay, update_code_exec_results,
+        update_tab_widths,
     };
     use crate::ui::runtime_view::ViewState;
     use crate::ui::state::{CodeExecLive, PendingCodeExec, RequestHandle};
@@ -194,7 +194,15 @@ mod tests {
         let args = default_args();
         let ActiveFrameData {
             text, total_lines, ..
-        } = prepare_active_frame(&mut tab, &args, &theme(), 40, 10, Rect::new(0, 0, 40, 3), None);
+        } = prepare_active_frame(
+            &mut tab,
+            &args,
+            &theme(),
+            40,
+            10,
+            Rect::new(0, 0, 40, 3),
+            None,
+        );
         assert!(total_lines >= 1);
         assert!(!text.lines.is_empty());
     }

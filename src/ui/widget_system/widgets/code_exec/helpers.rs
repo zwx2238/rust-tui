@@ -35,7 +35,8 @@ pub(super) fn apply_scroll(current: &mut usize, delta: i32, max: usize) {
 }
 
 pub(super) fn is_ctrl_c(key: crossterm::event::KeyEvent) -> bool {
-    key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+    key.modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
         && key.code == crossterm::event::KeyCode::Char('c')
 }
 

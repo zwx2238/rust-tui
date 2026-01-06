@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
 use crate::ui::command_suggestions::{clear_command_suggestions, refresh_command_suggestions};
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::draw::inner_area;
+use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::input_click::click_to_cursor;
 use crate::ui::logic::{point_in_rect, scroll_from_mouse};
 use crate::ui::runtime_events_helpers::{hit_test_edit_button, selection_view_text};
@@ -163,5 +163,8 @@ fn start_chat_selection(
     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
     let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
     app.chat_selecting = true;
-    app.chat_selection = Some(Selection { start: pos, end: pos });
+    app.chat_selection = Some(Selection {
+        start: pos,
+        end: pos,
+    });
 }

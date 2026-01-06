@@ -3,9 +3,7 @@ use crate::model_registry::ModelRegistry;
 use crate::question_set::load_question_set;
 use crate::session::{SessionLocation, load_session, save_session};
 use crate::ui::events::RuntimeEvent;
-use crate::ui::runtime_helpers::{
-    PreheatTask, TabState, collect_open_conversations,
-};
+use crate::ui::runtime_helpers::{PreheatTask, TabState, collect_open_conversations};
 use crate::ui::runtime_session::{
     fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
 };
@@ -206,11 +204,7 @@ fn init_channels() -> Channels {
     let (tx, rx) = mpsc::channel::<RuntimeEvent>();
     let (preheat_tx, preheat_rx) = mpsc::channel::<PreheatTask>();
     spawn_preheat_workers(preheat_rx, tx.clone());
-    Channels {
-        tx,
-        rx,
-        preheat_tx,
-    }
+    Channels { tx, rx, preheat_tx }
 }
 
 pub(crate) fn maybe_fork_retry(

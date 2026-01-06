@@ -20,8 +20,14 @@ pub(super) fn build_snapshot(
         events,
         &layout,
     )?;
-    let jump_rows =
-        run_render(params, view, widget_system, startup_elapsed, &layout, &update)?;
+    let jump_rows = run_render(
+        params,
+        view,
+        widget_system,
+        startup_elapsed,
+        &layout,
+        &update,
+    )?;
     Ok(RenderSnapshot {
         layout,
         update,
@@ -94,4 +100,3 @@ fn run_render(
     };
     widget_system.render(&mut ctx, layout, update)
 }
-

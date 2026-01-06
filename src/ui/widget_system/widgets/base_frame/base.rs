@@ -1,11 +1,13 @@
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
 use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
 use std::error::Error;
 
-use super::command_suggestions::CommandSuggestionsWidget;
 use super::categories::CategoriesWidget;
+use super::command_suggestions::CommandSuggestionsWidget;
 use super::edit_button::EditButtonWidget;
 use super::footer::FooterWidget;
 use super::global_key::GlobalKeyWidget;

@@ -143,11 +143,7 @@ fn read_file_for_args(
     read_file_content(&path, args.max_bytes, workspace)
 }
 
-fn format_read_file_result(
-    args: &ReadFileArgs,
-    with_line_numbers: bool,
-    content: &str,
-) -> String {
+fn format_read_file_result(args: &ReadFileArgs, with_line_numbers: bool, content: &str) -> String {
     let lines = content.lines().collect::<Vec<_>>();
     let (start, end, total_lines, slice) = slice_lines(&lines, args.start_line, args.end_line);
     format_read_file_output(
@@ -174,7 +170,10 @@ fn format_read_file_header(
         "[read_file]\n"
     });
     out.push_str(&format!("path: {}\n", path));
-    out.push_str(&format!("lines: {}-{} (total {})\n", start, end, total_lines));
+    out.push_str(&format!(
+        "lines: {}-{} (total {})\n",
+        start, end, total_lines
+    ));
     out.push_str("content:\n");
     out.push_str("```text\n");
     out

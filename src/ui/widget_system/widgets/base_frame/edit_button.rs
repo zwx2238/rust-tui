@@ -1,9 +1,11 @@
 use crate::ui::draw::inner_area;
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
-use crate::ui::widget_system::bindings::bind_event;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
-use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::bindings::bind_event;
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
+use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use ratatui::style::{Color, Modifier, Style};
 use std::error::Error;
 
@@ -20,7 +22,9 @@ struct EditButtonEntry {
 
 impl EditButtonWidget {
     pub(super) fn new() -> Self {
-        Self { buttons: Vec::new() }
+        Self {
+            buttons: Vec::new(),
+        }
     }
 
     fn sync_buttons(
@@ -172,10 +176,8 @@ fn fork_message(
     msg_index: usize,
 ) {
     let mut binding = bind_event(ctx, layout, update);
-    let _ = crate::ui::runtime_dispatch::fork::fork_message_by_index(
-        &mut binding.dispatch,
-        msg_index,
-    );
+    let _ =
+        crate::ui::runtime_dispatch::fork::fork_message_by_index(&mut binding.dispatch, msg_index);
 }
 
 fn edit_button_style() -> Style {

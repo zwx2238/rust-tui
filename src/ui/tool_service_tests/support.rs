@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::model_registry::{ModelProfile, ModelRegistry};
-use crate::types::{ToolCall, ToolFunctionCall};
 use crate::test_support::{restore_env, set_env};
+use crate::types::{ToolCall, ToolFunctionCall};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 

@@ -1,6 +1,6 @@
 use crate::render::{RenderTheme, render_markdown_lines};
-use ratatui::text::{Line, Text};
 use crate::ui::selection::{line_to_string, line_width};
+use ratatui::text::{Line, Text};
 use unicode_width::UnicodeWidthChar;
 
 pub(crate) fn build_code_text(
@@ -85,8 +85,10 @@ fn build_text(
     scroll: usize,
     theme: &RenderTheme,
 ) -> (Text<'static>, usize) {
-    let lines =
-        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false, true), width);
+    let lines = wrap_rendered_lines(
+        render_markdown_lines(md, width as usize, theme, false, true),
+        width,
+    );
     let view_height = height.saturating_sub(1) as usize;
     let start = scroll.min(lines.len());
     let end = (start + view_height).min(lines.len());
@@ -95,16 +97,23 @@ fn build_text(
 }
 
 fn max_scroll(md: &str, width: u16, height: u16, theme: &RenderTheme) -> usize {
-    let lines =
-        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false, true), width);
+    let lines = wrap_rendered_lines(
+        render_markdown_lines(md, width as usize, theme, false, true),
+        width,
+    );
     let view_height = height.saturating_sub(1) as usize;
     lines.len().saturating_sub(view_height)
 }
 
 fn render_plain_lines(md: &str, width: u16, theme: &RenderTheme) -> Vec<String> {
-    let lines: Vec<Line<'static>> =
-        wrap_rendered_lines(render_markdown_lines(md, width as usize, theme, false, true), width);
-    lines.into_iter().map(|line| line_to_string(&line)).collect()
+    let lines: Vec<Line<'static>> = wrap_rendered_lines(
+        render_markdown_lines(md, width as usize, theme, false, true),
+        width,
+    );
+    lines
+        .into_iter()
+        .map(|line| line_to_string(&line))
+        .collect()
 }
 
 fn wrap_rendered_lines(lines: Vec<Line<'static>>, width: u16) -> Vec<Line<'static>> {

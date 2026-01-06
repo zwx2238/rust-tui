@@ -236,7 +236,10 @@ fn update_selection(target: &mut Option<Selection>, pos: (usize, usize)) {
             start: existing.start,
             end: pos,
         },
-        None => Selection { start: pos, end: pos },
+        None => Selection {
+            start: pos,
+            end: pos,
+        },
     };
     *target = Some(next);
 }
@@ -247,7 +250,10 @@ fn start_code_exec_selection(
     pos: (usize, usize),
 ) {
     tab_state.app.code_exec_selecting = Some(target);
-    let selection = Some(Selection { start: pos, end: pos });
+    let selection = Some(Selection {
+        start: pos,
+        end: pos,
+    });
     match target {
         CodeExecSelectionTarget::Code => {
             tab_state.app.code_exec_code_selection = selection;

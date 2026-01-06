@@ -75,7 +75,10 @@ pub(crate) fn ensure_default_tab(
     Ok(())
 }
 
-pub(crate) fn resolve_active_tab(session: &crate::session::SessionData, tabs: &[TabState]) -> usize {
+pub(crate) fn resolve_active_tab(
+    session: &crate::session::SessionData,
+    tabs: &[TabState],
+) -> usize {
     session
         .active_conversation
         .as_deref()

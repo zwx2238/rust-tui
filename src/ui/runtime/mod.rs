@@ -2,8 +2,8 @@ use crate::args::Args;
 use crate::llm::prompts::load_prompts;
 use crate::model_registry::build_model_registry;
 use crate::render::RenderTheme;
-use crate::ui::runtime_loop::run_loop;
 use crate::ui::input_thread::start_input_thread;
+use crate::ui::runtime_loop::run_loop;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use runtime_state::{
@@ -60,7 +60,14 @@ fn run_with_context(
         tavily_api_key,
     )?;
     let channels = init_and_spawn_preheat();
-    prepare_requests(question_set, &mut state, registry, prompt_registry, args, &channels);
+    prepare_requests(
+        question_set,
+        &mut state,
+        registry,
+        prompt_registry,
+        args,
+        &channels,
+    );
     run_ui_loop(
         &mut state,
         &channels,

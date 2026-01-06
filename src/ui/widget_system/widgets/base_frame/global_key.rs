@@ -1,11 +1,13 @@
+use crate::ui::jump::JumpRow;
 use crate::ui::runtime_dispatch::key_helpers::{
     handle_pre_key_actions, handle_view_action_flow, is_quit_key, resolve_view_action,
 };
-use crate::ui::widget_system::bindings::bind_event;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
-use crate::ui::widget_system::lifecycle::{EventResult, Widget};
-use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::ui::widget_system::bindings::bind_event;
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
+use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
 
 pub(super) struct GlobalKeyWidget;

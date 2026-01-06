@@ -6,7 +6,10 @@ use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-pub(crate) fn start_input_thread(tx: Sender<RuntimeEvent>, stop: Arc<AtomicBool>) -> JoinHandle<()> {
+pub(crate) fn start_input_thread(
+    tx: Sender<RuntimeEvent>,
+    stop: Arc<AtomicBool>,
+) -> JoinHandle<()> {
     std::thread::spawn(move || run_input_loop(tx, stop))
 }
 
@@ -34,4 +37,3 @@ fn poll_once(tx: &Sender<RuntimeEvent>, timeout: Duration) -> bool {
     };
     tx.send(RuntimeEvent::Input(ev)).is_ok()
 }
-

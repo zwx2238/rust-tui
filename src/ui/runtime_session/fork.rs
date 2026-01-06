@@ -27,11 +27,7 @@ pub(crate) fn fork_last_tab_for_retry(
     Some((*active_tab, content))
 }
 
-fn create_retry_tab(
-    source: &TabState,
-    model_key: &str,
-    prompt_key: &str,
-) -> Option<TabState> {
+fn create_retry_tab(source: &TabState, model_key: &str, prompt_key: &str) -> Option<TabState> {
     let conv_id = crate::conversation::new_conversation_id().ok()?;
     let mut tab = TabState::new(
         conv_id,

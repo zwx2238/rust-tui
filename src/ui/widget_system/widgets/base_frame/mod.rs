@@ -1,6 +1,6 @@
 mod base;
-mod command_suggestions;
 mod categories;
+mod command_suggestions;
 mod edit_button;
 mod event;
 mod footer;

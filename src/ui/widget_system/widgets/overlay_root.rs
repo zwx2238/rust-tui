@@ -157,12 +157,12 @@ fn dispatch_overlay_event(
         Some(OverlayKind::Jump) => widget.jump.event(ctx, event, layout, update, jump_rows),
         Some(OverlayKind::Model) => widget.model.event(ctx, event, layout, update, jump_rows),
         Some(OverlayKind::Prompt) => widget.prompt.event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::CodeExec) => {
-            widget.code_exec.event(ctx, event, layout, update, jump_rows)
-        }
-        Some(OverlayKind::FilePatch) => {
-            widget.file_patch.event(ctx, event, layout, update, jump_rows)
-        }
+        Some(OverlayKind::CodeExec) => widget
+            .code_exec
+            .event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::FilePatch) => widget
+            .file_patch
+            .event(ctx, event, layout, update, jump_rows),
         Some(OverlayKind::Help) => widget.help.event(ctx, event, layout, update, jump_rows),
         None => Ok(EventResult::ignored()),
     }

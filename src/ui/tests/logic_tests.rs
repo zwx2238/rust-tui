@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
     use crate::types::Usage;
+    use crate::ui::events::LlmEvent;
     use crate::ui::logic::{
         StreamAction, build_label_suffixes, format_timer, handle_stream_event, point_in_rect,
         scroll_from_mouse, stop_stream,
     };
-    use crate::ui::events::LlmEvent;
     use crate::ui::state::{App, RequestHandle};
     use ratatui::layout::Rect;
     use std::sync::{Arc, atomic::AtomicBool};

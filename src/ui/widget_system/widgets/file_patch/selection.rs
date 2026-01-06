@@ -1,8 +1,8 @@
 use crate::ui::file_patch_popup_layout::{FilePatchPopupLayout, file_patch_popup_layout};
 use crate::ui::file_patch_popup_text::patch_max_scroll;
+use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::selection::{Selection, chat_position_from_mouse, extract_selection};
 use crate::ui::state::FilePatchHover;
-use crate::ui::runtime_loop_steps::FrameLayout;
 
 use super::helpers::point_in_rect;
 
@@ -30,7 +30,10 @@ pub(super) fn handle_file_patch_selection_start(
         m,
     );
     tab_state.app.file_patch_selecting = true;
-    tab_state.app.file_patch_selection = Some(Selection { start: pos, end: pos });
+    tab_state.app.file_patch_selection = Some(Selection {
+        start: pos,
+        end: pos,
+    });
     true
 }
 
@@ -98,7 +101,10 @@ fn update_drag_selection(
             start: existing.start,
             end: pos,
         },
-        None => Selection { start: pos, end: pos },
+        None => Selection {
+            start: pos,
+            end: pos,
+        },
     };
     tab_state.app.file_patch_selection = Some(next);
 }

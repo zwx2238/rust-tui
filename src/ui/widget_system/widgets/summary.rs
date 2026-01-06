@@ -72,7 +72,9 @@ impl Widget for SummaryWidget {
     }
 }
 
-fn summary_layout(frame: &WidgetFrame<'_, '_, '_, '_>) -> crate::ui::summary::layout::SummaryLayout {
+fn summary_layout(
+    frame: &WidgetFrame<'_, '_, '_, '_>,
+) -> crate::ui::summary::layout::SummaryLayout {
     let size = ratatui::layout::Size {
         width: frame.frame.area().width,
         height: frame.frame.area().height,
@@ -84,10 +86,8 @@ fn summary_rows(
     frame: &WidgetFrame<'_, '_, '_, '_>,
     layout: &crate::ui::summary::layout::SummaryLayout,
 ) -> Vec<crate::ui::summary::SummaryRow> {
-    let mut rows = crate::ui::summary::build_summary_rows(
-        frame.state.tabs(),
-        layout.max_latest_width.max(10),
-    );
+    let mut rows =
+        crate::ui::summary::build_summary_rows(frame.state.tabs(), layout.max_latest_width.max(10));
     crate::ui::summary::sort_summary_rows(&mut rows, frame.view.summary_sort);
     rows
 }
@@ -130,6 +130,9 @@ fn draw_summary_table(
     );
 }
 
-fn update_summary_order(frame: &mut WidgetFrame<'_, '_, '_, '_>, rows: &[crate::ui::summary::SummaryRow]) {
+fn update_summary_order(
+    frame: &mut WidgetFrame<'_, '_, '_, '_>,
+    rows: &[crate::ui::summary::SummaryRow],
+) {
     frame.view.summary_order = rows.iter().map(|r| r.tab_index).collect();
 }

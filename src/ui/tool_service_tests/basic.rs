@@ -13,7 +13,12 @@ fn web_search_disabled_adds_error_message() {
     let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
     let calls = vec![tool_call("web_search", r#"{"query":"hi"}"#)];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("web_search 未启用")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("web_search 未启用"))
+    );
 }
 
 #[test]
@@ -40,7 +45,12 @@ fn web_search_enabled_reports_missing_key() {
     let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
     let calls = vec![tool_call("web_search", r#"{"query":"hi"}"#)];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("tavily_api_key")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("tavily_api_key"))
+    );
 }
 
 #[test]
@@ -55,5 +65,10 @@ fn code_exec_disabled_adds_error_message() {
         r#"{"language":"python","code":"print(1)"}"#,
     )];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("code_exec 未启用")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("code_exec 未启用"))
+    );
 }

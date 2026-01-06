@@ -1,5 +1,5 @@
+use crate::ui::events::{RuntimeEvent, send_preheat};
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask};
-use crate::ui::events::{send_preheat, RuntimeEvent};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
@@ -41,11 +41,14 @@ fn spawn_preheat_worker(
                 &task.theme,
                 task.streaming,
             );
-            send_preheat(&tx, PreheatResult {
-                tab: task.tab,
-                idx: task.idx,
-                entry,
-            });
+            send_preheat(
+                &tx,
+                PreheatResult {
+                    tab: task.tab,
+                    idx: task.idx,
+                    entry,
+                },
+            );
         }
     });
 }

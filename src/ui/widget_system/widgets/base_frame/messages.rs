@@ -1,10 +1,12 @@
-use crate::ui::draw::{draw_messages, MessagesDrawParams};
+use crate::ui::draw::{MessagesDrawParams, draw_messages};
 use crate::ui::runtime_events::handle_mouse_event;
+use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::Focus;
 use crate::ui::widget_system::bindings::bind_event;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
-use crate::ui::runtime_loop_steps::FrameLayout;
 use std::error::Error;
 
 use super::helpers::{point_in_rect, scrollbar_hit};

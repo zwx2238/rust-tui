@@ -22,7 +22,9 @@ pub(crate) fn resolve_workspace(args: &Args) -> Result<WorkspaceConfig, String> 
 
 #[cfg(not(test))]
 pub(crate) fn resolve_workspace(args: &Args) -> Result<WorkspaceConfig, String> {
-    WORKSPACE_CACHE.get_or_init(|| build_workspace_config(args)).clone()
+    WORKSPACE_CACHE
+        .get_or_init(|| build_workspace_config(args))
+        .clone()
 }
 
 fn build_workspace_config(args: &Args) -> Result<WorkspaceConfig, String> {
@@ -47,8 +49,7 @@ fn validate_workspace_size(path: &Path) -> Result<(), String> {
     let mut total: u64 = 0;
     let mut stack = vec![path.to_path_buf()];
     while let Some(dir) = stack.pop() {
-        let entries = std::fs::read_dir(&dir)
-            .map_err(|e| format!("workspace 读取失败：{e}"))?;
+        let entries = std::fs::read_dir(&dir).map_err(|e| format!("workspace 读取失败：{e}"))?;
         for entry in entries {
             let entry = entry.map_err(|e| format!("workspace 读取失败：{e}"))?;
             let meta = std::fs::symlink_metadata(entry.path())
@@ -63,10 +64,7 @@ fn validate_workspace_size(path: &Path) -> Result<(), String> {
             if meta.is_file() {
                 total = total.saturating_add(meta.len());
                 if total > WORKSPACE_MAX_BYTES {
-                    return Err(format!(
-                        "workspace 大小超过限制：{} bytes",
-                        total
-                    ));
+                    return Err(format!("workspace 大小超过限制：{} bytes", total));
                 }
             }
         }

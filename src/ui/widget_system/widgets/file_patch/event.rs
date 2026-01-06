@@ -29,7 +29,9 @@ pub(super) fn handle_mouse_event(
     let Some(state) = mouse_state(ctx, layout) else {
         return Ok(EventResult::ignored());
     };
-    Ok(handle_mouse_with_state(widget, ctx, layout, update, m, state))
+    Ok(handle_mouse_with_state(
+        widget, ctx, layout, update, m, state,
+    ))
 }
 
 pub(super) fn handle_key_event(
@@ -156,7 +158,11 @@ fn try_scroll(
     None
 }
 
-fn handle_drag(ctx: &mut EventCtx<'_>, state: &MouseState, m: crossterm::event::MouseEvent) -> bool {
+fn handle_drag(
+    ctx: &mut EventCtx<'_>,
+    state: &MouseState,
+    m: crossterm::event::MouseEvent,
+) -> bool {
     if let Some(tab_state) = ctx.tabs.get_mut(state.active_tab) {
         return handle_file_patch_selection_drag(
             tab_state,
@@ -228,9 +234,19 @@ fn handle_mouse_down(
     EventResult::ignored()
 }
 
-fn try_selection_start(ctx: &mut EventCtx<'_>, state: &MouseState, m: crossterm::event::MouseEvent) -> bool {
+fn try_selection_start(
+    ctx: &mut EventCtx<'_>,
+    state: &MouseState,
+    m: crossterm::event::MouseEvent,
+) -> bool {
     if let Some(tab_state) = ctx.tabs.get_mut(state.active_tab) {
-        return handle_file_patch_selection_start(tab_state, &state.pending, state.popup, ctx.theme, m);
+        return handle_file_patch_selection_start(
+            tab_state,
+            &state.pending,
+            state.popup,
+            ctx.theme,
+            m,
+        );
     }
     false
 }

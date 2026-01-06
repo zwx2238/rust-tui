@@ -1,9 +1,9 @@
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, with_active_table_handle};
-use crate::ui::runtime_dispatch::{
-    DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
-};
 use crate::ui::runtime_dispatch::key_helpers::{
     handle_pre_key_actions, handle_view_action_flow, is_quit_key, resolve_view_action,
+};
+use crate::ui::runtime_dispatch::{
+    DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
 };
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
 use crate::ui::scroll::SCROLL_STEP_I32;
@@ -62,8 +62,13 @@ impl<'a> OverlayTableController<'a> {
             return;
         }
         let row = self.overlay_row_at(m.column, m.row);
-        let action =
-            handle_view_mouse(self.view, row, self.dispatch.tabs.len(), self.jump_rows.len(), m.kind);
+        let action = handle_view_mouse(
+            self.view,
+            row,
+            self.dispatch.tabs.len(),
+            self.jump_rows.len(),
+            m.kind,
+        );
         if let ViewAction::SelectModel(idx) = action {
             apply_model_selection(&mut self.dispatch, idx);
             return;
@@ -123,11 +128,7 @@ impl<'a> OverlayTableController<'a> {
     }
 }
 
-pub(crate) fn clamp_overlay_tables(
-    view: &mut ViewState,
-    state: &RenderState<'_>,
-    jump_len: usize,
-) {
+pub(crate) fn clamp_overlay_tables(view: &mut ViewState, state: &RenderState<'_>, jump_len: usize) {
     let areas = OverlayAreas {
         full: state.full_area,
         msg: state.msg_area,

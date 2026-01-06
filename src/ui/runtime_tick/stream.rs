@@ -1,6 +1,6 @@
 use crate::render::RenderTheme;
-use crate::ui::logic::{StreamAction, handle_stream_event};
 use crate::ui::events::UiEvent;
+use crate::ui::logic::{StreamAction, handle_stream_event};
 use crate::ui::runtime_helpers::TabState;
 
 type ToolQueue = Vec<(usize, Vec<crate::types::ToolCall>)>;

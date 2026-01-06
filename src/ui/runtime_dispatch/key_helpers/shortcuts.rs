@@ -1,10 +1,10 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::ui::runtime_dispatch::DispatchContext;
 use super::super::tabs::{
     close_all_tabs, close_other_tabs, close_tab, new_tab, next_category, next_tab, prev_category,
     prev_tab,
 };
+use crate::ui::runtime_dispatch::DispatchContext;
 
 pub(crate) fn is_quit_key(key: KeyEvent) -> bool {
     key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q')

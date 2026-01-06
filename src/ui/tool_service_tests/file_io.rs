@@ -1,6 +1,6 @@
+use crate::test_support::env_lock;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::tool_service::ToolService;
-use crate::test_support::env_lock;
 use std::path::PathBuf;
 use std::sync::mpsc;
 
@@ -51,10 +51,7 @@ fn read_code_enabled_reads_file_with_numbers() {
         .map(|m| m.content.as_str())
         .collect::<Vec<_>>()
         .join("\n---\n");
-    assert!(
-        all.contains("1 | line1"),
-        "unexpected tool output:\n{all}"
-    );
+    assert!(all.contains("1 | line1"), "unexpected tool output:\n{all}");
     let _ = std::fs::remove_file(&path);
 }
 
@@ -67,7 +64,12 @@ fn read_file_disabled_adds_error_message() {
     let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
     let calls = vec![tool_call("read_file", r#"{"path":"a.txt"}"#)];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("read_file 未启用")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("read_file 未启用"))
+    );
 }
 
 #[test]
@@ -79,5 +81,10 @@ fn list_dir_disabled_when_read_file_disabled() {
     let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
     let calls = vec![tool_call("list_dir", r#"{"path":"."}"#)];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("list_dir 未启用")));
+    assert!(
+        tab.app
+            .messages
+            .iter()
+            .any(|m| m.content.contains("list_dir 未启用"))
+    );
 }

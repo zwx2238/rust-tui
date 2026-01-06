@@ -1,5 +1,7 @@
 use crate::ui::logic::point_in_rect;
-use crate::ui::runtime_helpers::{TabState, tab_index_at, tab_labels_for_category, visible_tab_indices};
+use crate::ui::runtime_helpers::{
+    TabState, tab_index_at, tab_labels_for_category, visible_tab_indices,
+};
 use ratatui::layout::Rect;
 
 pub(crate) struct TabCategoryClickParams<'a> {

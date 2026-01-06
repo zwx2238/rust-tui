@@ -1,5 +1,5 @@
-use crate::ui::workspace::WorkspaceConfig;
 use crate::test_support::{restore_env, set_env};
+use crate::ui::workspace::WorkspaceConfig;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -92,10 +92,7 @@ pub(super) fn setup_fake_docker(workspace: &WorkspaceConfig) -> FakeDocker {
             std::env::var("PATH").unwrap_or_default()
         ),
     );
-    let prev_workspace = set_env(
-        "DEEPCHAT_WORKSPACE",
-        &workspace.host_path.to_string_lossy(),
-    );
+    let prev_workspace = set_env("DEEPCHAT_WORKSPACE", &workspace.host_path.to_string_lossy());
     FakeDocker {
         dir,
         prev_path,

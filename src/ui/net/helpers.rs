@@ -1,6 +1,6 @@
 use crate::types::{ToolCall, ToolFunctionCall, Usage};
+use crate::ui::events::{LlmEvent, RuntimeEvent, send_llm};
 use rig::completion::GetTokenUsage;
-use crate::ui::events::{send_llm, LlmEvent, RuntimeEvent};
 use std::sync::mpsc::Sender;
 
 use super::net_logging::write_response_log;
@@ -126,5 +126,10 @@ pub(super) fn handle_request_error(
             &payload,
         );
     }
-    send_llm(tx, input.tab, input.request_id, LlmEvent::Error(error.to_string()));
+    send_llm(
+        tx,
+        input.tab,
+        input.request_id,
+        LlmEvent::Error(error.to_string()),
+    );
 }

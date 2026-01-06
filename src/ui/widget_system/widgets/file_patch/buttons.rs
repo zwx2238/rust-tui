@@ -1,12 +1,12 @@
 use crate::ui::file_patch_popup_layout::{FilePatchPopupLayout, file_patch_popup_layout};
+use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::{FilePatchHover, PendingCommand};
 use crate::ui::widget_system::context::{EventCtx, UpdateOutput, WidgetFrame};
 use crate::ui::widget_system::lifecycle::Widget;
-use crate::ui::runtime_loop_steps::FrameLayout;
 use ratatui::style::{Modifier, Style};
 
-use super::helpers::point_in_rect;
 use super::super::button::ButtonWidget;
+use super::helpers::point_in_rect;
 use super::widget::FilePatchWidget;
 
 pub(super) struct FilePatchButtonParams<'a> {
@@ -109,11 +109,7 @@ fn button_clicked(
         .unwrap_or(false)
 }
 
-fn apply_command(
-    ctx: &mut EventCtx<'_>,
-    active_tab: usize,
-    command: PendingCommand,
-) -> bool {
+fn apply_command(ctx: &mut EventCtx<'_>, active_tab: usize, command: PendingCommand) -> bool {
     if let Some(tab_state) = ctx.tabs.get_mut(active_tab) {
         tab_state.app.pending_command = Some(command);
         tab_state.app.file_patch_hover = None;
