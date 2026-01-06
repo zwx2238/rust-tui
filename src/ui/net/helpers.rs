@@ -1,9 +1,9 @@
 use crate::types::{ToolCall, ToolFunctionCall, Usage};
 use rig::completion::GetTokenUsage;
+use crate::ui::events::{send_llm, LlmEvent, RuntimeEvent};
 use std::sync::mpsc::Sender;
 
 use super::net_logging::write_response_log;
-use super::types::{LlmEvent, UiEvent};
 
 pub(super) fn log_request(
     input: &super::request::RequestInput,
@@ -34,37 +34,34 @@ pub(super) fn log_response_text(input: &super::request::RequestInput, text: &str
     }
 }
 
-pub(super) fn send_chunk(tx: &Sender<UiEvent>, input: &super::request::RequestInput, chunk: String) {
-    let _ = tx.send(UiEvent {
-        tab: input.tab,
-        request_id: input.request_id,
-        event: LlmEvent::Chunk(chunk),
-    });
+pub(super) fn send_chunk(
+    tx: &Sender<RuntimeEvent>,
+    input: &super::request::RequestInput,
+    chunk: String,
+) {
+    send_llm(tx, input.tab, input.request_id, LlmEvent::Chunk(chunk));
 }
 
 pub(super) fn send_done(
     input: &super::request::RequestInput,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
     usage: Option<Usage>,
 ) {
-    let _ = tx.send(UiEvent {
-        tab: input.tab,
-        request_id: input.request_id,
-        event: LlmEvent::Done { usage },
-    });
+    send_llm(tx, input.tab, input.request_id, LlmEvent::Done { usage });
 }
 
 pub(super) fn send_tool_calls(
     input: &super::request::RequestInput,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
     calls: Vec<ToolCall>,
     usage: Option<Usage>,
 ) {
-    let _ = tx.send(UiEvent {
-        tab: input.tab,
-        request_id: input.request_id,
-        event: LlmEvent::ToolCalls { calls, usage },
-    });
+    send_llm(
+        tx,
+        input.tab,
+        input.request_id,
+        LlmEvent::ToolCalls { calls, usage },
+    );
 }
 
 pub(super) fn convert_tool_call(
@@ -117,7 +114,7 @@ pub(super) fn log_tool_call(
 pub(super) fn handle_request_error(
     error: &str,
     input: &super::request::RequestInput,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
 ) {
     if let Some(dir) = input.log_dir.as_deref() {
         let payload = format!("error: {error}");
@@ -129,9 +126,5 @@ pub(super) fn handle_request_error(
             &payload,
         );
     }
-    let _ = tx.send(UiEvent {
-        tab: input.tab,
-        request_id: input.request_id,
-        event: LlmEvent::Error(error.to_string()),
-    });
+    send_llm(tx, input.tab, input.request_id, LlmEvent::Error(error.to_string()));
 }

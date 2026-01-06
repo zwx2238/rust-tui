@@ -2,7 +2,7 @@ use crate::ui::runtime_loop_steps::{
     FrameLayout, ProcessStreamUpdatesParams, active_frame_data, frame_layout, handle_pending_line,
     header_note, prepare_categories, process_stream_updates, tab_labels_and_pos,
 };
-use crate::ui::runtime_tick::{ActiveFrameData, drain_preheat_results};
+use crate::ui::runtime_tick::{ActiveFrameData, apply_preheat_results};
 use std::error::Error;
 
 use super::super::context::{LayoutCtx, UpdateCtx, UpdateOutput};
@@ -22,7 +22,7 @@ impl FrameLifecycle {
         ctx: &mut UpdateCtx<'_>,
         layout: &FrameLayout,
     ) -> Result<UpdateOutput, Box<dyn Error>> {
-        drain_preheat_results(ctx.preheat_res_rx, ctx.tabs);
+        apply_preheat_results(&mut ctx.events.preheat, ctx.tabs);
         let tabs = prepare_tabs(ctx);
         run_stream_updates(ctx, layout)?;
         let active_data = build_active_data(ctx, layout);
@@ -55,7 +55,7 @@ fn prepare_tabs(ctx: &mut UpdateCtx<'_>) -> TabMeta {
 
 fn run_stream_updates(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> Result<(), Box<dyn Error>> {
     process_stream_updates(ProcessStreamUpdatesParams {
-        rx: ctx.rx,
+        llm_events: &mut ctx.events.llm,
         tabs: ctx.tabs,
         active_tab: *ctx.active_tab,
         theme: ctx.theme,

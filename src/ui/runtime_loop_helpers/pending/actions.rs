@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_code_exec::{
     handle_code_exec_approve, handle_code_exec_deny, handle_code_exec_exit, handle_code_exec_stop,
 };
@@ -25,7 +25,7 @@ pub(crate) fn handle_code_exec_command(
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &std::sync::mpsc::Sender<UiEvent>,
+    tx: &std::sync::mpsc::Sender<RuntimeEvent>,
 ) -> bool {
     let action = match pending {
         PendingCommand::ApproveCodeExec => Some(CodeExecAction::Approve),
@@ -47,7 +47,7 @@ pub(crate) fn handle_file_patch_command(
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &std::sync::mpsc::Sender<UiEvent>,
+    tx: &std::sync::mpsc::Sender<RuntimeEvent>,
 ) -> bool {
     let action = match pending {
         PendingCommand::ApplyFilePatch => Some(FilePatchAction::Apply),
@@ -66,7 +66,7 @@ fn handle_code_exec_action(
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &std::sync::mpsc::Sender<UiEvent>,
+    tx: &std::sync::mpsc::Sender<RuntimeEvent>,
     action: CodeExecAction,
 ) {
     let Some(tab_state) = tabs.get_mut(active_tab) else {
@@ -87,7 +87,7 @@ fn handle_file_patch_action(
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &std::sync::mpsc::Sender<UiEvent>,
+    tx: &std::sync::mpsc::Sender<RuntimeEvent>,
     action: FilePatchAction,
 ) {
     let Some(tab_state) = tabs.get_mut(active_tab) else {

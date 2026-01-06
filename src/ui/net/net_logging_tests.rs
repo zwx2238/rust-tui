@@ -93,9 +93,12 @@ fn stream_chunks_sends_events() {
     let cancel = Arc::new(AtomicBool::new(false));
     stream_chunks("hello", &cancel, &tx, 1, 2);
     let msg = rx.recv_timeout(Duration::from_millis(50)).unwrap();
-    match msg.event {
-        super::LlmEvent::Chunk(text) => assert!(!text.is_empty()),
-        _ => panic!("unexpected event"),
+    match msg {
+        crate::ui::events::RuntimeEvent::Llm(ui) => match ui.event {
+            super::LlmEvent::Chunk(text) => assert!(!text.is_empty()),
+            _ => panic!("unexpected event"),
+        },
+        _ => panic!("unexpected runtime event"),
     }
     cancel.store(true, Ordering::Relaxed);
 }

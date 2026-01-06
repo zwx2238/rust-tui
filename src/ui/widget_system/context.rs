@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::ui::net::UiEvent;
-use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
+use crate::ui::events::{EventBatch, RuntimeEvent};
+use crate::ui::runtime_helpers::{PreheatTask, TabState};
 use crate::ui::runtime_tick::ActiveFrameData;
 use crate::ui::runtime_view::ViewState;
 use crate::ui::state::App;
@@ -20,7 +20,6 @@ pub(crate) struct RenderState<'a> {
     pub(crate) theme: &'a RenderTheme,
     pub(crate) startup_text: Option<&'a str>,
     pub(crate) full_area: Rect,
-    pub(crate) input_height: u16,
     pub(crate) msg_area: Rect,
     pub(crate) tabs_area: Rect,
     pub(crate) category_area: Rect,
@@ -36,10 +35,6 @@ pub(crate) struct RenderState<'a> {
 }
 
 impl RenderState<'_> {
-    pub(crate) fn with_active_tab_mut<T>(&mut self, f: impl FnOnce(&mut TabState) -> T) -> Option<T> {
-        self.tabs.get_mut(self.active_tab).map(f)
-    }
-
     pub(crate) fn with_active_tab<T>(&self, f: impl FnOnce(&TabState) -> T) -> Option<T> {
         self.tabs.get(self.active_tab).map(f)
     }
@@ -53,10 +48,6 @@ impl RenderState<'_> {
     }
 
     pub(crate) fn tabs(&self) -> &[TabState] {
-        self.tabs
-    }
-
-    pub(crate) fn tabs_mut(&mut self) -> &mut [TabState] {
         self.tabs
     }
 }
@@ -82,10 +73,9 @@ pub(crate) struct UpdateCtx<'a> {
     pub(crate) categories: &'a mut Vec<String>,
     pub(crate) active_category: &'a mut usize,
     pub(crate) session_location: &'a mut Option<crate::session::SessionLocation>,
-    pub(crate) rx: &'a mpsc::Receiver<UiEvent>,
-    pub(crate) tx: &'a mpsc::Sender<UiEvent>,
+    pub(crate) tx: &'a mpsc::Sender<RuntimeEvent>,
     pub(crate) preheat_tx: &'a mpsc::Sender<PreheatTask>,
-    pub(crate) preheat_res_rx: &'a mpsc::Receiver<PreheatResult>,
+    pub(crate) events: &'a mut EventBatch,
     pub(crate) registry: &'a crate::model_registry::ModelRegistry,
     pub(crate) prompt_registry: &'a crate::llm::prompts::PromptRegistry,
     pub(crate) args: &'a Args,

@@ -4,7 +4,6 @@ use crate::ui::runtime_layout::compute_sidebar_width;
 use ratatui::layout::Rect;
 
 pub(crate) struct SummaryLayout {
-    pub(crate) size: Rect,
     pub(crate) header_area: Rect,
     pub(crate) category_area: Rect,
     pub(crate) tabs_area: Rect,
@@ -37,7 +36,6 @@ pub(crate) fn build_summary_layout(
     let (header_area, category_area, tabs_area, body_area, _input_area, footer_area) =
         layout_chunks(size, 0, sidebar_width);
     SummaryLayout {
-        size,
         header_area,
         category_area,
         tabs_area,

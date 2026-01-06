@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::types::Message;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
 use crate::ui::workspace::resolve_workspace;
@@ -51,7 +51,7 @@ pub(crate) fn handle_file_patch_apply(
     tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let Some(pending) = tab_state.app.pending_file_patch.take() else {
         return;
@@ -67,7 +67,7 @@ pub(crate) fn handle_file_patch_cancel(
     tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let Some(pending) = tab_state.app.pending_file_patch.take() else {
         return;
@@ -118,7 +118,7 @@ fn start_followup(
     tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let model = registry
         .get(&tab_state.app.model_key)

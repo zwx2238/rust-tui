@@ -1,31 +1,17 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::style::{base_fg, base_style, selection_bg};
+use crate::ui::draw::style::{base_fg, base_style};
 use crate::ui::file_patch_popup_layout::{
     FilePatchPopupLayout, OUTER_MARGIN, file_patch_popup_layout,
 };
 use crate::ui::file_patch_popup_text::{build_patch_text, patch_max_scroll};
 use crate::ui::selection::{Selection, apply_selection_to_text};
-use crate::ui::state::{FilePatchHover, PendingFilePatch};
+use crate::ui::state::PendingFilePatch;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{
     Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
 };
-
-pub(crate) fn draw_file_patch_popup(
-    f: &mut ratatui::Frame<'_>,
-    area: Rect,
-    pending: &PendingFilePatch,
-    scroll: usize,
-    hover: Option<FilePatchHover>,
-    selection: Option<Selection>,
-    theme: &RenderTheme,
-) {
-    draw_file_patch_popup_base(f, area, pending, scroll, selection, theme);
-    let layout = file_patch_popup_layout(area);
-    render_buttons(f, theme, layout, hover);
-}
 
 pub(crate) fn draw_file_patch_popup_base(
     f: &mut ratatui::Frame<'_>,
@@ -133,43 +119,6 @@ fn render_preview_scrollbar(
         .thumb_style(Style::default().fg(base_fg(theme)))
         .track_style(Style::default().fg(base_fg(theme)));
     f.render_stateful_widget(scrollbar, layout.preview_scrollbar_area, &mut state);
-}
-
-fn render_buttons(
-    f: &mut ratatui::Frame<'_>,
-    theme: &RenderTheme,
-    layout: FilePatchPopupLayout,
-    hover: Option<FilePatchHover>,
-) {
-    let apply_style = button_style(hover, FilePatchHover::Apply, theme);
-    let cancel_style = button_style(hover, FilePatchHover::Cancel, theme);
-    render_button(f, layout.apply_btn, "应用修改", apply_style);
-    render_button(f, layout.cancel_btn, "取消", cancel_style);
-}
-
-fn render_button(f: &mut ratatui::Frame<'_>, area: Rect, label: &str, style: Style) {
-    let block = Block::default().borders(Borders::ALL).style(style);
-    f.render_widget(block, area);
-    f.render_widget(
-        Paragraph::new(Line::from(label))
-            .style(style)
-            .alignment(ratatui::layout::Alignment::Center),
-        area,
-    );
-}
-
-fn button_style(
-    hover: Option<FilePatchHover>,
-    target: FilePatchHover,
-    theme: &RenderTheme,
-) -> Style {
-    match hover {
-        Some(h) if h == target => Style::default()
-            .bg(selection_bg(theme.bg))
-            .fg(base_fg(theme))
-            .add_modifier(Modifier::BOLD),
-        _ => base_style(theme),
-    }
 }
 
 fn apply_selection_if_needed(

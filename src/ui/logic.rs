@@ -1,6 +1,6 @@
 use crate::types::ToolCall;
 use crate::types::{Message, ROLE_ASSISTANT};
-use crate::ui::net::LlmEvent;
+use crate::ui::events::LlmEvent;
 use crate::ui::scroll::max_scroll_u16;
 use crate::ui::state::App;
 
@@ -177,13 +177,6 @@ pub fn scroll_from_mouse(
     let ratio = y.min(track) as f32 / track as f32;
     let scroll = (ratio * max_scroll as f32).round() as u16;
     scroll.min(max_scroll)
-}
-
-pub fn drain_events() -> Result<(), Box<dyn std::error::Error>> {
-    while crossterm::event::poll(std::time::Duration::from_millis(0))? {
-        let _ = crossterm::event::read()?;
-    }
-    Ok(())
 }
 
 fn format_stats(usage: Option<&crate::types::Usage>, elapsed_ms: u64) -> String {

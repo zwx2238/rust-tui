@@ -4,7 +4,7 @@ mod pending;
 
 use crate::args::Args;
 use crate::ui::code_exec_container::ensure_container_cached;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_code_exec_helpers::inject_requirements;
 use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
 use crate::ui::runtime_helpers::TabState;
@@ -71,7 +71,7 @@ pub(crate) fn handle_code_exec_exit(
     tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let Some((pending, content)) = helpers::take_pending_and_output(&mut tab_state.app) else {
         return;
@@ -86,7 +86,7 @@ pub(crate) fn handle_code_exec_approve(
     _tab_id: usize,
     _registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    _tx: &mpsc::Sender<UiEvent>,
+    _tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let Some(mut pending) = pending::clone_pending_or_notify(&mut tab_state.app) else {
         return;
@@ -158,7 +158,7 @@ pub(crate) fn handle_code_exec_deny(
     tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let Some(pending) = pending::take_pending_or_notify(&mut tab_state.app) else {
         return;
@@ -179,7 +179,7 @@ fn start_followup(
     tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     let model = registry
         .get(&tab_state.app.model_key)

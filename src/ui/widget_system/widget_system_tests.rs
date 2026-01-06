@@ -5,9 +5,9 @@ mod tests {
     use crate::model_registry::{ModelProfile, ModelRegistry};
     use crate::render::RenderTheme;
     use crate::session::SessionLocation;
-    use crate::ui::net::UiEvent;
+    use crate::ui::events::{EventBatch, RuntimeEvent};
     use crate::ui::overlay::OverlayKind;
-    use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
+    use crate::ui::runtime_helpers::{PreheatTask, TabState};
     use crate::ui::runtime_view::ViewState;
     use crate::ui::widget_system::{EventCtx, LayoutCtx, UpdateCtx, WidgetSystem};
     use ratatui::Terminal;
@@ -27,10 +27,9 @@ mod tests {
         prompt_registry: PromptRegistry,
         args: Args,
         theme: RenderTheme,
-        rx: mpsc::Receiver<UiEvent>,
-        tx: mpsc::Sender<UiEvent>,
+        tx: mpsc::Sender<RuntimeEvent>,
         preheat_tx: mpsc::Sender<PreheatTask>,
-        preheat_res_rx: mpsc::Receiver<PreheatResult>,
+        events: EventBatch,
         session_location: Option<SessionLocation>,
         startup_elapsed: Option<std::time::Duration>,
     }
@@ -90,9 +89,8 @@ mod tests {
     fn build_state() -> WidgetTestState {
         let backend = CrosstermBackend::new(std::io::stdout());
         let terminal = Terminal::new(backend).unwrap();
-        let (tx, rx) = mpsc::channel();
+        let (tx, _rx) = mpsc::channel();
         let (preheat_tx, _preheat_rx) = mpsc::channel();
-        let (_preheat_res_tx, preheat_res_rx) = mpsc::channel();
         WidgetTestState {
             terminal,
             tabs: vec![TabState::new("id".into(), "默认".into(), "", false, "m1", "p1")],
@@ -104,10 +102,9 @@ mod tests {
             prompt_registry: prompt_registry(),
             args: args(),
             theme: theme(),
-            rx,
             tx,
             preheat_tx,
-            preheat_res_rx,
+            events: EventBatch::new(),
             session_location: None,
             startup_elapsed: None,
         }
@@ -130,10 +127,9 @@ mod tests {
             categories: &mut state.categories,
             active_category: &mut state.active_category,
             session_location: &mut state.session_location,
-            rx: &state.rx,
             tx: &state.tx,
             preheat_tx: &state.preheat_tx,
-            preheat_res_rx: &state.preheat_res_rx,
+            events: &mut state.events,
             registry: &state.registry,
             prompt_registry: &state.prompt_registry,
             args: &state.args,

@@ -1,4 +1,5 @@
 use crate::types::Message;
+use crate::ui::events::{send_llm, LlmEvent, RuntimeEvent};
 use std::sync::mpsc::Sender;
 use std::sync::{
     Arc,
@@ -9,7 +10,7 @@ use tokio::runtime::Runtime;
 use super::helpers::handle_request_error;
 use super::net_logging::build_enabled_tools;
 use super::stream::stream_request;
-use super::types::{LlmStreamRequestParams, UiEvent};
+use super::types::LlmStreamRequestParams;
 
 pub(crate) fn request_llm_stream(params: LlmStreamRequestParams) {
     let input = RequestInput::new(RequestConfig {
@@ -38,7 +39,7 @@ fn run_llm_stream_with_input(
     input: RequestInput,
     enabled: Vec<&'static str>,
     cancel: Arc<AtomicBool>,
-    tx: Sender<UiEvent>,
+    tx: Sender<RuntimeEvent>,
 ) {
     let Some(rt) = init_runtime(&tx, input.tab, input.request_id) else {
         return;
@@ -92,14 +93,15 @@ impl RequestInput {
     }
 }
 
-fn init_runtime(tx: &Sender<UiEvent>, tab: usize, request_id: u64) -> Option<Runtime> {
+fn init_runtime(tx: &Sender<RuntimeEvent>, tab: usize, request_id: u64) -> Option<Runtime> {
     let rt = Runtime::new();
     if rt.is_err() {
-        let _ = tx.send(UiEvent {
+        send_llm(
+            tx,
             tab,
             request_id,
-            event: super::types::LlmEvent::Error("初始化 Tokio 失败".to_string()),
-        });
+            LlmEvent::Error("初始化 Tokio 失败".to_string()),
+        );
         return None;
     }
     rt.ok()

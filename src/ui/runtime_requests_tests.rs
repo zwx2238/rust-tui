@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::ui::net::UiEvent;
+    use crate::ui::events::RuntimeEvent;
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::runtime_requests::{
         StartFollowupRequestParams, StartTabRequestParams, start_followup_request,
@@ -14,7 +14,7 @@ mod tests {
     #[test]
     fn start_tab_request_with_missing_api_key() {
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_tab_request(StartTabRequestParams {
             tab_state: &mut tab,
@@ -44,7 +44,7 @@ mod tests {
     #[test]
     fn start_followup_request_with_missing_api_key() {
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_followup_request(StartFollowupRequestParams {
             tab_state: &mut tab,
@@ -74,7 +74,7 @@ mod tests {
     fn start_tab_request_uses_pending_send() {
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
         tab.app.pending_send = Some("hello".to_string());
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_tab_request(StartTabRequestParams {
             tab_state: &mut tab,
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn start_tab_request_no_question_no_pending_does_nothing() {
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_tab_request(StartTabRequestParams {
             tab_state: &mut tab,
@@ -134,7 +134,7 @@ mod tests {
             id: 1,
             cancel: cancel.clone(),
         });
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_tab_request(StartTabRequestParams {
             tab_state: &mut tab,
@@ -166,7 +166,7 @@ mod tests {
             id: 1,
             cancel: cancel.clone(),
         });
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_followup_request(StartFollowupRequestParams {
             tab_state: &mut tab,
@@ -192,7 +192,7 @@ mod tests {
         let _guard = crate::test_support::env_lock().lock().unwrap();
         let prev = crate::test_support::set_env("DEEPCHAT_TEST_SKIP_REQUEST", "1");
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_tab_request(StartTabRequestParams {
             tab_state: &mut tab,
@@ -222,7 +222,7 @@ mod tests {
         let _guard = crate::test_support::env_lock().lock().unwrap();
         let prev = crate::test_support::set_env("DEEPCHAT_TEST_SKIP_REQUEST", "1");
         let mut tab = TabState::new("id".into(), "cat".into(), "", false, "m", "p");
-        let (tx, _rx) = mpsc::channel::<UiEvent>();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         let log_session_id = tab.app.log_session_id.clone();
         start_followup_request(StartFollowupRequestParams {
             tab_state: &mut tab,

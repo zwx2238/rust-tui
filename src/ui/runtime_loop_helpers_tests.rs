@@ -11,6 +11,7 @@ mod tests {
     use crate::ui::state::PendingCommand;
     use std::fs;
     use std::sync::mpsc;
+    use crate::ui::events::RuntimeEvent;
 
     struct PendingCtx {
         tabs: Vec<TabState>,
@@ -106,7 +107,7 @@ mod tests {
         registry: &ModelRegistry,
         prompt_registry: &PromptRegistry,
         args: &Args,
-        tx: &mpsc::Sender<crate::ui::net::UiEvent>,
+        tx: &mpsc::Sender<RuntimeEvent>,
     ) {
         handle_pending_command(HandlePendingCommandParams {
             tabs: &mut ctx.tabs,
@@ -148,7 +149,7 @@ mod tests {
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
-        let (tx, _rx) = mpsc::channel();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         run_pending(
             &mut ctx,
             PendingCommand::NewCategory,
@@ -176,7 +177,7 @@ mod tests {
         let registry = registry();
         let prompt_registry = prompt_registry();
         let args = args();
-        let (tx, _rx) = mpsc::channel();
+        let (tx, _rx) = mpsc::channel::<RuntimeEvent>();
         run_pending(
             &mut ctx,
             PendingCommand::OpenConversation,

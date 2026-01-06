@@ -3,6 +3,7 @@ use crate::model_registry::{ModelProfile, ModelRegistry};
 use crate::types::{ToolCall, ToolFunctionCall};
 use crate::test_support::{restore_env, set_env};
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(super) const DOCKER_SCRIPT: &str = r#"#!/bin/sh
 cmd="$1"
@@ -23,17 +24,14 @@ case "$cmd" in
       script="$3"
       input="$(cat)"
       if [ -n "$DEEPCHAT_WORKSPACE" ]; then
-        input="$(printf "%s" "$input" | python - <<'PY'
-import json, os, sys
-ws = os.environ.get("DEEPCHAT_WORKSPACE")
+        input="$(printf "%s" "$input" | python -c "import json, os, sys
+ws = os.environ.get('DEEPCHAT_WORKSPACE')
 data = json.load(sys.stdin)
-if ws and isinstance(data, dict) and isinstance(data.get("path"), str):
-    if data["path"].startswith("/workspace"):
-        suffix = data["path"][len("/workspace"):].lstrip("/")
-        data["path"] = os.path.join(ws, suffix)
-print(json.dumps(data, ensure_ascii=False))
-PY
-)"
+if ws and isinstance(data, dict) and isinstance(data.get('path'), str):
+    if data['path'].startswith('/workspace'):
+        suffix = data['path'][len('/workspace'):].lstrip('/')
+        data['path'] = os.path.join(ws, suffix)
+print(json.dumps(data, ensure_ascii=False))")"
       fi
       printf "%s" "$input" | python -c "$script"
       exit $?
@@ -105,6 +103,13 @@ pub(super) fn registry_empty_key() -> ModelRegistry {
 }
 
 pub(super) fn args(enable: Option<String>, yolo: bool) -> Args {
+    let id = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("deepchat-tool-workspace-{id}"));
+    let _ = std::fs::create_dir_all(&dir);
+    let workspace = dir.to_string_lossy().to_string();
     Args {
         model: "m".to_string(),
         system: "sys".to_string(),
@@ -117,7 +122,7 @@ pub(super) fn args(enable: Option<String>, yolo: bool) -> Args {
         log_requests: None,
         perf: false,
         question_set: None,
-        workspace: "/tmp/deepchat-workspace".to_string(),
+        workspace,
         yolo,
         read_only: false,
         wait_gdb: false,

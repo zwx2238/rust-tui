@@ -1,4 +1,3 @@
-use crate::ui::runtime_events::handle_key_event;
 use crate::ui::runtime_view::{ViewAction, ViewState, apply_view_action};
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -31,13 +30,6 @@ pub(crate) fn handle_view_action_flow(
         return true;
     }
     handle_model_sync(ctx, layout, view, key)
-}
-
-pub(crate) fn handle_chat_input(
-    ctx: &mut DispatchContext<'_>,
-    key: KeyEvent,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    handle_key_event(key, ctx.tabs, *ctx.active_tab, ctx.args, ctx.msg_width, ctx.theme)
 }
 
 fn handle_model_cycle(ctx: &mut DispatchContext<'_>, action: ViewAction) -> bool {

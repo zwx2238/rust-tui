@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn compute_layout_uses_input_lines() {
         let view = ViewState::new();
-        let mut tabs = vec![TabState::new(
+        let mut tabs1 = vec![TabState::new(
             "id".into(),
             "cat".into(),
             "",
@@ -24,15 +24,24 @@ mod tests {
             "m",
             "p",
         )];
-        tabs[0].app.input.insert_str("line1\nline2\nline3");
-        let layout = compute_layout(
+        tabs1[0].app.input.insert_str("line1");
+        let layout1 = compute_layout(
             Rect::new(0, 0, 80, 24),
             &view,
-            &tabs,
+            &tabs1,
             0,
             &["cat".to_string()],
         );
-        assert!(layout.input_height >= 2);
-        assert!(layout.msg_width > 0);
+        let mut tabs3 = tabs1;
+        tabs3[0].app.input.insert_str("\nline2\nline3");
+        let layout3 = compute_layout(
+            Rect::new(0, 0, 80, 24),
+            &view,
+            &tabs3,
+            0,
+            &["cat".to_string()],
+        );
+        assert!(layout3.input_area.height >= layout1.input_area.height);
+        assert!(layout3.msg_width > 0);
     }
 }

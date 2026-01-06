@@ -1,4 +1,4 @@
-use super::{LlmEvent, UiEvent};
+use crate::ui::events::{send_llm, LlmEvent, RuntimeEvent};
 use crate::llm::rig::RigRequestContext;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -176,7 +176,7 @@ fn sanitize_log_part(input: &str) -> String {
 pub(super) fn stream_chunks(
     text: &str,
     cancel: &Arc<AtomicBool>,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
     tab: usize,
     request_id: u64,
 ) {
@@ -195,13 +195,15 @@ pub(super) fn stream_chunks(
     }
 }
 
-fn send_chunk(buf: &mut Vec<char>, tx: &Sender<UiEvent>, tab: usize, request_id: u64, pause: bool) {
+fn send_chunk(
+    buf: &mut Vec<char>,
+    tx: &Sender<RuntimeEvent>,
+    tab: usize,
+    request_id: u64,
+    pause: bool,
+) {
     let chunk: String = buf.drain(..).collect();
-    let _ = tx.send(UiEvent {
-        tab,
-        request_id,
-        event: LlmEvent::Chunk(chunk),
-    });
+    send_llm(tx, tab, request_id, LlmEvent::Chunk(chunk));
     if pause {
         std::thread::sleep(Duration::from_millis(8));
     }

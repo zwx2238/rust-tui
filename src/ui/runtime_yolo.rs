@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::model_registry::ModelRegistry;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_code_exec::handle_code_exec_exit;
 use crate::ui::runtime_helpers::TabState;
 use std::sync::mpsc;
@@ -9,7 +9,7 @@ pub(crate) fn auto_finalize_code_exec(
     tabs: &mut [TabState],
     registry: &ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     if !args.yolo_enabled() {
         return;

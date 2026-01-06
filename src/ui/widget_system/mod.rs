@@ -1,5 +1,4 @@
 mod context;
-pub(crate) mod events;
 mod lifecycle;
 mod render;
 mod widget_pod;

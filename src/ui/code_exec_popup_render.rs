@@ -8,5 +8,5 @@ pub(crate) use code_exec_popup_render_base::{
     render_stdout_panel,
 };
 pub(crate) use code_exec_popup_render_buttons::{
-    build_title, draw_reason_input, render_action_buttons,
+    build_title, draw_reason_input,
 };

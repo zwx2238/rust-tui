@@ -3,12 +3,12 @@ mod code_exec_popup_render;
 
 use crate::render::RenderTheme;
 use crate::ui::code_exec_popup_layout::code_exec_popup_layout;
-use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCodeExec};
+use crate::ui::state::{CodeExecReasonTarget, PendingCodeExec};
 use ratatui::layout::Rect;
 use tui_textarea::TextArea;
 
 use code_exec_popup_render::{
-    build_title, draw_reason_input, popup_mask, render_action_buttons, render_code_panel,
+    build_title, draw_reason_input, popup_mask, render_code_panel,
     render_mask, render_popup_base, render_stderr_panel, render_stdout_panel,
 };
 
@@ -18,7 +18,6 @@ pub(crate) struct CodeExecPopupParams<'a, 'b> {
     pub scroll: usize,
     pub stdout_scroll: usize,
     pub stderr_scroll: usize,
-    pub hover: Option<CodeExecHover>,
     pub reason_target: Option<CodeExecReasonTarget>,
     pub reason_input: &'a mut TextArea<'b>,
     pub live: Option<&'a crate::ui::state::CodeExecLive>,
@@ -26,22 +25,6 @@ pub(crate) struct CodeExecPopupParams<'a, 'b> {
     pub stdout_selection: Option<crate::ui::selection::Selection>,
     pub stderr_selection: Option<crate::ui::selection::Selection>,
     pub theme: &'a RenderTheme,
-}
-
-pub(crate) fn draw_code_exec_popup<'a, 'b>(
-    f: &mut ratatui::Frame<'_>,
-    mut params: CodeExecPopupParams<'a, 'b>,
-) {
-    draw_code_exec_popup_base(f, &mut params);
-    let layout = code_exec_popup_layout(params.area, params.reason_target.is_some());
-    render_action_buttons(
-        f,
-        layout,
-        params.hover,
-        params.reason_target,
-        params.live,
-        params.theme,
-    );
 }
 
 pub(crate) fn draw_code_exec_popup_base<'a, 'b>(

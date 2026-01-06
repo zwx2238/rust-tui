@@ -1,24 +1,6 @@
-use crate::types::{Message, ToolCall, Usage};
+use crate::types::Message;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, atomic::AtomicBool};
-
-pub enum LlmEvent {
-    Chunk(String),
-    Error(String),
-    Done {
-        usage: Option<Usage>,
-    },
-    ToolCalls {
-        calls: Vec<ToolCall>,
-        usage: Option<Usage>,
-    },
-}
-
-pub struct UiEvent {
-    pub tab: usize,
-    pub request_id: u64,
-    pub event: LlmEvent,
-}
 
 pub struct LlmStreamRequestParams {
     pub base_url: String,
@@ -35,7 +17,7 @@ pub struct LlmStreamRequestParams {
     pub log_session_id: String,
     pub message_index: usize,
     pub cancel: Arc<AtomicBool>,
-    pub tx: Sender<UiEvent>,
+    pub tx: Sender<crate::ui::events::RuntimeEvent>,
     pub tab: usize,
     pub request_id: u64,
 }

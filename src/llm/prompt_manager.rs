@@ -116,7 +116,7 @@ mod tests {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
-            .as_millis();
+            .as_nanos();
         let dir = std::env::temp_dir().join(format!("deepchat_{name}_{ts}"));
         fs::create_dir_all(&dir).expect("create temp dir");
         dir

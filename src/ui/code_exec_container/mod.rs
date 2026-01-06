@@ -9,6 +9,7 @@ use container_start::{is_container_running, start_container};
 
 pub(crate) use stream::{run_bash_in_container_stream, run_python_in_container_stream};
 
+#[cfg(test)]
 pub(crate) fn ensure_container(
     container_id: &mut Option<String>,
     workspace: &WorkspaceConfig,
@@ -43,6 +44,7 @@ pub(crate) fn ensure_container_cached(workspace: &WorkspaceConfig) -> Result<Str
     Ok(id)
 }
 
+#[cfg(test)]
 pub(crate) fn stop_exec(container_id: &str, run_id: &str) -> bool {
     stream::stop_exec(container_id, run_id)
 }

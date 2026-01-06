@@ -1,15 +1,16 @@
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask};
+use crate::ui::events::{send_preheat, RuntimeEvent};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 pub(crate) fn spawn_preheat_workers(
     preheat_rx: mpsc::Receiver<PreheatTask>,
-    preheat_res_tx: mpsc::Sender<PreheatResult>,
+    tx: mpsc::Sender<RuntimeEvent>,
 ) {
     let workers = resolve_worker_count();
     let preheat_rx = Arc::new(Mutex::new(preheat_rx));
     for _ in 0..workers {
-        spawn_preheat_worker(Arc::clone(&preheat_rx), preheat_res_tx.clone());
+        spawn_preheat_worker(Arc::clone(&preheat_rx), tx.clone());
     }
 }
 
@@ -27,7 +28,7 @@ fn resolve_worker_count() -> usize {
 
 fn spawn_preheat_worker(
     preheat_rx: Arc<Mutex<mpsc::Receiver<PreheatTask>>>,
-    preheat_res_tx: mpsc::Sender<PreheatResult>,
+    tx: mpsc::Sender<RuntimeEvent>,
 ) {
     std::thread::spawn(move || {
         loop {
@@ -40,7 +41,7 @@ fn spawn_preheat_worker(
                 &task.theme,
                 task.streaming,
             );
-            let _ = preheat_res_tx.send(PreheatResult {
+            send_preheat(&tx, PreheatResult {
                 tab: task.tab,
                 idx: task.idx,
                 entry,

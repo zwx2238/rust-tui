@@ -102,9 +102,7 @@ mod tests {
             Rect::new(0, 12, 80, 3),
             Rect::new(0, 1, 10, 5),
             10,
-            20,
         );
         assert_eq!(layout.view_height, 10);
-        assert_eq!(layout.total_lines, 20);
     }
 }

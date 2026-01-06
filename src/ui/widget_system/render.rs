@@ -48,7 +48,6 @@ fn draw_root(
             theme,
             startup_text: update.active_data.startup_text.as_deref(),
             full_area: layout.size,
-            input_height: layout.layout.input_height,
             msg_area: layout.layout.msg_area,
             tabs_area: layout.layout.tabs_area,
             category_area: layout.layout.category_area,

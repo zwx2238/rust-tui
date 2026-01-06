@@ -9,9 +9,6 @@ use super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 pub(crate) struct WidgetPod<W: Widget> {
     widget: W,
     rect: Rect,
-    hot: bool,
-    active: bool,
-    focused: bool,
 }
 
 impl<W: Widget> WidgetPod<W> {
@@ -19,42 +16,11 @@ impl<W: Widget> WidgetPod<W> {
         Self {
             widget,
             rect: Rect::new(0, 0, 0, 0),
-            hot: false,
-            active: false,
-            focused: false,
         }
-    }
-
-    pub(crate) fn rect(&self) -> Rect {
-        self.rect
     }
 
     pub(crate) fn set_rect(&mut self, rect: Rect) {
         self.rect = rect;
-    }
-
-    pub(crate) fn set_hot(&mut self, hot: bool) {
-        self.hot = hot;
-    }
-
-    pub(crate) fn set_active(&mut self, active: bool) {
-        self.active = active;
-    }
-
-    pub(crate) fn set_focused(&mut self, focused: bool) {
-        self.focused = focused;
-    }
-
-    pub(crate) fn is_hot(&self) -> bool {
-        self.hot
-    }
-
-    pub(crate) fn is_active(&self) -> bool {
-        self.active
-    }
-
-    pub(crate) fn is_focused(&self) -> bool {
-        self.focused
     }
 
     pub(crate) fn layout(

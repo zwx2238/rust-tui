@@ -3,6 +3,7 @@ use crate::llm::prompts::load_prompts;
 use crate::model_registry::build_model_registry;
 use crate::render::RenderTheme;
 use crate::ui::runtime_loop::run_loop;
+use crate::ui::input_thread::start_input_thread;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use runtime_state::{
@@ -11,6 +12,10 @@ use runtime_state::{
     validate_args,
 };
 use runtime_terminal::{ensure_tty_ready, setup_terminal, teardown_terminal};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Sender;
+use std::thread::JoinHandle;
 use std::time::Instant;
 
 mod runtime_state;
@@ -139,6 +144,7 @@ fn run_loop_with_terminal(
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = Instant::now();
+    let _input = InputThreadGuard::start(channels.tx.clone());
     run_loop(crate::ui::runtime_loop::RunLoopParams {
         terminal,
         tabs: &mut state.tabs,
@@ -149,11 +155,35 @@ fn run_loop_with_terminal(
         rx: &channels.rx,
         tx: &channels.tx,
         preheat_tx: &channels.preheat_tx,
-        preheat_res_rx: &channels.preheat_res_rx,
         registry,
         prompt_registry,
         args,
         theme,
         start_time,
     })
+}
+
+struct InputThreadGuard {
+    stop: Arc<AtomicBool>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl InputThreadGuard {
+    fn start(tx: Sender<crate::ui::events::RuntimeEvent>) -> Self {
+        let stop = Arc::new(AtomicBool::new(false));
+        let handle = start_input_thread(tx, Arc::clone(&stop));
+        Self {
+            stop,
+            handle: Some(handle),
+        }
+    }
+}
+
+impl Drop for InputThreadGuard {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
 }

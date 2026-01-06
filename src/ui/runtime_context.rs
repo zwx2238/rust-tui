@@ -35,7 +35,6 @@ pub(crate) fn make_layout_context(
     input_area: ratatui::layout::Rect,
     category_area: ratatui::layout::Rect,
     view_height: u16,
-    total_lines: usize,
 ) -> LayoutContext {
     LayoutContext {
         size,
@@ -44,6 +43,5 @@ pub(crate) fn make_layout_context(
         input_area,
         category_area,
         view_height,
-        total_lines,
     }
 }

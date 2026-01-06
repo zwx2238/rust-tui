@@ -1,19 +1,23 @@
 use crate::render::RenderTheme;
 use crate::ui::logic::{StreamAction, handle_stream_event};
-use crate::ui::net::UiEvent;
+use crate::ui::events::UiEvent;
 use crate::ui::runtime_helpers::TabState;
 
-pub fn collect_stream_events(
-    rx: &std::sync::mpsc::Receiver<UiEvent>,
+type ToolQueue = Vec<(usize, Vec<crate::types::ToolCall>)>;
+pub(crate) type StreamCollectResult = (usize, Vec<usize>, ToolQueue);
+
+pub fn collect_stream_events_from_batch(
+    llm_events: &mut Vec<UiEvent>,
     tabs: &mut [TabState],
     theme: &RenderTheme,
-) -> (Vec<usize>, Vec<(usize, Vec<crate::types::ToolCall>)>) {
+) -> StreamCollectResult {
+    let processed = llm_events.len();
     let mut done_tabs: Vec<usize> = Vec::new();
-    let mut tool_queue: Vec<(usize, Vec<crate::types::ToolCall>)> = Vec::new();
-    while let Ok(event) = rx.try_recv() {
+    let mut tool_queue: ToolQueue = Vec::new();
+    for event in llm_events.drain(..) {
         handle_stream_event_for_tab(event, tabs, theme, &mut done_tabs, &mut tool_queue);
     }
-    (done_tabs, tool_queue)
+    (processed, done_tabs, tool_queue)
 }
 
 fn handle_stream_event_for_tab(

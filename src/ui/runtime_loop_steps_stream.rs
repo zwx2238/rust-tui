@@ -1,9 +1,9 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::ui::net::UiEvent;
+use crate::ui::events::{RuntimeEvent, UiEvent};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_tick::{
-    ActiveFrameData, build_exec_header_note, collect_stream_events, finalize_done_tabs,
+    ActiveFrameData, build_exec_header_note, collect_stream_events_from_batch, finalize_done_tabs,
     preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay, sync_file_patch_overlay,
     update_code_exec_results, update_tab_widths,
 };
@@ -15,14 +15,14 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 pub(crate) struct ProcessStreamUpdatesParams<'a> {
-    pub rx: &'a mpsc::Receiver<UiEvent>,
+    pub llm_events: &'a mut Vec<UiEvent>,
     pub tabs: &'a mut Vec<TabState>,
     pub active_tab: usize,
     pub theme: &'a RenderTheme,
     pub msg_width: usize,
     pub registry: &'a crate::model_registry::ModelRegistry,
     pub args: &'a Args,
-    pub tx: &'a mpsc::Sender<UiEvent>,
+    pub tx: &'a mpsc::Sender<RuntimeEvent>,
     pub preheat_tx: &'a mpsc::Sender<crate::ui::runtime_helpers::PreheatTask>,
     pub view: &'a mut ViewState,
 }
@@ -41,7 +41,8 @@ pub(crate) struct ActiveFrameDataParams<'a> {
 pub(crate) fn process_stream_updates(
     params: ProcessStreamUpdatesParams<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (done_tabs, tool_queue) = collect_stream_events(params.rx, params.tabs, params.theme);
+    let (_processed, done_tabs, tool_queue) =
+        collect_stream_events_from_batch(params.llm_events, params.tabs, params.theme);
     apply_tool_queue(
         params.tabs,
         params.registry,
@@ -82,7 +83,7 @@ pub(crate) fn handle_pending_line(
     active_tab: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     if let Some(line) = pending_line
         && let Some(tab_state) = tabs.get_mut(active_tab)
@@ -108,7 +109,7 @@ fn apply_tool_queue(
     tabs: &mut [TabState],
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
     tool_queue: Vec<(usize, Vec<crate::types::ToolCall>)>,
 ) {
     let tool_service = ToolService::new(registry, args, tx);
@@ -123,7 +124,7 @@ fn maybe_auto_finalize(
     tabs: &mut [TabState],
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
 ) {
     if args.yolo_enabled() {
         auto_finalize_code_exec(tabs, registry, args, tx);

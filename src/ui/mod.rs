@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod clipboard;
 mod code_exec_container;
 mod code_exec_container_env;
@@ -9,8 +7,6 @@ mod code_exec_popup;
 mod code_exec_popup_layout;
 #[cfg(test)]
 mod code_exec_popup_layout_tests;
-#[cfg(test)]
-mod code_exec_popup_tests;
 mod code_exec_popup_text;
 #[cfg(test)]
 mod code_exec_popup_text_tests;
@@ -31,8 +27,6 @@ mod file_patch_popup;
 mod file_patch_popup_layout;
 #[cfg(test)]
 mod file_patch_popup_layout_tests;
-#[cfg(test)]
-mod file_patch_popup_tests;
 mod file_patch_popup_text;
 #[cfg(test)]
 mod file_patch_popup_text_tests;
@@ -51,14 +45,13 @@ mod logic_tests;
 mod model_popup;
 #[cfg(test)]
 mod model_prompt_popup_tests;
+mod events;
+mod input_thread;
 mod net;
 mod notice;
 #[cfg(test)]
 mod notice_tests;
 mod overlay;
-mod overlay_render;
-mod overlay_render_base;
-mod overlay_render_tool;
 mod overlay_table;
 mod overlay_table_state;
 #[cfg(test)]
@@ -69,7 +62,6 @@ mod overlay_table_tests;
 mod overlay_tests;
 mod perf;
 mod prompt_popup;
-mod render_context;
 mod runtime;
 mod runtime_code_exec;
 mod runtime_code_exec_helpers;
@@ -78,24 +70,15 @@ mod runtime_code_exec_output;
 mod runtime_code_exec_output_tests;
 #[cfg(test)]
 mod runtime_code_exec_tests;
-mod runtime_context;
 #[cfg(test)]
 mod runtime_context_tests;
+#[cfg(test)]
+mod runtime_context;
 mod runtime_dispatch;
-#[cfg(test)]
-mod runtime_dispatch_key_more2_tests;
-#[cfg(test)]
-mod runtime_dispatch_key_more_tests;
-#[cfg(test)]
-mod runtime_dispatch_key_tests;
-#[cfg(test)]
-mod runtime_dispatch_mouse_tests;
 #[cfg(test)]
 mod runtime_dispatch_nav_tests;
 #[cfg(test)]
 mod runtime_dispatch_tabs_tests;
-#[cfg(test)]
-mod runtime_dispatch_tests;
 mod runtime_events;
 mod runtime_events_helpers;
 #[cfg(test)]
@@ -114,7 +97,6 @@ mod runtime_layout;
 #[cfg(test)]
 mod runtime_layout_tests;
 mod runtime_loop;
-mod runtime_loop_iteration;
 mod runtime_loop_helpers;
 #[cfg(test)]
 mod runtime_loop_helpers_more_tests;
@@ -123,10 +105,6 @@ mod runtime_loop_helpers_tests;
 mod runtime_loop_steps;
 #[cfg(test)]
 mod runtime_loop_tests;
-#[cfg(test)]
-mod runtime_render_tests;
-#[cfg(test)]
-mod runtime_render;
 mod runtime_requests;
 #[cfg(test)]
 mod runtime_requests_tests;

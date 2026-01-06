@@ -10,6 +10,7 @@ mod tests {
     use crate::ui::runtime_session::{
         fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
     };
+    use crate::ui::events::RuntimeEvent;
     use std::fs;
     use std::sync::mpsc;
 
@@ -120,29 +121,33 @@ mod tests {
         let (task_tx, task_rx) = mpsc::channel();
         let (res_tx, res_rx) = mpsc::channel();
         spawn_preheat_workers(task_rx, res_tx);
-        let msg = crate::types::Message {
-            role: crate::types::ROLE_ASSISTANT.to_string(),
-            content: "hi".to_string(),
-            tool_call_id: None,
-            tool_calls: None,
-        };
-        task_tx
-            .send(crate::ui::runtime_helpers::PreheatTask {
-                tab: 0,
-                idx: 0,
-                msg,
-                width: 40,
-                theme: crate::render::RenderTheme {
-                    bg: ratatui::style::Color::Black,
-                    fg: Some(ratatui::style::Color::White),
-                    code_bg: ratatui::style::Color::Black,
-                    code_theme: "base16-ocean.dark",
-                    heading_fg: Some(ratatui::style::Color::Cyan),
-                },
-                streaming: false,
-            })
-            .unwrap();
+        task_tx.send(sample_preheat_task()).unwrap();
         let result = res_rx.recv().unwrap();
+        let RuntimeEvent::Preheat(result) = result else {
+            panic!("unexpected runtime event");
+        };
         assert_eq!(result.idx, 0);
+    }
+
+    fn sample_preheat_task() -> crate::ui::runtime_helpers::PreheatTask {
+        crate::ui::runtime_helpers::PreheatTask {
+            tab: 0,
+            idx: 0,
+            msg: crate::types::Message {
+                role: crate::types::ROLE_ASSISTANT.to_string(),
+                content: "hi".to_string(),
+                tool_call_id: None,
+                tool_calls: None,
+            },
+            width: 40,
+            theme: crate::render::RenderTheme {
+                bg: ratatui::style::Color::Black,
+                fg: Some(ratatui::style::Color::White),
+                code_bg: ratatui::style::Color::Black,
+                code_theme: "base16-ocean.dark",
+                heading_fg: Some(ratatui::style::Color::Cyan),
+            },
+            streaming: false,
+        }
     }
 }

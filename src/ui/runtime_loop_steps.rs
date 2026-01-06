@@ -1,5 +1,3 @@
-#[path = "runtime_loop_steps_events.rs"]
-mod runtime_loop_steps_events;
 #[path = "runtime_loop_steps_frame.rs"]
 mod runtime_loop_steps_frame;
 #[path = "runtime_loop_steps_stream.rs"]

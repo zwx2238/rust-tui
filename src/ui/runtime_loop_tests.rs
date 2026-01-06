@@ -5,8 +5,8 @@ mod tests {
     use crate::model_registry::{ModelProfile, ModelRegistry};
     use crate::render::RenderTheme;
     use crate::test_support::{env_lock, restore_env, set_env};
-    use crate::ui::net::UiEvent;
-    use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
+    use crate::ui::events::RuntimeEvent;
+    use crate::ui::runtime_helpers::{PreheatTask, TabState};
     use crate::ui::runtime_loop::run_loop;
     use ratatui::Terminal;
     use ratatui::backend::CrosstermBackend;
@@ -21,10 +21,9 @@ mod tests {
         categories: Vec<String>,
         active_category: usize,
         session_location: Option<crate::session::SessionLocation>,
-        tx: mpsc::Sender<UiEvent>,
-        rx: mpsc::Receiver<UiEvent>,
+        tx: mpsc::Sender<RuntimeEvent>,
+        rx: mpsc::Receiver<RuntimeEvent>,
         preheat_tx: mpsc::Sender<PreheatTask>,
-        preheat_res_rx: mpsc::Receiver<PreheatResult>,
     }
 
     fn theme() -> RenderTheme {
@@ -81,9 +80,8 @@ mod tests {
 
     fn base_run_loop_state() -> RunLoopState {
         let terminal = Terminal::new(CrosstermBackend::new(std::io::stdout())).unwrap();
-        let (tx, rx) = mpsc::channel::<UiEvent>();
+        let (tx, rx) = mpsc::channel::<RuntimeEvent>();
         let (preheat_tx, _preheat_rx) = mpsc::channel::<PreheatTask>();
-        let (_preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
         RunLoopState {
             terminal,
             tabs: vec![TabState::new(
@@ -101,7 +99,6 @@ mod tests {
             tx,
             rx,
             preheat_tx,
-            preheat_res_rx,
         }
     }
 
@@ -120,7 +117,6 @@ mod tests {
             rx: &state.rx,
             tx: &state.tx,
             preheat_tx: &state.preheat_tx,
-            preheat_res_rx: &state.preheat_res_rx,
             registry: &registry(),
             prompt_registry: &prompt_registry(),
             args: &args(),

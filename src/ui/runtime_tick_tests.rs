@@ -3,10 +3,11 @@ mod tests {
     use crate::args::Args;
     use crate::render::RenderTheme;
     use crate::types::Message;
-    use crate::ui::net::{LlmEvent, UiEvent};
+    use crate::ui::events::{LlmEvent, UiEvent};
     use crate::ui::runtime_helpers::{PreheatResult, TabState};
     use crate::ui::runtime_tick::{
-        ActiveFrameData, build_exec_header_note, collect_stream_events, drain_preheat_results,
+        ActiveFrameData, apply_preheat_results, build_exec_header_note,
+        collect_stream_events_from_batch,
         preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay,
         sync_file_patch_overlay, update_code_exec_results, update_tab_widths,
     };
@@ -44,19 +45,17 @@ mod tests {
         tab
     }
 
-    fn send_stream_events(tx: &mpsc::Sender<UiEvent>) {
-        tx.send(UiEvent {
+    fn send_stream_events(out: &mut Vec<UiEvent>) {
+        out.push(UiEvent {
             tab: 0,
             request_id: 1,
             event: LlmEvent::Chunk("hi".to_string()),
-        })
-        .unwrap();
-        tx.send(UiEvent {
+        });
+        out.push(UiEvent {
             tab: 0,
             request_id: 1,
             event: LlmEvent::Done { usage: None },
-        })
-        .unwrap();
+        });
     }
 
     #[test]
@@ -69,22 +68,21 @@ mod tests {
             tool_calls: None,
         };
         let entry = crate::render::build_cache_entry(&msg, 20, &theme(), false);
-        let (tx, rx) = mpsc::channel();
-        tx.send(PreheatResult {
+        let mut preheat = vec![PreheatResult {
             tab: 0,
             idx: 0,
             entry,
-        })
-        .unwrap();
-        drain_preheat_results(&rx, &mut [tab]);
+        }];
+        apply_preheat_results(&mut preheat, &mut [tab]);
     }
 
     #[test]
     fn collect_stream_events_returns_done_and_tools() {
         let tab = stream_tab();
-        let (tx, rx) = mpsc::channel();
-        send_stream_events(&tx);
-        let (done, tools) = collect_stream_events(&rx, &mut [tab], &theme());
+        let mut llm_events = Vec::new();
+        send_stream_events(&mut llm_events);
+        let (_processed, done, tools) =
+            collect_stream_events_from_batch(&mut llm_events, &mut [tab], &theme());
         assert_eq!(done, vec![0]);
         assert!(tools.is_empty());
     }

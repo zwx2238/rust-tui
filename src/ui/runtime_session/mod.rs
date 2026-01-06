@@ -4,7 +4,8 @@ mod preheat;
 mod restore;
 
 use crate::args::Args;
-use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState};
+use crate::ui::events::RuntimeEvent;
+use crate::ui::runtime_helpers::{PreheatTask, TabState};
 use std::sync::mpsc;
 
 type RestoreTabsResult =
@@ -31,7 +32,7 @@ pub(crate) fn fork_last_tab_for_retry(
 
 pub(crate) fn spawn_preheat_workers(
     preheat_rx: mpsc::Receiver<PreheatTask>,
-    preheat_res_tx: mpsc::Sender<PreheatResult>,
+    tx: mpsc::Sender<RuntimeEvent>,
 ) {
-    preheat::spawn_preheat_workers(preheat_rx, preheat_res_tx);
+    preheat::spawn_preheat_workers(preheat_rx, tx);
 }

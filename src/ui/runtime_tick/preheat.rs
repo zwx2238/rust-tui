@@ -2,11 +2,8 @@ use crate::render::RenderTheme;
 use crate::ui::runtime_helpers::{PreheatResult, PreheatTask, TabState, enqueue_preheat_tasks};
 use std::sync::mpsc;
 
-pub fn drain_preheat_results(
-    preheat_res_rx: &mpsc::Receiver<PreheatResult>,
-    tabs: &mut [TabState],
-) {
-    while let Ok(result) = preheat_res_rx.try_recv() {
+pub fn apply_preheat_results(preheat: &mut Vec<PreheatResult>, tabs: &mut [TabState]) {
+    for result in preheat.drain(..) {
         if let Some(tab_state) = tabs.get_mut(result.tab) {
             crate::render::set_cache_entry(&mut tab_state.render_cache, result.idx, result.entry);
         }

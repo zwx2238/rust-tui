@@ -13,7 +13,6 @@ pub(crate) struct LayoutInfo {
     pub(crate) footer_area: Rect,
     pub(crate) msg_width: usize,
     pub(crate) view_height: u16,
-    pub(crate) input_height: u16,
 }
 
 pub(crate) fn compute_layout(
@@ -38,7 +37,6 @@ pub(crate) fn compute_layout(
         footer_area,
         msg_width,
         view_height,
-        input_height,
     }
 }
 

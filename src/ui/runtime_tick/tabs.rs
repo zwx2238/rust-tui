@@ -1,4 +1,3 @@
-use crate::ui::logic::drain_events;
 use crate::ui::runtime_helpers::TabState;
 
 pub fn finalize_done_tabs(
@@ -10,9 +9,6 @@ pub fn finalize_done_tabs(
             tab_state.app.busy = false;
             tab_state.app.busy_since = None;
         }
-    }
-    if !done_tabs.is_empty() {
-        drain_events()?;
     }
     Ok(())
 }

@@ -39,8 +39,8 @@ pub(crate) fn handle_tab_category_click(params: TabCategoryClickParams<'_>) -> b
 fn handle_category_click(
     mouse_x: u16,
     mouse_y: u16,
-    _tabs: &mut [TabState],
-    _active_tab: &mut usize,
+    tabs: &mut [TabState],
+    active_tab: &mut usize,
     categories: &[String],
     active_category: &mut usize,
     category_area: Rect,
@@ -51,6 +51,11 @@ fn handle_category_click(
     let row = mouse_y.saturating_sub(category_area.y) as usize;
     if row < categories.len() {
         *active_category = row;
+        if let Some(category) = categories.get(row)
+            && let Some(idx) = tabs.iter().position(|t| t.category == category.as_str())
+        {
+            *active_tab = idx;
+        }
     }
     true
 }

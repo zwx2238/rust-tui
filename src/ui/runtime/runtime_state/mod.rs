@@ -2,9 +2,9 @@ use crate::args::Args;
 use crate::model_registry::ModelRegistry;
 use crate::question_set::load_question_set;
 use crate::session::{SessionLocation, load_session, save_session};
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::{
-    PreheatResult, PreheatTask, TabState, collect_open_conversations,
+    PreheatTask, TabState, collect_open_conversations,
 };
 use crate::ui::runtime_session::{
     fork_last_tab_for_retry, restore_tabs_from_session, spawn_preheat_workers,
@@ -25,10 +25,9 @@ pub(crate) struct RunState {
 }
 
 pub(crate) struct Channels {
-    pub(crate) tx: mpsc::Sender<UiEvent>,
-    pub(crate) rx: mpsc::Receiver<UiEvent>,
+    pub(crate) tx: mpsc::Sender<RuntimeEvent>,
+    pub(crate) rx: mpsc::Receiver<RuntimeEvent>,
     pub(crate) preheat_tx: mpsc::Sender<PreheatTask>,
-    pub(crate) preheat_res_rx: mpsc::Receiver<PreheatResult>,
 }
 
 pub(crate) fn validate_args(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
@@ -204,15 +203,13 @@ pub(crate) fn init_and_spawn_preheat() -> Channels {
 }
 
 fn init_channels() -> Channels {
-    let (tx, rx) = mpsc::channel::<UiEvent>();
+    let (tx, rx) = mpsc::channel::<RuntimeEvent>();
     let (preheat_tx, preheat_rx) = mpsc::channel::<PreheatTask>();
-    let (preheat_res_tx, preheat_res_rx) = mpsc::channel::<PreheatResult>();
-    spawn_preheat_workers(preheat_rx, preheat_res_tx.clone());
+    spawn_preheat_workers(preheat_rx, tx.clone());
     Channels {
         tx,
         rx,
         preheat_tx,
-        preheat_res_rx,
     }
 }
 

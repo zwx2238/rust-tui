@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::types::ROLE_USER;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::notice::push_notice;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
@@ -11,17 +11,11 @@ use ratatui::layout::Rect;
 use std::sync::mpsc;
 
 pub(crate) mod fork;
-mod key;
 pub(crate) mod key_helpers;
-mod mouse;
-pub(crate) mod mouse_overlay;
 pub(crate) mod nav;
 pub(crate) mod tabs;
 
 const PROMPT_LOCKED_MSG: &str = "已开始对话，无法切换系统提示词，请新建对话。";
-
-pub(crate) use key::handle_key_event_loop;
-pub(crate) use mouse::handle_mouse_event_loop;
 
 pub(crate) struct DispatchContext<'a> {
     pub(crate) tabs: &'a mut Vec<TabState>,
@@ -43,13 +37,12 @@ pub(crate) struct LayoutContext {
     pub(crate) input_area: Rect,
     pub(crate) category_area: Rect,
     pub(crate) view_height: u16,
-    pub(crate) total_lines: usize,
 }
 
 pub(crate) fn start_pending_request(
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
-    tx: &mpsc::Sender<UiEvent>,
+    tx: &mpsc::Sender<RuntimeEvent>,
     active_tab: usize,
     tab_state: &mut TabState,
 ) {

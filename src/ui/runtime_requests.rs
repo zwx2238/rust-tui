@@ -1,5 +1,5 @@
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::{App, RequestHandle};
 use std::sync::Arc;
@@ -15,7 +15,7 @@ pub(crate) struct StartTabRequestParams<'a> {
     pub api_key: &'a str,
     pub model: &'a str,
     pub _show_reasoning: bool,
-    pub tx: &'a mpsc::Sender<UiEvent>,
+    pub tx: &'a mpsc::Sender<RuntimeEvent>,
     pub tab_id: usize,
     pub enable_web_search: bool,
     pub enable_code_exec: bool,
@@ -55,7 +55,7 @@ pub(crate) struct StartFollowupRequestParams<'a> {
     pub api_key: &'a str,
     pub model: &'a str,
     pub _show_reasoning: bool,
-    pub tx: &'a mpsc::Sender<UiEvent>,
+    pub tx: &'a mpsc::Sender<RuntimeEvent>,
     pub tab_id: usize,
     pub enable_web_search: bool,
     pub enable_code_exec: bool,
@@ -119,7 +119,7 @@ struct StartRequestCommonParams<'a> {
     base_url: &'a str,
     api_key: &'a str,
     model: &'a str,
-    tx: &'a mpsc::Sender<UiEvent>,
+    tx: &'a mpsc::Sender<RuntimeEvent>,
     tab_id: usize,
     enable_web_search: bool,
     enable_code_exec: bool,
@@ -201,7 +201,7 @@ struct SpawnLlmRequestParams {
     log_session_id: String,
     idx: usize,
     cancel: Arc<AtomicBool>,
-    tx: mpsc::Sender<UiEvent>,
+    tx: mpsc::Sender<RuntimeEvent>,
     tab_id: usize,
     request_id: u64,
 }

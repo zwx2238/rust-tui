@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::model_registry::{ModelProfile, ModelRegistry};
 use crate::types::ToolCall;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_code_exec::{handle_bash_exec_request, handle_code_exec_request};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_requests::start_followup_request;
@@ -18,11 +18,15 @@ use super::logging::log_modify_file_raw;
 pub struct ToolService<'a> {
     registry: &'a ModelRegistry,
     args: &'a Args,
-    tx: &'a mpsc::Sender<UiEvent>,
+    tx: &'a mpsc::Sender<RuntimeEvent>,
 }
 
 impl<'a> ToolService<'a> {
-    pub fn new(registry: &'a ModelRegistry, args: &'a Args, tx: &'a mpsc::Sender<UiEvent>) -> Self {
+    pub fn new(
+        registry: &'a ModelRegistry,
+        args: &'a Args,
+        tx: &'a mpsc::Sender<RuntimeEvent>,
+    ) -> Self {
         Self { registry, args, tx }
     }
 

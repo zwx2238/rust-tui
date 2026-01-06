@@ -107,7 +107,6 @@ fn build_params<'a>(
         scroll: tab_state.app.code_exec_scroll,
         stdout_scroll: tab_state.app.code_exec_stdout_scroll,
         stderr_scroll: tab_state.app.code_exec_stderr_scroll,
-        hover: tab_state.app.code_exec_hover,
         reason_target: tab_state.app.code_exec_reason_target,
         reason_input,
         live,

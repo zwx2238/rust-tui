@@ -12,7 +12,6 @@ pub(crate) struct ButtonWidget {
     label: String,
     style: Style,
     rect: Rect,
-    clicked: bool,
     visible: bool,
     bordered: bool,
 }
@@ -23,7 +22,6 @@ impl ButtonWidget {
             label: label.into(),
             style: Style::default(),
             rect: Rect::new(0, 0, 0, 0),
-            clicked: false,
             visible: true,
             bordered: true,
         }
@@ -47,12 +45,6 @@ impl ButtonWidget {
 
     pub(crate) fn set_bordered(&mut self, bordered: bool) {
         self.bordered = bordered;
-    }
-
-    pub(crate) fn take_clicked(&mut self) -> bool {
-        let clicked = self.clicked;
-        self.clicked = false;
-        clicked
     }
 
     fn contains(&self, column: u16, row: u16) -> bool {
@@ -104,7 +96,6 @@ impl Widget for ButtonWidget {
         if !self.contains(m.column, m.row) {
             return Ok(EventResult::ignored());
         }
-        self.clicked = true;
         Ok(EventResult::handled())
     }
 

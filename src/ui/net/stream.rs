@@ -3,6 +3,7 @@ use futures::StreamExt;
 use crate::types::ToolCall;
 use rig::completion::AssistantContent;
 use rig::streaming::StreamedAssistantContent;
+use crate::ui::events::RuntimeEvent;
 use std::sync::mpsc::Sender;
 use std::sync::{
     Arc,
@@ -14,7 +15,6 @@ use super::helpers::{
     send_done, send_tool_calls, usage_from_stream,
 };
 use super::request::RequestInput;
-use super::types::UiEvent;
 
 pub(super) type OpenAiStreamResponse =
     rig::providers::openai::completion::streaming::StreamingCompletionResponse;
@@ -24,7 +24,7 @@ pub(super) async fn stream_request(
     input: &RequestInput,
     enabled: &[&'static str],
     cancel: &Arc<AtomicBool>,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
 ) -> Result<(), String> {
     let (ctx, _templates) = prepare_rig_context(&input.messages, &input.prompts_dir, enabled)?;
     log_request(input, &ctx);
@@ -42,7 +42,7 @@ async fn process_stream(
     mut stream: RigStream,
     input: &RequestInput,
     cancel: &Arc<AtomicBool>,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
 ) -> Result<(), String> {
     let mut state = StreamState::new();
     while let Some(item) = stream.next().await {
@@ -66,7 +66,7 @@ fn handle_stream_item(
     item: Result<StreamedAssistantContent<OpenAiStreamResponse>, rig::completion::CompletionError>,
     state: &mut StreamState,
     input: &RequestInput,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
 ) -> Result<StreamStep, String> {
     match item {
         Ok(content) => handle_stream_ok(content, state, input, tx),
@@ -78,7 +78,7 @@ fn handle_stream_ok(
     content: StreamedAssistantContent<OpenAiStreamResponse>,
     state: &mut StreamState,
     input: &RequestInput,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
 ) -> Result<StreamStep, String> {
     match content {
         StreamedAssistantContent::Text(text) => {
@@ -105,7 +105,7 @@ async fn run_non_stream_request(
     ctx: &crate::llm::rig::RigRequestContext,
     input: &RequestInput,
     cancel: &Arc<AtomicBool>,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
 ) -> Result<(), String> {
     let response = build_completion_request(model, ctx)
         .send()
@@ -127,7 +127,7 @@ async fn run_non_stream_request(
 fn handle_non_stream_text(
     input: &RequestInput,
     cancel: &Arc<AtomicBool>,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
     text: &str,
     usage: Option<crate::types::Usage>,
 ) {
@@ -138,7 +138,7 @@ fn handle_non_stream_text(
 
 fn handle_non_stream_tools(
     input: &RequestInput,
-    tx: &Sender<UiEvent>,
+    tx: &Sender<RuntimeEvent>,
     calls: &[rig::message::ToolCall],
     usage: Option<crate::types::Usage>,
 ) {
@@ -167,7 +167,7 @@ fn split_choice(
     (text, calls)
 }
 
-fn finalize_stream(input: &RequestInput, tx: &Sender<UiEvent>, state: StreamState) {
+fn finalize_stream(input: &RequestInput, tx: &Sender<RuntimeEvent>, state: StreamState) {
     log_response_text(input, &state.text);
     send_done(input, tx, state.usage);
 }

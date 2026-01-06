@@ -44,7 +44,17 @@ fn read_code_enabled_reads_file_with_numbers() {
         &format!(r#"{{"path":"{}"}}"#, path.to_string_lossy()),
     )];
     service.apply_tool_calls(&mut tab, 0, &calls);
-    assert!(tab.app.messages.iter().any(|m| m.content.contains("1 | line1")));
+    let all = tab
+        .app
+        .messages
+        .iter()
+        .map(|m| m.content.as_str())
+        .collect::<Vec<_>>()
+        .join("\n---\n");
+    assert!(
+        all.contains("1 | line1"),
+        "unexpected tool output:\n{all}"
+    );
     let _ = std::fs::remove_file(&path);
 }
 

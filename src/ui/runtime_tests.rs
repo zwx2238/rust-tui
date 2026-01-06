@@ -48,13 +48,15 @@ fn run_rejects_resume_and_question_set() {
     let _guard = env_lock().lock().unwrap();
     let dir = temp_dir("prompts");
     fs::write(dir.join("default.txt"), "sys").unwrap();
+    let ws = temp_dir("workspace");
     let cfg = config_with_prompts(&dir);
-    let mut args = Args::parse_from(["bin"]);
+    let mut args = Args::parse_from(["bin", "--workspace", ws.to_string_lossy().as_ref()]);
     args.resume = Some("abc".to_string());
     args.question_set = Some("list".to_string());
     let result = run(args, cfg, &theme());
     assert!(result.is_err());
     let _ = fs::remove_dir_all(&dir);
+    let _ = fs::remove_dir_all(&ws);
 }
 
 #[test]
@@ -62,12 +64,14 @@ fn run_fails_on_missing_session() {
     let _guard = env_lock().lock().unwrap();
     let dir = temp_dir("prompts");
     fs::write(dir.join("default.txt"), "sys").unwrap();
+    let ws = temp_dir("workspace");
     let cfg = config_with_prompts(&dir);
-    let mut args = Args::parse_from(["bin"]);
+    let mut args = Args::parse_from(["bin", "--workspace", ws.to_string_lossy().as_ref()]);
     args.resume = Some("missing-session".to_string());
     let result = run(args, cfg, &theme());
     assert!(result.is_err());
     let _ = fs::remove_dir_all(&dir);
+    let _ = fs::remove_dir_all(&ws);
     let prev = set_env("DEEPCHAT_TEST_RUN_LOOP_ONCE", "1");
     restore_env("DEEPCHAT_TEST_RUN_LOOP_ONCE", prev);
 }

@@ -14,10 +14,6 @@ impl<'a> ActiveTabBinding<'a> {
     pub(crate) fn app(&mut self) -> &mut App {
         &mut self.tab.app
     }
-
-    pub(crate) fn tab(&mut self) -> &mut TabState {
-        self.tab
-    }
 }
 
 pub(crate) fn bind_active_tab<'a>(
@@ -69,7 +65,7 @@ pub(crate) fn bind_event<'a>(
     }
 }
 
-fn build_layout(layout: &FrameLayout, update: &UpdateOutput) -> LayoutContext {
+fn build_layout(layout: &FrameLayout, _update: &UpdateOutput) -> LayoutContext {
     LayoutContext {
         size: layout.size,
         tabs_area: layout.layout.tabs_area,
@@ -77,6 +73,5 @@ fn build_layout(layout: &FrameLayout, update: &UpdateOutput) -> LayoutContext {
         input_area: layout.layout.input_area,
         category_area: layout.layout.category_area,
         view_height: layout.layout.view_height,
-        total_lines: update.active_data.total_lines,
     }
 }

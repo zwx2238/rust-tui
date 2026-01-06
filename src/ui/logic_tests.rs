@@ -5,7 +5,7 @@ mod tests {
         StreamAction, build_label_suffixes, format_timer, handle_stream_event, point_in_rect,
         scroll_from_mouse, stop_stream,
     };
-    use crate::ui::net::LlmEvent;
+    use crate::ui::events::LlmEvent;
     use crate::ui::state::{App, RequestHandle};
     use ratatui::layout::Rect;
     use std::sync::{Arc, atomic::AtomicBool};

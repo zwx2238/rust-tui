@@ -4,7 +4,7 @@ mod tab;
 
 use crate::args::Args;
 use crate::session::SessionLocation;
-use crate::ui::net::UiEvent;
+use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::PendingCommand;
 
@@ -18,7 +18,7 @@ pub(crate) struct HandlePendingCommandParams<'a> {
     pub registry: &'a crate::model_registry::ModelRegistry,
     pub prompt_registry: &'a crate::llm::prompts::PromptRegistry,
     pub args: &'a Args,
-    pub tx: &'a std::sync::mpsc::Sender<UiEvent>,
+    pub tx: &'a std::sync::mpsc::Sender<RuntimeEvent>,
 }
 
 pub(crate) struct HandlePendingCommandIfAnyParams<'a> {
@@ -31,7 +31,7 @@ pub(crate) struct HandlePendingCommandIfAnyParams<'a> {
     pub registry: &'a crate::model_registry::ModelRegistry,
     pub prompt_registry: &'a crate::llm::prompts::PromptRegistry,
     pub args: &'a Args,
-    pub tx: &'a std::sync::mpsc::Sender<UiEvent>,
+    pub tx: &'a std::sync::mpsc::Sender<RuntimeEvent>,
 }
 
 pub(crate) fn handle_pending_command(params: HandlePendingCommandParams<'_>) {
