@@ -5,12 +5,12 @@ use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::runtime_view::{ViewAction, apply_view_action};
 use crate::ui::scroll::{SCROLL_STEP_I32, max_scroll};
 use crate::ui::text_utils::{collapse_text, truncate_to_width};
+use crate::ui::widget_system::BoxConstraints;
 use crate::ui::widget_system::bindings::bind_event;
 use crate::ui::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
-use crate::ui::widget_system::BoxConstraints;
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Rect, Size};
 use ratatui::style::Style;
@@ -23,7 +23,11 @@ use super::helpers::point_in_rect;
 pub(super) struct MessageHistoryWidget;
 
 impl Widget for MessageHistoryWidget {
-    fn measure(&mut self, _ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        _ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let width = crate::ui::runtime_layout::compute_history_width(bc.max.width);
         Ok(Size {
             width,
@@ -102,7 +106,9 @@ fn handle_history_mouse(
             ctx.view.jump.scroll_by(delta, max, viewport);
             Ok(EventResult::handled())
         }
-        MouseEventKind::Down(MouseButton::Left) => handle_history_click(ctx, layout, update, rect, m.row, len),
+        MouseEventKind::Down(MouseButton::Left) => {
+            handle_history_click(ctx, layout, update, rect, m.row, len)
+        }
         _ => Ok(EventResult::ignored()),
     }
 }
@@ -281,4 +287,3 @@ fn build_jump_rows_for_active_tab(ctx: &EventCtx<'_>) -> Vec<JumpRow> {
     }
     build_jump_rows_from_layouts(&tab.app.messages, &tab.app.message_layouts)
 }
-

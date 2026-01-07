@@ -16,7 +16,11 @@ use super::helpers::point_in_rect;
 pub(super) struct InputWidget;
 
 impl Widget for InputWidget {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let rect = ratatui::layout::Rect::new(0, 0, bc.max.width, bc.max.height);
         let height = crate::ui::runtime_layout::compute_input_height(
             rect,

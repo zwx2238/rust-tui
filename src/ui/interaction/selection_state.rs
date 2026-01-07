@@ -118,7 +118,10 @@ mod tests {
 
     #[test]
     fn scroll_offset_by_does_not_change_selected() {
-        let mut s = SelectionState { selected: 0, scroll: 0 };
+        let mut s = SelectionState {
+            selected: 0,
+            scroll: 0,
+        };
         s.scroll_offset_by(5, 10);
         assert_eq!(s.selected, 0);
         assert_eq!(s.scroll, 5);
@@ -126,7 +129,10 @@ mod tests {
 
     #[test]
     fn scroll_offset_by_clamps_and_saturates() {
-        let mut s = SelectionState { selected: 0, scroll: 2 };
+        let mut s = SelectionState {
+            selected: 0,
+            scroll: 2,
+        };
         s.scroll_offset_by(-5, 10);
         assert_eq!(s.scroll, 0);
         s.scroll_offset_by(50, 10);

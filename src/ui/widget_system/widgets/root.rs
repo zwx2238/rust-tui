@@ -25,7 +25,11 @@ impl RootWidget {
 }
 
 impl Widget for RootWidget {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let _ = self.base.measure(ctx, bc)?;
         let _ = self.overlay.measure(ctx, bc)?;
         let _ = self.notice.measure(ctx, bc)?;

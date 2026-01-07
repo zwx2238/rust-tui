@@ -21,7 +21,10 @@ use render::theme_from_config;
 use std::env;
 use std::path::{Path, PathBuf};
 
-fn run_with_args(args: crate::args::Args, cfg_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+fn run_with_args(
+    args: crate::args::Args,
+    cfg_override: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
     if args.wait_gdb {
         debug::wait_for_gdb_attach()?;
     }

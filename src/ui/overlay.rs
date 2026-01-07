@@ -27,7 +27,12 @@ impl OverlayState {
     pub(crate) fn uses_simple_layout(&self) -> bool {
         matches!(
             self.active,
-            Some(OverlayKind::Summary | OverlayKind::Jump | OverlayKind::Terminal | OverlayKind::Help)
+            Some(
+                OverlayKind::Summary
+                    | OverlayKind::Jump
+                    | OverlayKind::Terminal
+                    | OverlayKind::Help
+            )
         )
     }
 

@@ -1,6 +1,8 @@
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::widget_system::box_constraints::BoxConstraints;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
 use ratatui::layout::{Rect, Size};
@@ -99,7 +101,11 @@ impl<A: Widget, B: Widget, C: Widget> Flex3<A, B, C> {
 }
 
 impl<A: Widget, B: Widget> Widget for Flex2<A, B> {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let max = bc.max;
         let total = measure_pair(ctx, self.axis, max, &mut self.a, &mut self.b)?;
         Ok(bc.constrain(container_size_from_measured(self.axis, max, total)))
@@ -165,7 +171,11 @@ impl<A: Widget, B: Widget> Widget for Flex2<A, B> {
 }
 
 impl<A: Widget, B: Widget, C: Widget> Widget for Flex3<A, B, C> {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let max = bc.max;
         let total = measure_triple(ctx, self.axis, max, &mut self.a, &mut self.b, &mut self.c)?;
         Ok(bc.constrain(container_size_from_measured(self.axis, max, total)))
@@ -177,7 +187,8 @@ impl<A: Widget, B: Widget, C: Widget> Widget for Flex3<A, B, C> {
         layout: &mut FrameLayout,
         rect: Rect,
     ) -> Result<(), Box<dyn Error>> {
-        let (r1, r2, r3) = split_triple(self.axis, rect, self.a.measured_main, self.b.measured_main);
+        let (r1, r2, r3) =
+            split_triple(self.axis, rect, self.a.measured_main, self.b.measured_main);
         self.a.pod.place(ctx, layout, r1)?;
         self.b.pod.place(ctx, layout, r2)?;
         self.c.pod.place(ctx, layout, r3)?;

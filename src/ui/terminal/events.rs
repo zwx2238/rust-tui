@@ -13,7 +13,10 @@ pub(crate) fn apply_terminal_events(events: &mut Vec<TerminalEvent>, tabs: &mut 
 }
 
 fn apply_one(ev: &TerminalEvent, tabs: &mut [TabState]) {
-    let Some(tab) = tabs.iter_mut().find(|t| t.conversation_id == ev.conversation_id) else {
+    let Some(tab) = tabs
+        .iter_mut()
+        .find(|t| t.conversation_id == ev.conversation_id)
+    else {
         return;
     };
     let Some(terminal) = tab.app.terminal.as_mut() else {
@@ -21,4 +24,3 @@ fn apply_one(ev: &TerminalEvent, tabs: &mut [TabState]) {
     };
     terminal.apply_output(&ev.bytes);
 }
-

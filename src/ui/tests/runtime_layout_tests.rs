@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::ui::runtime_helpers::TabState;
-    use crate::ui::runtime_layout::{compute_history_width, compute_input_height, compute_sidebar_width};
+    use crate::ui::runtime_layout::{
+        compute_history_width, compute_input_height, compute_sidebar_width,
+    };
     use crate::ui::runtime_view::ViewState;
     use ratatui::layout::Rect;
 

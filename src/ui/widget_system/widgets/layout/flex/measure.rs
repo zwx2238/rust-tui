@@ -17,7 +17,12 @@ pub(super) fn measure_pair<A: Widget, B: Widget>(
     let used = measure_non_flex(ctx, axis, max, b, used)?;
     let remaining = remaining_main(axis, max, used);
     let total_weight = flex_weight(a.param).saturating_add(flex_weight(b.param));
-    let (fa, fb) = allocate_flex2(remaining, total_weight, flex_weight(a.param), flex_weight(b.param));
+    let (fa, fb) = allocate_flex2(
+        remaining,
+        total_weight,
+        flex_weight(a.param),
+        flex_weight(b.param),
+    );
     measure_flex(ctx, axis, max, a, fa)?;
     measure_flex(ctx, axis, max, b, fb)?;
     Ok(used.saturating_add(fa).saturating_add(fb))
@@ -48,7 +53,10 @@ pub(super) fn measure_triple<A: Widget, B: Widget, C: Widget>(
     measure_flex(ctx, axis, max, a, fa)?;
     measure_flex(ctx, axis, max, b, fb)?;
     measure_flex(ctx, axis, max, c, fc)?;
-    Ok(used.saturating_add(fa).saturating_add(fb).saturating_add(fc))
+    Ok(used
+        .saturating_add(fa)
+        .saturating_add(fb)
+        .saturating_add(fc))
 }
 
 pub(super) fn container_size_from_measured(axis: FlexAxis, max: Size, total_main: u16) -> Size {
@@ -99,7 +107,9 @@ fn measure_flex<W: Widget>(
         return Ok(());
     }
     child.measured_main = clamp_main(axis, alloc, max);
-    let _ = child.pod.measure(ctx, tight_for(axis, max, child.measured_main))?;
+    let _ = child
+        .pod
+        .measure(ctx, tight_for(axis, max, child.measured_main))?;
     Ok(())
 }
 
@@ -162,4 +172,3 @@ fn tight_for(axis: FlexAxis, max: Size, main: u16) -> BoxConstraints {
         }),
     }
 }
-

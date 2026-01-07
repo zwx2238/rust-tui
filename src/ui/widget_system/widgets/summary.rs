@@ -63,7 +63,10 @@ impl Widget for SummaryWidget {
     }
 }
 
-fn summary_layout(rect: ratatui::layout::Rect, categories: &[String]) -> crate::ui::summary::layout::SummaryLayout {
+fn summary_layout(
+    rect: ratatui::layout::Rect,
+    categories: &[String],
+) -> crate::ui::summary::layout::SummaryLayout {
     let size = ratatui::layout::Size {
         width: rect.width,
         height: rect.height,

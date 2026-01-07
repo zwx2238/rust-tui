@@ -9,8 +9,8 @@ mod widgets;
 
 use std::error::Error;
 
-pub(crate) use context::{EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput};
 pub(crate) use box_constraints::BoxConstraints;
+pub(crate) use context::{EventCtx, LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput};
 pub(crate) use lifecycle::{EventResult, Widget};
 use render::render_root;
 use widgets::{FrameLifecycle, RootWidget};

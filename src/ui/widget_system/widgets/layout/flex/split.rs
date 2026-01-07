@@ -9,7 +9,12 @@ pub(super) fn split_pair(axis: FlexAxis, rect: Rect, a_main: u16) -> (Rect, Rect
     }
 }
 
-pub(super) fn split_triple(axis: FlexAxis, rect: Rect, a_main: u16, b_main: u16) -> (Rect, Rect, Rect) {
+pub(super) fn split_triple(
+    axis: FlexAxis,
+    rect: Rect,
+    a_main: u16,
+    b_main: u16,
+) -> (Rect, Rect, Rect) {
     match axis {
         FlexAxis::Horizontal => split_triple_h(rect, a_main, b_main),
         FlexAxis::Vertical => split_triple_v(rect, a_main, b_main),
@@ -101,4 +106,3 @@ fn split_triple_v(rect: Rect, h1: u16, h2: u16) -> (Rect, Rect, Rect) {
         },
     )
 }
-

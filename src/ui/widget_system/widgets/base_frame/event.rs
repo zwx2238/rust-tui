@@ -99,7 +99,12 @@ impl BaseFrameWidget {
         )? {
             return Ok(EventResult::handled());
         }
-        self.root
-            .event(ctx, &crossterm::event::Event::Mouse(m), layout, update, jump_rows)
+        self.root.event(
+            ctx,
+            &crossterm::event::Event::Mouse(m),
+            layout,
+            update,
+            jump_rows,
+        )
     }
 }

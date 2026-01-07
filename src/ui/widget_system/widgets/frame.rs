@@ -1,6 +1,6 @@
 use crate::ui::runtime_loop_steps::{
-    FrameLayout, ProcessStreamUpdatesParams, active_frame_data, handle_pending_line,
-    header_note, prepare_categories, process_stream_updates, tab_labels_and_pos,
+    FrameLayout, ProcessStreamUpdatesParams, active_frame_data, handle_pending_line, header_note,
+    prepare_categories, process_stream_updates, tab_labels_and_pos,
 };
 use crate::ui::runtime_tick::{ActiveFrameData, apply_preheat_results};
 use std::error::Error;

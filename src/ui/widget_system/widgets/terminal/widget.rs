@@ -131,7 +131,9 @@ fn handle_mouse(ctx: &mut EventCtx<'_>, kind: MouseEventKind) -> EventResult {
         return EventResult::handled();
     };
     match kind {
-        MouseEventKind::ScrollUp => terminal.scroll_offset = terminal.scroll_offset.saturating_add(3),
+        MouseEventKind::ScrollUp => {
+            terminal.scroll_offset = terminal.scroll_offset.saturating_add(3)
+        }
         MouseEventKind::ScrollDown => {
             terminal.scroll_offset = terminal.scroll_offset.saturating_sub(3);
         }
@@ -153,4 +155,3 @@ fn send_key_to_terminal(
     };
     terminal.send_key(key);
 }
-

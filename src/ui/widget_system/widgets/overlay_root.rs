@@ -1,8 +1,8 @@
 use crate::ui::overlay::OverlayKind;
 use crate::ui::runtime_view::ViewState;
+use crate::ui::widget_system::BoxConstraints;
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
-use crate::ui::widget_system::BoxConstraints;
 use ratatui::layout::Size;
 use std::error::Error;
 
@@ -52,7 +52,11 @@ impl OverlayRootWidget {
 }
 
 impl Widget for OverlayRootWidget {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let _ = self.summary.measure(ctx, bc)?;
         let _ = self.jump.measure(ctx, bc)?;
         let _ = self.model.measure(ctx, bc)?;
@@ -183,9 +187,7 @@ fn dispatch_overlay_event(
         Some(OverlayKind::FilePatch) => widget
             .file_patch
             .event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::Terminal) => widget
-            .terminal
-            .event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::Terminal) => widget.terminal.event(ctx, event, layout, update, jump_rows),
         Some(OverlayKind::Help) => widget.help.event(ctx, event, layout, update, jump_rows),
         None => Ok(EventResult::ignored()),
     }

@@ -1,4 +1,4 @@
-use crate::config::{default_config_path, load_config, save_config, Config, ModelItem};
+use crate::config::{Config, ModelItem, default_config_path, load_config, save_config};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -63,7 +63,8 @@ fn upsert_model(cfg: &mut Config, item: ModelItem) -> Result<(), Box<dyn std::er
     } else {
         cfg.models.push(item);
     }
-    let should_set_default = cfg.default_model.trim().is_empty() || confirm("设为默认模型？[y/N] ")?;
+    let should_set_default =
+        cfg.default_model.trim().is_empty() || confirm("设为默认模型？[y/N] ")?;
     if should_set_default {
         cfg.default_model = key;
     }
@@ -93,4 +94,3 @@ fn prompt_line(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
     io::stdin().read_line(&mut buf)?;
     Ok(buf.trim_end().to_string())
 }
-

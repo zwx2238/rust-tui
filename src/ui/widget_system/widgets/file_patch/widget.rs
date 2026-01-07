@@ -2,9 +2,7 @@ use crate::ui::file_patch_popup::draw_file_patch_popup_base;
 use crate::ui::file_patch_popup_layout::file_patch_popup_layout;
 use crate::ui::jump::JumpRow;
 use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::widget_system::context::{
-    EventCtx, UpdateCtx, UpdateOutput, WidgetFrame,
-};
+use crate::ui::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
 
@@ -62,15 +60,7 @@ impl Widget for FilePatchWidget {
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         let hover = render_popup(frame, rect)?;
-        render_buttons(
-            self,
-            rect,
-            hover,
-            frame.state.theme,
-            frame,
-            layout,
-            update,
-        );
+        render_buttons(self, rect, hover, frame.state.theme, frame, layout, update);
         Ok(())
     }
 }

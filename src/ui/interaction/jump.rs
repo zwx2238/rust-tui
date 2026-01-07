@@ -1,5 +1,5 @@
-use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::render::MessageLayout;
+use crate::render::{RenderTheme, count_message_lines, label_for_role};
 use crate::types::Message;
 use crate::ui::draw::{draw_categories, draw_footer, draw_header, draw_tabs};
 use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};

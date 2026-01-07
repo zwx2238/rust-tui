@@ -1,6 +1,8 @@
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::widget_system::box_constraints::BoxConstraints;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
 use ratatui::layout::{Rect, Size};
@@ -21,7 +23,11 @@ impl<A: Widget, B: Widget> Stack2<A, B> {
 }
 
 impl<A: Widget, B: Widget> Widget for Stack2<A, B> {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let sa = self.a.measure(ctx, bc)?;
         let sb = self.b.measure(ctx, bc)?;
         Ok(Size {

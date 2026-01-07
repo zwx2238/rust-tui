@@ -2,9 +2,7 @@ use crate::ui::draw::inner_area;
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::widget_system::bindings::bind_event;
-use crate::ui::widget_system::context::{
-    EventCtx, UpdateCtx, UpdateOutput, WidgetFrame,
-};
+use crate::ui::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use ratatui::style::{Color, Modifier, Style};
 use std::error::Error;

@@ -13,7 +13,11 @@ use super::helpers::handle_tab_category_mouse_down;
 pub(super) struct CategoriesWidget;
 
 impl Widget for CategoriesWidget {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let width = crate::ui::runtime_layout::compute_sidebar_width(ctx.categories, bc.max.width);
         Ok(Size {
             width,

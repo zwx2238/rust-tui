@@ -105,4 +105,3 @@ fn mouse_pos(event: &crossterm::event::Event) -> Option<(u16, u16)> {
 fn point_in_rect(x: u16, y: u16, rect: Rect) -> bool {
     x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
 }
-

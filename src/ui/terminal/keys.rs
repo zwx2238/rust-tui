@@ -103,11 +103,7 @@ fn csi_modifier_code(modifiers: KeyModifiers) -> Option<u8> {
     if modifiers.contains(KeyModifiers::CONTROL) {
         code += 4;
     }
-    if code == 1 {
-        None
-    } else {
-        Some(code)
-    }
+    if code == 1 { None } else { Some(code) }
 }
 
 fn csi_cursor(suffix: &str, mod_code: Option<u8>) -> Vec<u8> {
@@ -185,4 +181,3 @@ mod tests {
         assert_eq!(key_event_to_bytes(key), Some(b"\x1b[A".to_vec()));
     }
 }
-

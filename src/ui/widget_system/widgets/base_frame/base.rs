@@ -1,14 +1,15 @@
 use crate::ui::draw::{inner_height, inner_width};
 use crate::ui::runtime_layout::LayoutInfo;
-use crate::ui::widget_system::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
+use crate::ui::widget_system::BoxConstraints;
+use crate::ui::widget_system::context::{
+    EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
+};
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use crate::ui::widget_system::widget_pod::WidgetPod;
-use crate::ui::widget_system::BoxConstraints;
 use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
 use ratatui::layout::Size;
 use std::error::Error;
 
-use crate::ui::widget_system::widgets::layout::{Flex2, Flex3, FlexAxis, FlexParam, Stack2};
 use super::categories::CategoriesWidget;
 use super::command_suggestions::CommandSuggestionsWidget;
 use super::edit_button::EditButtonWidget;
@@ -19,6 +20,7 @@ use super::input::InputWidget;
 use super::message_history::MessageHistoryWidget;
 use super::messages::MessagesWidget;
 use super::tabs::TabsWidget;
+use crate::ui::widget_system::widgets::layout::{Flex2, Flex3, FlexAxis, FlexParam, Stack2};
 
 type MsgLayer = Stack2<MessagesWidget, EditButtonWidget>;
 type MsgRow = Flex2<MsgLayer, MessageHistoryWidget>;
@@ -66,7 +68,11 @@ impl BaseFrameWidget {
 }
 
 impl Widget for BaseFrameWidget {
-    fn measure(&mut self, ctx: &mut LayoutCtx<'_>, bc: BoxConstraints) -> Result<Size, Box<dyn Error>> {
+    fn measure(
+        &mut self,
+        ctx: &mut LayoutCtx<'_>,
+        bc: BoxConstraints,
+    ) -> Result<Size, Box<dyn Error>> {
         let _ = self.root.measure(ctx, bc)?;
         Ok(bc.constrain(bc.max))
     }

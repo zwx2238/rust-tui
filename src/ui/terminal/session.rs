@@ -53,12 +53,8 @@ impl TerminalSession {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let (master, writer, child, reader) = open_pty(shell, cols, rows)?;
         let alive = Arc::new(AtomicBool::new(true));
-        let reader_thread = spawn_reader_thread(
-            reader,
-            tx.clone(),
-            conversation_id,
-            Arc::clone(&alive),
-        );
+        let reader_thread =
+            spawn_reader_thread(reader, tx.clone(), conversation_id, Arc::clone(&alive));
         Ok(Self {
             parser: vt100::Parser::new(rows, cols, config.scrollback),
             master,
@@ -160,7 +156,10 @@ fn create_terminal_for_tab(tab: &mut TabState, cols: u16, rows: u16, tx: &Sender
         tab.conversation_id.clone(),
     ) {
         Ok(s) => tab.app.terminal = Some(s),
-        Err(_) => push_notice(&mut tab.app, "无法启动弹窗终端：未找到可用的 shell（$SHELL 或 bash）。"),
+        Err(_) => push_notice(
+            &mut tab.app,
+            "无法启动弹窗终端：未找到可用的 shell（$SHELL 或 bash）。",
+        ),
     }
 }
 
@@ -168,11 +167,7 @@ fn choose_shell() -> String {
     std::env::var("SHELL").unwrap_or_else(|_| "bash".to_string())
 }
 
-fn open_pty(
-    shell: &str,
-    cols: u16,
-    rows: u16,
-) -> Result<PtyHandles, Box<dyn std::error::Error>> {
+fn open_pty(shell: &str, cols: u16, rows: u16) -> Result<PtyHandles, Box<dyn std::error::Error>> {
     let pty_system = portable_pty::native_pty_system();
     let pair = pty_system.openpty(PtySize {
         rows,
@@ -217,4 +212,3 @@ fn read_loop(
         }));
     }
 }
-

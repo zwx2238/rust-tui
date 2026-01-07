@@ -14,7 +14,10 @@ pub(crate) fn terminal_popup_layout(area: Rect) -> TerminalPopupLayout {
     let safe = safe_rect(area);
     let popup = popup_rect(safe);
     let terminal_area = inset_rect(popup, 1);
-    TerminalPopupLayout { popup, terminal_area }
+    TerminalPopupLayout {
+        popup,
+        terminal_area,
+    }
 }
 
 fn safe_rect(area: Rect) -> Rect {
@@ -49,4 +52,3 @@ fn inset_rect(rect: Rect, inset: u16) -> Rect {
         height: rect.height.saturating_sub(inset.saturating_mul(2)),
     }
 }
-
