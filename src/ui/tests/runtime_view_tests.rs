@@ -187,6 +187,7 @@ mod tests {
         );
         assert!(matches!(action, ViewAction::SelectModel(1)));
         view.overlay.open(OverlayKind::Help);
+        view.help.selected = 1;
         let action = handle_view_mouse(
             &mut view,
             Some(0),
@@ -195,7 +196,11 @@ mod tests {
             MouseEventKind::Down(MouseButton::Left),
         );
         assert!(matches!(action, ViewAction::None));
-        assert!(view.overlay.is_chat());
+        assert!(view.overlay.is(OverlayKind::Help));
+        assert_eq!(view.help.selected, 1);
+
+        let _ = handle_view_mouse(&mut view, Some(2), 0, 0, MouseEventKind::Moved);
+        assert_eq!(view.help.selected, 2);
     }
 
     #[test]

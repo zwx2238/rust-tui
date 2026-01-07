@@ -59,19 +59,32 @@ pub fn centered_area(area: Rect, percent_x: u16, rows: usize, max_height: u16) -
 }
 
 pub fn row_at(area: Rect, rows: usize, scroll: usize, mouse_x: u16, mouse_y: u16) -> Option<usize> {
-    if mouse_x < area.x || mouse_x >= area.x + area.width {
+    if rows == 0 {
         return None;
     }
-    if mouse_y < area.y || mouse_y >= area.y + area.height {
+    // Need at least: left/right border + 1 content column.
+    if area.width < 3 {
         return None;
     }
-    let inner_y = mouse_y.saturating_sub(area.y + 1);
-    if inner_y == 0 {
+    // Need at least: top border + header row + bottom border + 1 body row.
+    if area.height < 4 {
         return None;
     }
-    let row = inner_y.saturating_sub(1) as usize;
-    let row = row.saturating_add(scroll);
-    if row < rows { Some(row) } else { None }
+    // Exclude left/right borders.
+    let inner_left = area.x.saturating_add(1);
+    let inner_right_exclusive = area.x.saturating_add(area.width).saturating_sub(1);
+    if mouse_x < inner_left || mouse_x >= inner_right_exclusive {
+        return None;
+    }
+    // Exclude top border, header row, bottom border. Body starts at y + 2.
+    let body_top = area.y.saturating_add(2);
+    let body_bottom_exclusive = area.y.saturating_add(area.height).saturating_sub(1);
+    if mouse_y < body_top || mouse_y >= body_bottom_exclusive {
+        return None;
+    }
+    let row_in_viewport = mouse_y.saturating_sub(body_top) as usize;
+    let row = row_in_viewport.saturating_add(scroll);
+    (row < rows).then_some(row)
 }
 
 pub fn visible_rows(area: Rect) -> usize {

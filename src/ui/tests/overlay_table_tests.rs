@@ -34,6 +34,14 @@ mod tests {
         let area = Rect::new(0, 0, 10, 6);
         assert_eq!(row_at(area, 5, 0, 1, 2), Some(0));
         assert_eq!(row_at(area, 5, 0, 1, 1), None);
+        // bottom border
+        assert_eq!(row_at(area, 5, 0, 1, 5), None);
+        // left / right border
+        assert_eq!(row_at(area, 5, 0, 0, 2), None);
+        assert_eq!(row_at(area, 5, 0, 9, 2), None);
+        // last visible body row (height 6 => visible_rows = 3 => y = 2 + 2)
+        assert_eq!(row_at(area, 5, 0, 1, 4), Some(2));
+        assert_eq!(row_at(area, 50, 7, 1, 4), Some(9));
         assert_eq!(row_at(area, 2, 0, 1, 10), None);
     }
 

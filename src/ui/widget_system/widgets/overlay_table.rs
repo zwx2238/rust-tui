@@ -58,7 +58,7 @@ impl<'a> OverlayTableController<'a> {
     }
 
     fn handle_mouse(&mut self, m: crossterm::event::MouseEvent) {
-        if self.handle_overlay_scroll(m.kind) {
+        if self.handle_overlay_scroll(m) {
             return;
         }
         let row = self.overlay_row_at(m.column, m.row);
@@ -87,8 +87,8 @@ impl<'a> OverlayTableController<'a> {
         );
     }
 
-    fn handle_overlay_scroll(&mut self, kind: crossterm::event::MouseEventKind) -> bool {
-        let delta = match kind {
+    fn handle_overlay_scroll(&mut self, m: crossterm::event::MouseEvent) -> bool {
+        let delta = match m.kind {
             crossterm::event::MouseEventKind::ScrollUp => -SCROLL_STEP_I32,
             crossterm::event::MouseEventKind::ScrollDown => SCROLL_STEP_I32,
             _ => return false,
@@ -96,7 +96,10 @@ impl<'a> OverlayTableController<'a> {
         let areas = self.overlay_areas();
         let counts = self.overlay_counts();
         let _ = with_active_table_handle(self.view, areas, counts, |mut handle| {
-            handle.scroll_by(delta)
+            handle.scroll_offset_by(delta);
+            if let Some(row) = handle.row_at(m.column, m.row) {
+                handle.select(row);
+            }
         });
         true
     }

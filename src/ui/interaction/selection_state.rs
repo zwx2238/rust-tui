@@ -69,18 +69,26 @@ impl SelectionState {
         }
     }
 
-    pub(crate) fn scroll_by(&mut self, delta: i32, max_scroll: usize, viewport_rows: usize) {
-        if delta.is_negative() {
-            let step = delta.unsigned_abs() as usize;
-            self.scroll = self.scroll.saturating_sub(step);
-        } else {
-            let step = delta as usize;
-            self.scroll = self.scroll.saturating_add(step);
-        }
+    pub(crate) fn scroll_offset_by(&mut self, delta: i32, max_scroll: usize) {
+        self.scroll = offset_scroll(self.scroll, delta);
         if self.scroll > max_scroll {
             self.scroll = max_scroll;
         }
+    }
+
+    pub(crate) fn scroll_by(&mut self, delta: i32, max_scroll: usize, viewport_rows: usize) {
+        self.scroll_offset_by(delta, max_scroll);
         self.ensure_visible(viewport_rows);
+    }
+}
+
+fn offset_scroll(scroll: usize, delta: i32) -> usize {
+    if delta.is_negative() {
+        let step = delta.unsigned_abs() as usize;
+        scroll.saturating_sub(step)
+    } else {
+        let step = delta as usize;
+        scroll.saturating_add(step)
     }
 }
 
@@ -106,5 +114,22 @@ mod tests {
         assert_eq!(s.selected, 1);
         s.page_down(5);
         assert!(s.scroll >= 5);
+    }
+
+    #[test]
+    fn scroll_offset_by_does_not_change_selected() {
+        let mut s = SelectionState { selected: 0, scroll: 0 };
+        s.scroll_offset_by(5, 10);
+        assert_eq!(s.selected, 0);
+        assert_eq!(s.scroll, 5);
+    }
+
+    #[test]
+    fn scroll_offset_by_clamps_and_saturates() {
+        let mut s = SelectionState { selected: 0, scroll: 2 };
+        s.scroll_offset_by(-5, 10);
+        assert_eq!(s.scroll, 0);
+        s.scroll_offset_by(50, 10);
+        assert_eq!(s.scroll, 10);
     }
 }

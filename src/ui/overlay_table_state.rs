@@ -55,10 +55,14 @@ impl<'a> OverlayTableHandle<'a> {
             .clamp_with_viewport(self.metrics.rows, viewport);
     }
 
-    pub(crate) fn scroll_by(&mut self, delta: i32) {
+    pub(crate) fn scroll_offset_by(&mut self, delta: i32) {
         let viewport = self.visible_rows();
         let max_scroll = max_scroll(self.metrics.rows, viewport);
-        self.selection.scroll_by(delta, max_scroll, viewport);
+        self.selection.scroll_offset_by(delta, max_scroll);
+    }
+
+    pub(crate) fn select(&mut self, idx: usize) {
+        self.selection.select(idx);
     }
 }
 

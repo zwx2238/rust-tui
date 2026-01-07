@@ -279,10 +279,8 @@ fn handle_prompt_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -
 }
 
 fn handle_help_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
-    view.help.select(row);
-    view.help.ensure_visible(1);
-    if matches!(kind, MouseEventKind::Down(_)) {
-        view.overlay.close();
+    if matches!(kind, MouseEventKind::Moved) {
+        view.help.select(row);
     }
     ViewAction::None
 }
