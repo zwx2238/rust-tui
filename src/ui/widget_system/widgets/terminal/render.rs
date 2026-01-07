@@ -1,7 +1,7 @@
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Text};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 
 use crate::ui::widget_system::context::WidgetFrame;
 
@@ -10,6 +10,8 @@ pub(crate) fn render_terminal_popup(
     popup: Rect,
     terminal_area: Rect,
 ) {
+    // 清掉底层聊天内容，避免 overlay 区域字符“透出”。
+    frame.frame.render_widget(Clear, popup);
     render_border(frame, popup);
     render_terminal_contents(frame, terminal_area);
 }
@@ -17,10 +19,11 @@ pub(crate) fn render_terminal_popup(
 fn render_border(frame: &mut WidgetFrame<'_, '_, '_, '_>, popup: Rect) {
     let theme = frame.state.theme;
     let title = "Terminal  F7:关闭  滚轮:回看";
-    let border = Block::default()
-        .borders(Borders::ALL)
-        .title(title)
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)));
+    let border = Block::default().borders(Borders::ALL).title(title).style(
+        Style::default()
+            .bg(theme.bg)
+            .fg(theme.fg.unwrap_or(Color::White)),
+    );
     frame.frame.render_widget(border, popup);
 }
 
@@ -32,9 +35,17 @@ fn render_terminal_contents(frame: &mut WidgetFrame<'_, '_, '_, '_>, terminal_ar
     let Some(terminal) = app.terminal.as_ref() else {
         return;
     };
-    let text = screen_to_text(terminal.screen(), terminal_area.height as usize, terminal.scroll_offset);
+    let text = screen_to_text(
+        terminal.screen(),
+        terminal_area.height as usize,
+        terminal.scroll_offset,
+    );
     let para = Paragraph::new(text)
-        .style(Style::default().bg(theme.bg).fg(theme.fg.unwrap_or(Color::White)))
+        .style(
+            Style::default()
+                .bg(theme.bg)
+                .fg(theme.fg.unwrap_or(Color::White)),
+        )
         .wrap(Wrap { trim: false });
     frame.frame.render_widget(para, terminal_area);
 }
@@ -57,4 +68,3 @@ fn split_lines(s: String) -> Vec<String> {
     }
     out
 }
-
