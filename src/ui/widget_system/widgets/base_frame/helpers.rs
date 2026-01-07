@@ -1,4 +1,5 @@
 use crate::ui::runtime_events::handle_tab_category_click;
+use crate::ui::runtime_events_mouse_handlers::handle_tabs_wheel;
 use crate::ui::widget_system::bindings::bind_event;
 use crate::ui::widget_system::context::{EventCtx, UpdateOutput};
 use crate::ui::widget_system::lifecycle::EventResult;
@@ -44,6 +45,32 @@ pub(super) fn handle_tab_category_mouse_down(
     } else {
         EventResult::ignored()
     })
+}
+
+pub(super) fn handle_tab_category_wheel(
+    ctx: &mut EventCtx<'_>,
+    layout: &FrameLayout,
+    update: &UpdateOutput,
+    rect: ratatui::layout::Rect,
+    m: crossterm::event::MouseEvent,
+) -> Result<EventResult, Box<dyn Error>> {
+    let down = match m.kind {
+        crossterm::event::MouseEventKind::ScrollUp => false,
+        crossterm::event::MouseEventKind::ScrollDown => true,
+        _ => return Ok(EventResult::ignored()),
+    };
+    if !point_in_rect(m.column, m.row, rect) {
+        return Ok(EventResult::ignored());
+    }
+    let binding = bind_event(ctx, layout, update);
+    handle_tabs_wheel(
+        binding.dispatch.tabs,
+        binding.dispatch.active_tab,
+        binding.dispatch.categories,
+        *binding.dispatch.active_category,
+        down,
+    );
+    Ok(EventResult::handled())
 }
 
 pub(super) fn pod_event_handled<T: crate::ui::widget_system::lifecycle::Widget>(

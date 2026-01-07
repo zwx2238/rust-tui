@@ -16,6 +16,7 @@ mod runtime_loop_helpers;
 mod runtime_session;
 mod runtime_tick;
 mod summary;
+mod tab_bar;
 mod terminal;
 mod tool_service;
 mod tools;

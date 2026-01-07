@@ -4,7 +4,6 @@ use crate::ui::perf::seed_perf_messages;
 use crate::ui::state::{App, Focus};
 use std::collections::BTreeMap;
 use std::sync::mpsc;
-use unicode_width::UnicodeWidthStr;
 
 pub(crate) struct TabState {
     pub(crate) conversation_id: String,
@@ -149,26 +148,6 @@ pub(crate) fn tab_to_conversation(tab: &TabState) -> crate::conversation::Conver
         prompt_key: Some(tab.app.prompt_key.clone()),
         code_exec_container_id: tab.app.code_exec_container_id.clone(),
     }
-}
-
-pub(crate) fn tab_index_at(
-    x: u16,
-    area: ratatui::layout::Rect,
-    labels: &[String],
-) -> Option<usize> {
-    let mut cursor = area.x;
-    for (i, label) in labels.iter().enumerate() {
-        let w = label.width() as u16;
-        let next = cursor.saturating_add(w);
-        if x >= cursor && x < next {
-            return Some(i);
-        }
-        cursor = next;
-        if i + 1 < labels.len() {
-            cursor = cursor.saturating_add(1);
-        }
-    }
-    None
 }
 
 pub(crate) fn stop_and_edit(tab_state: &mut TabState) -> bool {

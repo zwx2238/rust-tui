@@ -46,5 +46,6 @@ mod shortcut_help_tests;
 mod shortcuts_tests;
 mod state_tests;
 mod summary_tests;
+mod tab_bar_tests;
 mod tool_service_tests;
 mod tools_tests;

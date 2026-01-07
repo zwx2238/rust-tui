@@ -27,9 +27,37 @@ pub fn truncate_to_width(text: &str, max_width: usize) -> String {
     out
 }
 
+pub fn truncate_to_width_ellipsis_char(text: &str, max_width: usize) -> String {
+    if max_width == 0 {
+        return String::new();
+    }
+    if text.width() <= max_width {
+        return text.to_string();
+    }
+    if max_width == 1 {
+        return "…".to_string();
+    }
+    let ellipsis = "…";
+    let ellipsis_width = ellipsis.width();
+    let limit = max_width.saturating_sub(ellipsis_width);
+    let mut out = String::new();
+    let mut width = 0usize;
+    for ch in text.chars() {
+        let w = UnicodeWidthChar::width(ch).unwrap_or(1);
+        if width.saturating_add(w) > limit {
+            break;
+        }
+        out.push(ch);
+        width = width.saturating_add(w);
+    }
+    out.push_str(ellipsis);
+    out
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{collapse_text, truncate_to_width};
+    use super::{collapse_text, truncate_to_width, truncate_to_width_ellipsis_char};
+    use unicode_width::UnicodeWidthStr;
 
     #[test]
     fn collapse_text_merges_whitespace() {
@@ -46,5 +74,18 @@ mod tests {
     fn truncate_to_width_adds_ellipsis() {
         let out = truncate_to_width("hello world", 6);
         assert_eq!(out, "hel...");
+    }
+
+    #[test]
+    fn truncate_to_width_ellipsis_char_width_1_is_safe() {
+        let out = truncate_to_width_ellipsis_char("hello", 1);
+        assert_eq!(out, "…");
+        assert!(out.width() <= 1);
+    }
+
+    #[test]
+    fn truncate_to_width_ellipsis_char_width_2_is_safe() {
+        let out = truncate_to_width_ellipsis_char("hello", 2);
+        assert!(out.width() <= 2);
     }
 }

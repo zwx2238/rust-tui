@@ -1,10 +1,13 @@
 mod down;
 mod drag;
 mod scroll;
+mod tabs_wheel;
 mod types;
 
+use crate::ui::logic::point_in_rect;
 use crossterm::event::MouseEventKind;
 
+pub(crate) use tabs_wheel::handle_tabs_wheel;
 pub(crate) use types::MouseEventParams;
 use types::{MouseDownParams, MouseDragParams};
 
@@ -20,10 +23,30 @@ pub(crate) fn handle_mouse_event(params: MouseEventParams<'_>) -> Option<usize> 
             None
         }
         MouseEventKind::ScrollUp => {
+            if point_in_rect(params.m.column, params.m.row, params.tabs_area) {
+                tabs_wheel::handle_tabs_wheel(
+                    params.tabs,
+                    params.active_tab,
+                    params.categories,
+                    *params.active_category,
+                    false,
+                );
+                return None;
+            }
             scroll::handle_mouse_scroll(params.tabs, *params.active_tab, false);
             None
         }
         MouseEventKind::ScrollDown => {
+            if point_in_rect(params.m.column, params.m.row, params.tabs_area) {
+                tabs_wheel::handle_tabs_wheel(
+                    params.tabs,
+                    params.active_tab,
+                    params.categories,
+                    *params.active_category,
+                    true,
+                );
+                return None;
+            }
             scroll::handle_mouse_scroll(params.tabs, *params.active_tab, true);
             None
         }

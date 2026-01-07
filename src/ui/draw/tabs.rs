@@ -1,5 +1,6 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::style::base_fg;
+use crate::ui::tab_bar::build_tab_bar_view;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
@@ -14,7 +15,8 @@ pub(crate) fn draw_tabs(
     theme: &RenderTheme,
     startup_text: Option<&str>,
 ) {
-    let mut spans = build_tab_spans(labels, active_tab, theme);
+    let view = build_tab_bar_view(labels, active_tab, area.width);
+    let mut spans = build_tab_spans(&view, theme);
     append_startup_text(&mut spans, area.width as usize, startup_text, theme);
     let line = Line::from(spans);
     let paragraph = Paragraph::new(line).style(Style::default().bg(theme.bg));
@@ -22,20 +24,18 @@ pub(crate) fn draw_tabs(
 }
 
 fn build_tab_spans(
-    labels: &[String],
-    active_tab: usize,
+    view: &crate::ui::tab_bar::TabBarView,
     theme: &RenderTheme,
 ) -> Vec<Span<'static>> {
-    let label = labels.join("│");
     let mut spans = Vec::new();
-    for (i, part) in label.split('│').enumerate() {
-        let style = if i == active_tab {
+    for (i, item) in view.items.iter().enumerate() {
+        let style = if item.active {
             Style::default().fg(Color::Blue)
         } else {
             Style::default().fg(base_fg(theme))
         };
-        spans.push(Span::styled(part.to_string(), style));
-        if i + 1 < labels.len() {
+        spans.push(Span::styled(item.label.clone(), style));
+        if i + 1 < view.items.len() {
             spans.push(Span::styled("│", Style::default().fg(base_fg(theme))));
         }
     }

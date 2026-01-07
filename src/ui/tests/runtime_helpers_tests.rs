@@ -3,11 +3,10 @@ mod tests {
     use crate::render::RenderTheme;
     use crate::ui::runtime_helpers::{
         PreheatTask, TabState, active_tab_position, collect_open_conversations,
-        enqueue_preheat_tasks, stop_and_edit, tab_index_at, tab_labels_for_category,
-        tab_position_in_category, tab_to_conversation, visible_tab_indices,
+        enqueue_preheat_tasks, stop_and_edit, tab_labels_for_category, tab_position_in_category,
+        tab_to_conversation, visible_tab_indices,
     };
     use crate::ui::state::{Focus, RequestHandle};
-    use ratatui::layout::Rect;
     use ratatui::style::Color;
     use std::sync::{Arc, atomic::AtomicBool, mpsc};
 
@@ -37,13 +36,6 @@ mod tests {
         );
         assert_eq!(active_tab_position(&tabs, "cat2", 1), 0);
         assert_eq!(tab_position_in_category(&tabs, "cat1", 0), Some(0));
-    }
-
-    #[test]
-    fn tab_index_at_uses_label_widths() {
-        let labels = vec![" A ".to_string(), " BB ".to_string()];
-        let area = Rect::new(0, 0, 20, 1);
-        assert_eq!(tab_index_at(1, area, &labels), Some(0));
     }
 
     #[test]

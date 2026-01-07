@@ -4,7 +4,7 @@ use crate::ui::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, Widge
 use crate::ui::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
 
-use super::helpers::handle_tab_category_mouse_down;
+use super::helpers::{handle_tab_category_mouse_down, handle_tab_category_wheel};
 
 pub(super) struct TabsWidget;
 
@@ -30,7 +30,11 @@ impl Widget for TabsWidget {
         let crossterm::event::Event::Mouse(m) = event else {
             return Ok(EventResult::ignored());
         };
-        handle_tab_category_mouse_down(ctx, layout, update, rect, *m)
+        let result = handle_tab_category_mouse_down(ctx, layout, update, rect, *m)?;
+        if result.handled {
+            return Ok(result);
+        }
+        handle_tab_category_wheel(ctx, layout, update, rect, *m)
     }
 
     fn render(

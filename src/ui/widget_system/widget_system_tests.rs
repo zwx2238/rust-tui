@@ -10,6 +10,7 @@ mod tests {
     use crate::ui::runtime_helpers::{PreheatTask, TabState};
     use crate::ui::runtime_view::ViewState;
     use crate::ui::widget_system::{EventCtx, LayoutCtx, UpdateCtx, WidgetSystem};
+    use crossterm::event::{KeyModifiers, MouseEvent, MouseEventKind};
     use ratatui::Terminal;
     use ratatui::backend::CrosstermBackend;
     use ratatui::style::Color;
@@ -197,5 +198,55 @@ mod tests {
             }
             run_cycle(&mut state, &mut system);
         }
+    }
+
+    #[test]
+    fn tabs_widget_wheel_switches_tabs() {
+        let mut state = build_state();
+        state.tabs = vec![
+            TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
+            TabState::new("id2".into(), "默认".into(), "", false, "m1", "p1"),
+            TabState::new("id3".into(), "默认".into(), "", false, "m1", "p1"),
+        ];
+        state.active_tab = 0;
+        state.categories = vec!["默认".to_string()];
+        state.active_category = 0;
+
+        let mut system = WidgetSystem::new();
+        let layout = {
+            let mut ctx = layout_ctx(&mut state);
+            system.layout(&mut ctx).unwrap()
+        };
+        let update = {
+            let mut ctx = update_ctx(&mut state);
+            system.update(&mut ctx, &layout).unwrap()
+        };
+        let (x, y) = (layout.layout.tabs_area.x + 1, layout.layout.tabs_area.y);
+
+        let mut ctx = event_ctx(&mut state);
+        let event = crossterm::event::Event::Mouse(MouseEvent {
+            kind: MouseEventKind::ScrollDown,
+            column: x,
+            row: y,
+            modifiers: KeyModifiers::NONE,
+        });
+        let quit = system
+            .event(&mut ctx, &layout, &update, &[], &event)
+            .unwrap();
+        assert!(!quit);
+        assert_eq!(state.active_tab, 1);
+
+        let mut ctx = event_ctx(&mut state);
+        let event = crossterm::event::Event::Mouse(MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: x,
+            row: y,
+            modifiers: KeyModifiers::NONE,
+        });
+        let quit = system
+            .event(&mut ctx, &layout, &update, &[], &event)
+            .unwrap();
+        assert!(!quit);
+        assert_eq!(state.active_tab, 0);
     }
 }

@@ -3,6 +3,7 @@ mod tests {
     use crate::ui::runtime_events::{handle_paste_event, handle_tab_category_click};
     use crate::ui::runtime_helpers::TabState;
     use crate::ui::state::Focus;
+    use crate::ui::tab_bar::{TabBarItemKind, build_tab_bar_view};
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
     use ratatui::layout::Rect;
     use unicode_width::UnicodeWidthStr;
@@ -142,6 +143,40 @@ mod tests {
     }
 
     #[test]
+    fn handle_tab_category_click_overflow_more_right_jumps() {
+        let mut tabs = (0..10)
+            .map(|i| TabState::new(format!("id{i}"), "默认".into(), "", false, "m1", "p1"))
+            .collect::<Vec<_>>();
+        let mut active_tab = 0usize;
+        let categories = vec!["默认".to_string()];
+        let mut active_category = 0usize;
+        let tabs_area = Rect::new(0, 0, 20, 1);
+        let category_area = Rect::new(0, 2, 10, 5);
+
+        let labels = crate::ui::runtime_helpers::tab_labels_for_category(&tabs, "默认");
+        let visible = crate::ui::runtime_helpers::visible_tab_indices(&tabs, "默认");
+        let active_pos = crate::ui::runtime_helpers::active_tab_position(&tabs, "默认", active_tab);
+        let view = build_tab_bar_view(&labels, active_pos, tabs_area.width);
+
+        let (target_pos, more_right_x) = more_right_target_and_x(tabs_area, &view);
+        let expected = visible[target_pos];
+
+        let handled =
+            handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+                mouse_x: more_right_x,
+                mouse_y: 0,
+                tabs: &mut tabs,
+                active_tab: &mut active_tab,
+                categories: &categories,
+                active_category: &mut active_category,
+                tabs_area,
+                category_area,
+            });
+        assert!(handled);
+        assert_eq!(active_tab, expected);
+    }
+
+    #[test]
     fn handle_tab_category_click_ignores_outside() {
         let mut tabs = vec![TabState::new(
             "id1".into(),
@@ -170,6 +205,20 @@ mod tests {
         assert_eq!(active_category, 0);
     }
 
+    fn more_right_target_and_x(area: Rect, view: &crate::ui::tab_bar::TabBarView) -> (usize, u16) {
+        let mut cursor = area.x;
+        for (i, item) in view.items.iter().enumerate() {
+            if let TabBarItemKind::MoreRight { target_pos } = item.kind {
+                return (target_pos, cursor);
+            }
+            cursor = cursor.saturating_add(item.label.width() as u16);
+            if i + 1 < view.items.len() {
+                cursor = cursor.saturating_add(1);
+            }
+        }
+        panic!("expected MoreRight indicator in overflow view");
+    }
+
     #[test]
     fn mouse_scroll_updates_scroll() {
         let mut ctx = base_mouse_ctx();
@@ -190,6 +239,42 @@ mod tests {
         };
         handle_mouse(&mut ctx, m);
         assert!(ctx.tabs[0].app.scroll >= 5);
+    }
+
+    #[test]
+    fn mouse_wheel_over_tabs_switches_tab_and_does_not_scroll_chat() {
+        let mut ctx = base_mouse_ctx();
+        ctx.tabs = vec![
+            TabState::new("id1".into(), "默认".into(), "", false, "m1", "p1"),
+            TabState::new("id2".into(), "默认".into(), "", false, "m1", "p1"),
+            TabState::new("id3".into(), "默认".into(), "", false, "m1", "p1"),
+        ];
+        ctx.categories = vec!["默认".to_string()];
+        ctx.active_category = 0;
+        ctx.active_tab = 0;
+        ctx.tabs_area = Rect::new(0, 0, 40, 1);
+        ctx.msg_area = Rect::new(0, 1, 40, 10);
+        ctx.tabs[0].app.scroll = 7;
+
+        let m = MouseEvent {
+            kind: MouseEventKind::ScrollDown,
+            column: 1,
+            row: 0,
+            modifiers: KeyModifiers::NONE,
+        };
+        handle_mouse(&mut ctx, m);
+        assert_eq!(ctx.active_tab, 1);
+        assert_eq!(ctx.tabs[0].app.scroll, 7);
+
+        let m = MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: 1,
+            row: 0,
+            modifiers: KeyModifiers::NONE,
+        };
+        handle_mouse(&mut ctx, m);
+        assert_eq!(ctx.active_tab, 0);
+        assert_eq!(ctx.tabs[0].app.scroll, 7);
     }
 
     #[test]

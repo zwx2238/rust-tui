@@ -1,7 +1,8 @@
 use crate::ui::logic::point_in_rect;
 use crate::ui::runtime_helpers::{
-    TabState, tab_index_at, tab_labels_for_category, visible_tab_indices,
+    TabState, active_tab_position, tab_labels_for_category, visible_tab_indices,
 };
+use crate::ui::tab_bar::{TabBarItemKind, build_tab_bar_view, hit_test_tab_bar};
 use ratatui::layout::Rect;
 
 pub(crate) struct TabCategoryClickParams<'a> {
@@ -79,10 +80,17 @@ fn handle_tabs_click(
         .map(|s| s.as_str())
         .unwrap_or("默认");
     let labels = tab_labels_for_category(tabs, category);
-    if let Some(pos) = tab_index_at(mouse_x, tabs_area, &labels) {
-        let visible = visible_tab_indices(tabs, category);
-        if let Some(idx) = visible.get(pos) {
-            *active_tab = *idx;
+    let visible = visible_tab_indices(tabs, category);
+    let active_pos = active_tab_position(tabs, category, *active_tab);
+    let view = build_tab_bar_view(&labels, active_pos, tabs_area.width);
+    if let Some(kind) = hit_test_tab_bar(mouse_x, tabs_area, &view) {
+        let target = match kind {
+            TabBarItemKind::Tab(pos) => visible.get(pos).copied(),
+            TabBarItemKind::MoreLeft { target_pos } => visible.get(target_pos).copied(),
+            TabBarItemKind::MoreRight { target_pos } => visible.get(target_pos).copied(),
+        };
+        if let Some(idx) = target {
+            *active_tab = idx;
         }
     }
     true

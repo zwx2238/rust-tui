@@ -47,7 +47,7 @@ const SHORTCUTS: &[Shortcut] = &[
     Shortcut {
         scope: ShortcutScope::Global,
         keys: "F8 / F9",
-        description: "前一个 / 下一个对话",
+        description: "前一个 / 下一个对话（Tab 过多可用 Tab 栏 «/» 或 F1 汇总页）",
     },
     Shortcut {
         scope: ShortcutScope::Global,
@@ -173,6 +173,11 @@ const SHORTCUTS: &[Shortcut] = &[
         scope: ShortcutScope::CodeExec,
         keys: "鼠标点击",
         description: "确认/拒绝/停止/退出",
+    },
+    Shortcut {
+        scope: ShortcutScope::Global,
+        keys: "鼠标点击 Tab 栏 «/»",
+        description: "Tab 过多时左右跳转到被隐藏的对话",
     },
     Shortcut {
         scope: ShortcutScope::Help,
