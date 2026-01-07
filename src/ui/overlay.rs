@@ -6,6 +6,7 @@ pub(crate) enum OverlayKind {
     Prompt,
     CodeExec,
     FilePatch,
+    Terminal,
     Help,
 }
 
@@ -26,7 +27,7 @@ impl OverlayState {
     pub(crate) fn uses_simple_layout(&self) -> bool {
         matches!(
             self.active,
-            Some(OverlayKind::Summary | OverlayKind::Jump | OverlayKind::Help)
+            Some(OverlayKind::Summary | OverlayKind::Jump | OverlayKind::Terminal | OverlayKind::Help)
         )
     }
 

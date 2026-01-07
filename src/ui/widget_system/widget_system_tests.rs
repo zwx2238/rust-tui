@@ -187,6 +187,7 @@ mod tests {
             Some(OverlayKind::Prompt),
             Some(OverlayKind::CodeExec),
             Some(OverlayKind::FilePatch),
+            Some(OverlayKind::Terminal),
             Some(OverlayKind::Help),
         ];
         for overlay in overlays {

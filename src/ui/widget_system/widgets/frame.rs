@@ -16,6 +16,7 @@ impl FrameLifecycle {
         layout: &FrameLayout,
     ) -> Result<UpdateOutput, Box<dyn Error>> {
         apply_preheat_results(&mut ctx.events.preheat, ctx.tabs);
+        crate::ui::terminal::apply_terminal_events(&mut ctx.events.terminal, ctx.tabs);
         let tabs = prepare_tabs(ctx);
         run_stream_updates(ctx, layout)?;
         let active_data = build_active_data(ctx, layout);

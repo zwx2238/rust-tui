@@ -113,6 +113,7 @@ pub struct App {
     pub file_patch_selection: Option<crate::ui::selection::Selection>,
     pub pending_category_name: Option<String>,
     pub pending_open_conversation: Option<String>,
+    pub terminal: Option<crate::ui::terminal::TerminalSession>,
     pub total_prompt_tokens: u64,
     pub total_completion_tokens: u64,
     pub total_tokens: u64,

@@ -72,7 +72,7 @@ pub(crate) fn overlay_table_metrics(
         OverlayKind::Jump => jump_metrics(areas, counts),
         OverlayKind::Model => model_metrics(areas, counts),
         OverlayKind::Prompt => prompt_metrics(areas, counts),
-        OverlayKind::CodeExec | OverlayKind::FilePatch => empty_metrics(areas),
+        OverlayKind::CodeExec | OverlayKind::FilePatch | OverlayKind::Terminal => empty_metrics(areas),
         OverlayKind::Help => help_metrics(areas, counts),
     }
 }
@@ -135,7 +135,7 @@ pub(crate) fn with_active_table_handle<R>(
     f: impl FnOnce(OverlayTableHandle<'_>) -> R,
 ) -> Option<R> {
     let kind = view.overlay.active?;
-    if matches!(kind, OverlayKind::CodeExec | OverlayKind::FilePatch) {
+    if matches!(kind, OverlayKind::CodeExec | OverlayKind::FilePatch | OverlayKind::Terminal) {
         return None;
     }
     let metrics = overlay_table_metrics(kind, areas, counts);
@@ -144,6 +144,7 @@ pub(crate) fn with_active_table_handle<R>(
         OverlayKind::Jump => &mut view.jump,
         OverlayKind::Model => &mut view.model,
         OverlayKind::Prompt => &mut view.prompt,
+        OverlayKind::Terminal => &mut view.summary,
         OverlayKind::Help => &mut view.help,
         OverlayKind::CodeExec | OverlayKind::FilePatch => &mut view.summary,
     };

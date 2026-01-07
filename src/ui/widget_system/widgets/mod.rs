@@ -12,6 +12,7 @@ mod overlay_table;
 mod prompt;
 mod root;
 mod summary;
+mod terminal;
 
 pub(crate) use frame::FrameLifecycle;
 pub(crate) use root::RootWidget;

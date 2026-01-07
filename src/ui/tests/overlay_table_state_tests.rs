@@ -46,4 +46,12 @@ mod tests {
         let res = with_active_table_handle(&mut view, areas(), counts(), |_| 1usize);
         assert!(res.is_none());
     }
+
+    #[test]
+    fn with_active_table_handle_skips_terminal() {
+        let mut view = ViewState::new();
+        view.overlay.open(OverlayKind::Terminal);
+        let res = with_active_table_handle(&mut view, areas(), counts(), |_| 1usize);
+        assert!(res.is_none());
+    }
 }

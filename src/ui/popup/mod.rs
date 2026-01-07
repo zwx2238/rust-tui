@@ -8,3 +8,4 @@ pub(super) mod file_patch_popup_layout;
 pub(super) mod file_patch_popup_text;
 pub(super) mod model_popup;
 pub(super) mod prompt_popup;
+pub(super) mod terminal_popup_layout;

@@ -101,7 +101,7 @@ fn should_render(
     if event_wait::preheat_touches_active_tab(&state.events.preheat, *params.active_tab) {
         return true;
     }
-    !state.events.llm.is_empty()
+    !state.events.llm.is_empty() || !state.events.terminal.is_empty()
 }
 
 fn dispatch_input_events(

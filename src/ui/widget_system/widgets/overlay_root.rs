@@ -19,6 +19,7 @@ use super::jump::JumpWidget;
 use super::model::ModelWidget;
 use super::prompt::PromptWidget;
 use super::summary::SummaryWidget;
+use super::terminal::TerminalWidget;
 
 pub(crate) struct OverlayRootWidget {
     summary: WidgetPod<SummaryWidget>,
@@ -27,6 +28,7 @@ pub(crate) struct OverlayRootWidget {
     prompt: WidgetPod<PromptWidget>,
     code_exec: WidgetPod<CodeExecWidget>,
     file_patch: WidgetPod<FilePatchWidget>,
+    terminal: WidgetPod<TerminalWidget>,
     help: WidgetPod<HelpWidget>,
 }
 
@@ -39,6 +41,7 @@ impl OverlayRootWidget {
             prompt: WidgetPod::new(PromptWidget::new()),
             code_exec: WidgetPod::new(CodeExecWidget::new()),
             file_patch: WidgetPod::new(FilePatchWidget::new()),
+            terminal: WidgetPod::new(TerminalWidget::new()),
             help: WidgetPod::new(HelpWidget::new()),
         }
     }
@@ -56,6 +59,7 @@ impl Widget for OverlayRootWidget {
         let _ = self.prompt.measure(ctx, bc)?;
         let _ = self.code_exec.measure(ctx, bc)?;
         let _ = self.file_patch.measure(ctx, bc)?;
+        let _ = self.terminal.measure(ctx, bc)?;
         let _ = self.help.measure(ctx, bc)?;
         Ok(bc.max)
     }
@@ -72,6 +76,7 @@ impl Widget for OverlayRootWidget {
         self.prompt.place(ctx, layout, rect)?;
         self.code_exec.place(ctx, layout, rect)?;
         self.file_patch.place(ctx, layout, rect)?;
+        self.terminal.place(ctx, layout, rect)?;
         self.help.place(ctx, layout, rect)?;
         Ok(())
     }
@@ -89,6 +94,7 @@ impl Widget for OverlayRootWidget {
             Some(OverlayKind::Prompt) => self.prompt.update(ctx, layout, update)?,
             Some(OverlayKind::CodeExec) => self.code_exec.update(ctx, layout, update)?,
             Some(OverlayKind::FilePatch) => self.file_patch.update(ctx, layout, update)?,
+            Some(OverlayKind::Terminal) => self.terminal.update(ctx, layout, update)?,
             Some(OverlayKind::Help) => self.help.update(ctx, layout, update)?,
             None => {}
         }
@@ -124,6 +130,7 @@ impl Widget for OverlayRootWidget {
             Some(OverlayKind::Prompt) => self.prompt.render(frame, layout, update)?,
             Some(OverlayKind::CodeExec) => self.code_exec.render(frame, layout, update)?,
             Some(OverlayKind::FilePatch) => self.file_patch.render(frame, layout, update)?,
+            Some(OverlayKind::Terminal) => self.terminal.render(frame, layout, update)?,
             Some(OverlayKind::Help) => self.help.render(frame, layout, update)?,
             None => {}
         }
@@ -175,6 +182,9 @@ fn dispatch_overlay_event(
             .event(ctx, event, layout, update, jump_rows),
         Some(OverlayKind::FilePatch) => widget
             .file_patch
+            .event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::Terminal) => widget
+            .terminal
             .event(ctx, event, layout, update, jump_rows),
         Some(OverlayKind::Help) => widget.help.event(ctx, event, layout, update, jump_rows),
         None => Ok(EventResult::ignored()),

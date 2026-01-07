@@ -104,6 +104,7 @@ pub(crate) fn handle_view_key(
         Some(OverlayKind::Model) => handle_model_key(view, key),
         Some(OverlayKind::Prompt) => handle_prompt_key(view, key),
         Some(OverlayKind::CodeExec | OverlayKind::FilePatch) => ViewAction::None,
+        Some(OverlayKind::Terminal) => handle_terminal_key(view, key),
         Some(OverlayKind::Help) => handle_help_key(view, key),
     }
 }
@@ -124,7 +125,9 @@ pub(crate) fn handle_view_mouse(
         Some(OverlayKind::Model) => handle_model_mouse(view, row, kind),
         Some(OverlayKind::Prompt) => handle_prompt_mouse(view, row, kind),
         Some(OverlayKind::Help) => handle_help_mouse(view, row, kind),
-        Some(OverlayKind::CodeExec | OverlayKind::FilePatch) | None => ViewAction::None,
+        Some(OverlayKind::CodeExec | OverlayKind::FilePatch | OverlayKind::Terminal) | None => {
+            ViewAction::None
+        }
     }
 }
 
@@ -142,8 +145,13 @@ fn handle_function_keys(
         KeyCode::F(1) => Some(toggle_summary(view, active_tab, tabs_len)),
         KeyCode::F(2) => Some(toggle_jump(view)),
         KeyCode::F(5) => Some(toggle_prompt(view)),
+        KeyCode::F(7) => Some(toggle_overlay(view, OverlayKind::Terminal)),
         _ => None,
     }
+}
+
+fn handle_terminal_key(_view: &mut ViewState, _key: KeyEvent) -> ViewAction {
+    ViewAction::None
 }
 
 fn toggle_overlay(view: &mut ViewState, kind: OverlayKind) -> ViewAction {

@@ -25,12 +25,14 @@ pub(crate) enum RuntimeEvent {
     Input(CrosstermEvent),
     Llm(UiEvent),
     Preheat(PreheatResult),
+    Terminal(crate::ui::terminal::TerminalEvent),
 }
 
 pub(crate) struct EventBatch {
     pub(crate) input: Vec<CrosstermEvent>,
     pub(crate) llm: Vec<UiEvent>,
     pub(crate) preheat: Vec<PreheatResult>,
+    pub(crate) terminal: Vec<crate::ui::terminal::TerminalEvent>,
 }
 
 impl EventBatch {
@@ -39,6 +41,7 @@ impl EventBatch {
             input: Vec::new(),
             llm: Vec::new(),
             preheat: Vec::new(),
+            terminal: Vec::new(),
         }
     }
 
@@ -47,6 +50,7 @@ impl EventBatch {
             RuntimeEvent::Input(e) => self.input.push(e),
             RuntimeEvent::Llm(e) => self.llm.push(e),
             RuntimeEvent::Preheat(e) => self.preheat.push(e),
+            RuntimeEvent::Terminal(e) => self.terminal.push(e),
         }
     }
 
@@ -54,6 +58,7 @@ impl EventBatch {
         self.input.clear();
         self.llm.clear();
         self.preheat.clear();
+        self.terminal.clear();
     }
 }
 

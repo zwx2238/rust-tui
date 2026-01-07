@@ -7,6 +7,7 @@ mod notice;
 mod overlay;
 mod overlay_table;
 mod overlay_table_state;
+mod terminal;
 mod runtime;
 mod runtime_code_exec;
 mod runtime_dispatch;
@@ -33,6 +34,7 @@ use interaction::{
 use popup::{
     code_exec_popup, code_exec_popup_layout, code_exec_popup_text, file_patch_popup,
     file_patch_popup_layout, file_patch_popup_text, model_popup, prompt_popup,
+    terminal_popup_layout,
 };
 pub(crate) use runtime_impl::workspace;
 use runtime_impl::{

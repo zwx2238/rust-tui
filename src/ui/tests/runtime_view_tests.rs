@@ -90,6 +90,27 @@ mod tests {
     }
 
     #[test]
+    fn handle_view_key_toggles_terminal() {
+        let mut view = ViewState::new();
+        let _ = handle_view_key(
+            &mut view,
+            KeyEvent::new(KeyCode::F(7), KeyModifiers::NONE),
+            1,
+            0,
+            0,
+        );
+        assert!(view.overlay.is(OverlayKind::Terminal));
+        let _ = handle_view_key(
+            &mut view,
+            KeyEvent::new(KeyCode::F(7), KeyModifiers::NONE),
+            1,
+            0,
+            0,
+        );
+        assert!(view.overlay.is_chat());
+    }
+
+    #[test]
     fn handle_view_key_closes_help_when_open() {
         let mut view = ViewState::new();
         view.overlay.open(OverlayKind::Help);

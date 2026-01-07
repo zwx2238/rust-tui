@@ -91,6 +91,11 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::Chat,
+        keys: "F7",
+        description: "弹窗终端",
+    },
+    Shortcut {
+        scope: ShortcutScope::Chat,
         keys: "F10",
         description: "快捷键帮助",
     },
