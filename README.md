@@ -58,14 +58,6 @@ deepchat
    just doc
    ```
 
-### Development Constraints
-
-See `AGENTS.md` for detailed development constraints and guidelines, including:
-- Module organization standards
-- File size limits
-- Function length requirements
-- Code quality standards
-
 ## Project Structure
 
 - `src/` - Main source code
