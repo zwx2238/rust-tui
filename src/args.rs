@@ -56,6 +56,9 @@ pub struct Args {
     pub replay_fork_last: bool,
 
     /// 工具开关表达式（逗号分隔，前缀 - 表示禁用）
+    ///
+    /// 默认：全部关闭（不向模型暴露任何 tools）。
+    /// 示例：--enable "read_file,read_code" 或 --enable "code_exec,-modify_file"
     #[arg(long, allow_hyphen_values = true)]
     pub enable: Option<String>,
 
@@ -123,34 +126,74 @@ impl Args {
     }
 
     fn resolve_enabled(&self) -> (bool, bool, bool, bool, bool) {
-        let mut web_search = false;
-        let mut code_exec = true;
-        let mut read_file = true;
-        let mut read_code = true;
-        let mut modify_file = true;
         let Some(expr) = self.enable.as_deref() else {
-            return (web_search, code_exec, read_file, read_code, modify_file);
+            return default_tool_flags().to_tuple();
         };
-        for raw in expr.split(',') {
-            let item = raw.trim();
-            if item.is_empty() {
-                continue;
-            }
-            let (name, enable) = if let Some(rest) = item.strip_prefix('-') {
-                (rest.trim(), false)
-            } else {
-                (item, true)
-            };
-            match name {
-                "web_search" => web_search = enable,
-                "code_exec" => code_exec = enable,
-                "read_file" => read_file = enable,
-                "read_code" => read_code = enable,
-                "modify_file" => modify_file = enable,
-                _ => {}
-            }
+        resolve_enabled_from_expr(expr).to_tuple()
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ToolFlags {
+    web_search: bool,
+    code_exec: bool,
+    read_file: bool,
+    read_code: bool,
+    modify_file: bool,
+}
+
+impl ToolFlags {
+    fn to_tuple(self) -> (bool, bool, bool, bool, bool) {
+        (
+            self.web_search,
+            self.code_exec,
+            self.read_file,
+            self.read_code,
+            self.modify_file,
+        )
+    }
+}
+
+fn default_tool_flags() -> ToolFlags {
+    ToolFlags {
+        web_search: false,
+        code_exec: false,
+        read_file: false,
+        read_code: false,
+        modify_file: false,
+    }
+}
+
+fn resolve_enabled_from_expr(expr: &str) -> ToolFlags {
+    let mut flags = default_tool_flags();
+    for raw in expr.split(',') {
+        if let Some((name, enable)) = parse_enable_item(raw) {
+            apply_tool_flag(&mut flags, name, enable);
         }
-        (web_search, code_exec, read_file, read_code, modify_file)
+    }
+    flags
+}
+
+fn parse_enable_item(raw: &str) -> Option<(&str, bool)> {
+    let item = raw.trim();
+    if item.is_empty() {
+        return None;
+    }
+    if let Some(rest) = item.strip_prefix('-') {
+        Some((rest.trim(), false))
+    } else {
+        Some((item, true))
+    }
+}
+
+fn apply_tool_flag(flags: &mut ToolFlags, name: &str, enable: bool) {
+    match name {
+        "web_search" => flags.web_search = enable,
+        "code_exec" => flags.code_exec = enable,
+        "read_file" => flags.read_file = enable,
+        "read_code" => flags.read_code = enable,
+        "modify_file" => flags.modify_file = enable,
+        _ => {}
     }
 }
 
@@ -163,10 +206,10 @@ mod tests {
     fn default_flags() {
         let cli = Cli::parse_from(["bin", "--workspace", "/tmp"]);
         assert!(!cli.args.web_search_enabled());
-        assert!(cli.args.code_exec_enabled());
-        assert!(cli.args.read_file_enabled());
-        assert!(cli.args.read_code_enabled());
-        assert!(cli.args.modify_file_enabled());
+        assert!(!cli.args.code_exec_enabled());
+        assert!(!cli.args.read_file_enabled());
+        assert!(!cli.args.read_code_enabled());
+        assert!(!cli.args.modify_file_enabled());
         assert!(!cli.args.yolo_enabled());
         assert!(!cli.args.read_only_enabled());
     }
@@ -182,12 +225,19 @@ mod tests {
         ]);
         assert!(cli.args.web_search_enabled());
         assert!(!cli.args.read_file_enabled());
-        assert!(cli.args.code_exec_enabled());
+        assert!(!cli.args.code_exec_enabled());
     }
 
     #[test]
     fn read_only_disables_modify_file_only() {
-        let cli = Cli::parse_from(["bin", "--read-only", "--workspace", "/tmp"]);
+        let cli = Cli::parse_from([
+            "bin",
+            "--enable",
+            "code_exec,modify_file",
+            "--read-only",
+            "--workspace",
+            "/tmp",
+        ]);
         assert!(cli.args.code_exec_enabled());
         assert!(!cli.args.modify_file_enabled());
     }

@@ -10,7 +10,7 @@ use super::support::{args, registry_empty_key, setup_fake_docker, tool_call};
 fn read_file_enabled_reads_file() {
     let _guard = env_lock().lock().unwrap();
     let registry = registry_empty_key();
-    let args = args(None, false);
+    let args = args(Some("read_file".to_string()), false);
     let _ = std::fs::create_dir_all(&args.workspace);
     let _docker = setup_fake_docker(&args.workspace);
     let (tx, _rx) = mpsc::channel();
@@ -31,7 +31,7 @@ fn read_file_enabled_reads_file() {
 fn read_code_enabled_reads_file_with_numbers() {
     let _guard = env_lock().lock().unwrap();
     let registry = registry_empty_key();
-    let args = args(None, false);
+    let args = args(Some("read_code".to_string()), false);
     let _ = std::fs::create_dir_all(&args.workspace);
     let _docker = setup_fake_docker(&args.workspace);
     let (tx, _rx) = mpsc::channel();
