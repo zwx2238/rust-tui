@@ -44,13 +44,28 @@ fn prompt_model_item() -> Result<ModelItem, Box<dyn std::error::Error>> {
     let key = prompt_non_empty("模型 key（如 m1）: ")?;
     let base_url = prompt_non_empty("API Base URL（如 https://api.deepseek.com）: ")?;
     let model = prompt_non_empty("模型名称（如 deepseek-chat）: ")?;
+    let max_tokens = prompt_optional_u64("max_tokens（可选，回车跳过；Anthropic 必填）: ")?;
     let api_key = prompt_non_empty("API Key: ")?;
     Ok(ModelItem {
         key,
         base_url,
         api_key,
         model,
+        max_tokens,
     })
+}
+
+fn prompt_optional_u64(prompt: &str) -> Result<Option<u64>, Box<dyn std::error::Error>> {
+    loop {
+        let s = prompt_line(prompt)?;
+        let s = s.trim();
+        if s.is_empty() {
+            return Ok(None);
+        }
+        if let Ok(v) = s.parse::<u64>() {
+            return Ok(Some(v));
+        }
+    }
 }
 
 fn upsert_model(cfg: &mut Config, item: ModelItem) -> Result<(), Box<dyn std::error::Error>> {

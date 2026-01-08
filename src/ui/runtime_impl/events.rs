@@ -5,6 +5,7 @@ use std::sync::mpsc::Sender;
 
 pub(crate) enum LlmEvent {
     Chunk(String),
+    ReasoningChunk(String),
     Error(String),
     Done {
         usage: Option<Usage>,

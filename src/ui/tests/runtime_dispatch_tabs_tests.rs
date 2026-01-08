@@ -43,6 +43,7 @@ mod tests {
                 base_url: "http://example.com".to_string(),
                 api_key: "k".to_string(),
                 model: "model".to_string(),
+                max_tokens: None,
             }],
         }
     }

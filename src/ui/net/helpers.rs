@@ -50,6 +50,14 @@ pub(super) fn send_done(
     send_llm(tx, input.tab, input.request_id, LlmEvent::Done { usage });
 }
 
+pub(super) fn send_reasoning_chunk(
+    input: &super::request::RequestInput,
+    tx: &Sender<RuntimeEvent>,
+    chunk: String,
+) {
+    send_llm(tx, input.tab, input.request_id, LlmEvent::ReasoningChunk(chunk));
+}
+
 pub(super) fn send_tool_calls(
     input: &super::request::RequestInput,
     tx: &Sender<RuntimeEvent>,
@@ -87,7 +95,7 @@ pub(super) fn map_usage(usage: rig::completion::Usage) -> Usage {
     }
 }
 
-pub(super) fn usage_from_stream(res: &super::stream::OpenAiStreamResponse) -> Option<Usage> {
+pub(super) fn usage_from_stream<T: GetTokenUsage>(res: &T) -> Option<Usage> {
     res.token_usage().map(map_usage)
 }
 

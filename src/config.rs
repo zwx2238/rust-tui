@@ -24,6 +24,7 @@ pub struct ModelItem {
     pub base_url: String,
     pub api_key: String,
     pub model: String,
+    pub max_tokens: Option<u64>,
 }
 
 pub fn default_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -70,6 +71,13 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
             || m.model.trim().is_empty()
     }) {
         return Err("配置文件错误：models 中每个条目必须包含 key/base_url/api_key/model".into());
+    }
+    if cfg
+        .models
+        .iter()
+        .any(|m| matches!(m.max_tokens, Some(0)))
+    {
+        return Err("配置文件错误：max_tokens 不能为 0".into());
     }
     if cfg.models.iter().all(|m| m.key != cfg.default_model) {
         return Err("配置文件错误：default_model 必须在 models 中存在".into());

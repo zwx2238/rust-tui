@@ -4,7 +4,7 @@ use crate::render::markdown::{
 };
 use crate::render::theme::{RenderTheme, theme_cache_key};
 use crate::render::util::hash_message;
-use crate::types::{Message, ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
+use crate::types::{Message, ROLE_ASSISTANT, ROLE_REASONING, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use ratatui::text::{Line, Text};
 use std::borrow::Cow;
 
@@ -226,7 +226,7 @@ fn render_message_content_lines(
     streaming: bool,
 ) -> Vec<Line<'static>> {
     match msg.role.as_str() {
-        ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM | ROLE_TOOL => {
+        ROLE_USER | ROLE_ASSISTANT | ROLE_REASONING | ROLE_SYSTEM | ROLE_TOOL => {
             let content = message_content(msg, streaming);
             render_markdown_lines(content.as_ref(), width, theme, streaming, false)
         }
@@ -235,7 +235,7 @@ fn render_message_content_lines(
 }
 pub(crate) fn count_message_lines(msg: &Message, width: usize, streaming: bool) -> usize {
     match msg.role.as_str() {
-        ROLE_USER | ROLE_ASSISTANT | ROLE_SYSTEM | ROLE_TOOL => {
+        ROLE_USER | ROLE_ASSISTANT | ROLE_REASONING | ROLE_SYSTEM | ROLE_TOOL => {
             let content = message_content(msg, streaming);
             count_markdown_lines(content.as_ref(), width)
         }

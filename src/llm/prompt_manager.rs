@@ -74,6 +74,9 @@ fn map_history_message(
     if msg.role == crate::types::ROLE_SYSTEM {
         return Ok(None);
     }
+    if msg.role == crate::types::ROLE_REASONING {
+        return Ok(None);
+    }
     if msg.role == crate::types::ROLE_TOOL {
         let wrapped =
             templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;

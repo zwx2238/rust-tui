@@ -6,6 +6,7 @@ pub struct ModelProfile {
     pub base_url: String,
     pub api_key: String,
     pub model: String,
+    pub max_tokens: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -34,6 +35,7 @@ pub fn build_model_registry(cfg: &Config) -> ModelRegistry {
             base_url: m.base_url.trim_end_matches('/').to_string(),
             api_key: m.api_key,
             model: m.model,
+            max_tokens: m.max_tokens,
         })
         .collect::<Vec<_>>();
     let default_key = cfg.default_model.clone();
@@ -57,6 +59,7 @@ mod tests {
                 base_url: "https://api.test/".to_string(),
                 api_key: "k".to_string(),
                 model: "m".to_string(),
+                max_tokens: None,
             }],
             default_model: "m1".to_string(),
             prompts_dir: "/tmp/prompts".to_string(),

@@ -26,6 +26,7 @@ fn config_with_prompts(dir: &std::path::Path) -> Config {
             base_url: "http://example.com".to_string(),
             api_key: "k".to_string(),
             model: "model".to_string(),
+            max_tokens: None,
         }],
         default_model: "m1".to_string(),
         prompts_dir: dir.to_string_lossy().to_string(),

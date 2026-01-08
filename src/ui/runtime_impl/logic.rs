@@ -13,6 +13,7 @@ pub enum StreamAction {
 pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> StreamAction {
     match event {
         LlmEvent::Chunk(s) => handle_chunk(app, &s),
+        LlmEvent::ReasoningChunk(s) => handle_reasoning_chunk(app, &s),
         LlmEvent::Error(err) => handle_error(app, &err),
         LlmEvent::Done { usage } => handle_done(app, usage.as_ref(), elapsed_ms),
         LlmEvent::ToolCalls { calls, usage } => {
@@ -24,6 +25,11 @@ pub fn handle_stream_event(app: &mut App, event: LlmEvent, elapsed_ms: u64) -> S
 fn handle_chunk(app: &mut App, chunk: &str) -> StreamAction {
     app.stream_buffer.push_str(chunk);
     flush_completed_lines(app);
+    StreamAction::None
+}
+
+fn handle_reasoning_chunk(app: &mut App, chunk: &str) -> StreamAction {
+    append_to_pending_reasoning(app, chunk);
     StreamAction::None
 }
 
@@ -235,6 +241,67 @@ fn append_to_pending_assistant(app: &mut App, text: &str) {
         if let Some(idx) = app.pending_assistant {
             app.dirty_indices.push(idx);
         }
+    }
+}
+
+fn append_to_pending_reasoning(app: &mut App, text: &str) {
+    if let Some(idx) = app.pending_reasoning {
+        if let Some(msg) = app.messages.get_mut(idx) {
+            msg.content.push_str(text);
+            app.dirty_indices.push(idx);
+        }
+        return;
+    }
+    if let Some(idx) = reuse_pending_assistant_for_reasoning(app) {
+        attach_reasoning_to_message(app, idx, text);
+        spawn_new_pending_assistant(app);
+        return;
+    }
+    push_new_reasoning(app, text);
+}
+
+fn reuse_pending_assistant_for_reasoning(app: &App) -> Option<usize> {
+    let idx = app.pending_assistant?;
+    let msg = app.messages.get(idx)?;
+    if msg.role == ROLE_ASSISTANT && msg.content.is_empty() {
+        Some(idx)
+    } else {
+        None
+    }
+}
+
+fn attach_reasoning_to_message(app: &mut App, idx: usize, text: &str) {
+    if let Some(msg) = app.messages.get_mut(idx) {
+        msg.role = crate::types::ROLE_REASONING.to_string();
+        msg.content.push_str(text);
+        app.pending_reasoning = Some(idx);
+        app.dirty_indices.push(idx);
+    }
+}
+
+fn spawn_new_pending_assistant(app: &mut App) {
+    app.messages.push(Message {
+        role: ROLE_ASSISTANT.to_string(),
+        content: String::new(),
+        tool_call_id: None,
+        tool_calls: None,
+    });
+    app.pending_assistant = Some(app.messages.len().saturating_sub(1));
+    if let Some(idx) = app.pending_assistant {
+        app.dirty_indices.push(idx);
+    }
+}
+
+fn push_new_reasoning(app: &mut App, text: &str) {
+    app.messages.push(Message {
+        role: crate::types::ROLE_REASONING.to_string(),
+        content: text.to_string(),
+        tool_call_id: None,
+        tool_calls: None,
+    });
+    app.pending_reasoning = Some(app.messages.len().saturating_sub(1));
+    if let Some(idx) = app.pending_reasoning {
+        app.dirty_indices.push(idx);
     }
 }
 
