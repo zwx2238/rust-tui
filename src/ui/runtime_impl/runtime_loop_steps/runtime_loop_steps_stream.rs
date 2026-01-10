@@ -90,9 +90,7 @@ pub(crate) fn handle_pending_line(
         && let Some(tab_state) = tabs.get_mut(active_tab)
     {
         tab_state.app.pending_send = Some(line);
-        crate::ui::runtime_dispatch::start_pending_request(
-            registry, args, tx, active_tab, tab_state,
-        );
+        crate::ui::runtime_dispatch::start_pending_request(registry, args, tx, tab_state);
     }
 }
 

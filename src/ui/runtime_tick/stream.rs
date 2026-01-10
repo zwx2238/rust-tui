@@ -32,7 +32,10 @@ fn handle_stream_event_for_tab(
         request_id,
         event,
     } = ui_event;
-    let Some(tab_state) = tabs.get_mut(tab) else {
+    let Some(tab_idx) = tabs.iter().position(|t| t.conversation_id == tab) else {
+        return;
+    };
+    let Some(tab_state) = tabs.get_mut(tab_idx) else {
         return;
     };
     if !is_active_request(tab_state, request_id) {
@@ -40,8 +43,8 @@ fn handle_stream_event_for_tab(
     }
     let elapsed = elapsed_millis(tab_state);
     match handle_stream_event(&mut tab_state.app, event, elapsed) {
-        StreamAction::Done => done_tabs.push(tab),
-        StreamAction::ToolCalls(calls) => tool_queue.push((tab, calls)),
+        StreamAction::Done => done_tabs.push(tab_idx),
+        StreamAction::ToolCalls(calls) => tool_queue.push((tab_idx, calls)),
         StreamAction::None => {}
     }
     tab_state.apply_cache_shift(theme);

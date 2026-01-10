@@ -44,7 +44,7 @@ pub(super) fn build_enabled_tools(
 pub(super) fn write_request_log(
     dir: &str,
     session_id: &str,
-    tab: usize,
+    tab: &str,
     message_index: usize,
     base_url: &str,
     model: &str,
@@ -137,7 +137,7 @@ fn assistant_content_text(content: &rig::OneOrMany<rig::completion::AssistantCon
 pub(super) fn write_response_log(
     dir: &str,
     session_id: &str,
-    tab: usize,
+    tab: &str,
     message_index: usize,
     content: &str,
 ) -> std::io::Result<()> {
@@ -148,14 +148,14 @@ pub(super) fn write_response_log(
 fn build_log_path(
     dir: &str,
     session_id: &str,
-    tab: usize,
+    tab: &str,
     message_index: usize,
     suffix: &str,
 ) -> std::io::Result<PathBuf> {
     let dir = Path::new(dir);
     fs::create_dir_all(dir)?;
     let session = sanitize_log_part(session_id);
-    let tab = tab + 1;
+    let tab = sanitize_log_part(tab);
     let msg = message_index + 1;
     let filename = format!("{session}_tab{tab}_msg{msg}_{suffix}");
     Ok(dir.join(filename))
@@ -181,7 +181,7 @@ pub(super) fn stream_chunks(
     text: &str,
     cancel: &Arc<AtomicBool>,
     tx: &Sender<RuntimeEvent>,
-    tab: usize,
+    tab: &str,
     request_id: u64,
 ) {
     let mut buf: Vec<char> = Vec::new();
@@ -202,12 +202,12 @@ pub(super) fn stream_chunks(
 fn send_chunk(
     buf: &mut Vec<char>,
     tx: &Sender<RuntimeEvent>,
-    tab: usize,
+    tab: &str,
     request_id: u64,
     pause: bool,
 ) {
     let chunk: String = buf.drain(..).collect();
-    send_llm(tx, tab, request_id, LlmEvent::Chunk(chunk));
+    send_llm(tx, tab.to_string(), request_id, LlmEvent::Chunk(chunk));
     if pause {
         std::thread::sleep(Duration::from_millis(8));
     }

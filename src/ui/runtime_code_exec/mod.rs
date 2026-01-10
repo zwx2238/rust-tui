@@ -68,7 +68,6 @@ pub(crate) fn handle_code_exec_stop(tab_state: &mut TabState) {
 
 pub(crate) fn handle_code_exec_exit(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -78,7 +77,7 @@ pub(crate) fn handle_code_exec_exit(
     };
     helpers::push_tool_message(&mut tab_state.app, content, pending.call_id);
     helpers::reset_code_exec_after_exit(&mut tab_state.app);
-    start_followup(tab_state, tab_id, registry, args, tx);
+    start_followup(tab_state, registry, args, tx);
 }
 
 pub(crate) fn handle_code_exec_approve(
@@ -155,7 +154,6 @@ fn spawn_exec_thread(
 
 pub(crate) fn handle_code_exec_deny(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -171,12 +169,11 @@ pub(crate) fn handle_code_exec_deny(
         escape_json_string(&reason)
     );
     helpers::push_tool_message(&mut tab_state.app, content, pending.call_id);
-    start_followup(tab_state, tab_id, registry, args, tx);
+    start_followup(tab_state, registry, args, tx);
 }
 
 fn start_followup(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -193,7 +190,6 @@ fn start_followup(
         max_tokens: model.max_tokens,
         show_reasoning: args.show_reasoning,
         tx,
-        tab_id,
         enable_web_search: args.web_search_enabled(),
         enable_code_exec: args.code_exec_enabled(),
         enable_read_file: args.read_file_enabled(),

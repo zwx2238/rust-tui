@@ -41,7 +41,7 @@ fn run_llm_stream_with_input(
     cancel: Arc<AtomicBool>,
     tx: Sender<RuntimeEvent>,
 ) {
-    let Some(rt) = init_runtime(&tx, input.tab, input.request_id) else {
+    let Some(rt) = init_runtime(&tx, &input.tab, input.request_id) else {
         return;
     };
     let result = rt.block_on(stream_request(&input, &enabled, &cancel, &tx));
@@ -61,7 +61,7 @@ pub(super) struct RequestInput {
     pub(super) log_dir: Option<String>,
     pub(super) log_session_id: String,
     pub(super) message_index: usize,
-    pub(super) tab: usize,
+    pub(super) tab: String,
     pub(super) request_id: u64,
 }
 
@@ -76,7 +76,7 @@ struct RequestConfig {
     log_dir: Option<String>,
     log_session_id: String,
     message_index: usize,
-    tab: usize,
+    tab: String,
     request_id: u64,
 }
 
@@ -99,12 +99,12 @@ impl RequestInput {
     }
 }
 
-fn init_runtime(tx: &Sender<RuntimeEvent>, tab: usize, request_id: u64) -> Option<Runtime> {
+fn init_runtime(tx: &Sender<RuntimeEvent>, tab: &str, request_id: u64) -> Option<Runtime> {
     let rt = Runtime::new();
     if rt.is_err() {
         send_llm(
             tx,
-            tab,
+            tab.to_string(),
             request_id,
             LlmEvent::Error("初始化 Tokio 失败".to_string()),
         );

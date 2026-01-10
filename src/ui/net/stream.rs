@@ -144,7 +144,7 @@ where
         StreamedAssistantContent::ToolCall(call) => {
             log_tool_call(input, &call.function.name, &call.function.arguments);
             send_chunk(tx, input, format!("调用工具：{}\n", call.function.name));
-            let calls = vec![convert_tool_call(&call, input.tab, input.request_id)];
+            let calls = vec![convert_tool_call(&call, &input.tab, input.request_id)];
             Ok(StreamStep::ToolCalls(calls))
         }
         StreamedAssistantContent::Final(res) => {
@@ -190,7 +190,7 @@ fn handle_non_stream_text(
     usage: Option<crate::types::Usage>,
 ) {
     log_response_text(input, text);
-    super::net_logging::stream_chunks(text, cancel, tx, input.tab, input.request_id);
+    super::net_logging::stream_chunks(text, cancel, tx, &input.tab, input.request_id);
     send_done(input, tx, usage);
 }
 
@@ -205,7 +205,7 @@ fn handle_non_stream_tools(
     }
     let mapped = calls
         .iter()
-        .map(|call| convert_tool_call(call, input.tab, input.request_id))
+        .map(|call| convert_tool_call(call, &input.tab, input.request_id))
         .collect();
     send_tool_calls(input, tx, mapped, usage);
 }

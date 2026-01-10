@@ -109,8 +109,8 @@ fn handle_code_exec_action(
         CodeExecAction::Approve => {
             handle_code_exec_approve(tab_state, active_tab, registry, args, tx)
         }
-        CodeExecAction::Deny => handle_code_exec_deny(tab_state, active_tab, registry, args, tx),
-        CodeExecAction::Exit => handle_code_exec_exit(tab_state, active_tab, registry, args, tx),
+        CodeExecAction::Deny => handle_code_exec_deny(tab_state, registry, args, tx),
+        CodeExecAction::Exit => handle_code_exec_exit(tab_state, registry, args, tx),
         CodeExecAction::Stop => handle_code_exec_stop(tab_state),
     }
 }
@@ -127,12 +127,8 @@ fn handle_file_patch_action(
         return;
     };
     match action {
-        FilePatchAction::Apply => {
-            handle_file_patch_apply(tab_state, active_tab, registry, args, tx)
-        }
-        FilePatchAction::Cancel => {
-            handle_file_patch_cancel(tab_state, active_tab, registry, args, tx)
-        }
+        FilePatchAction::Apply => handle_file_patch_apply(tab_state, registry, args, tx),
+        FilePatchAction::Cancel => handle_file_patch_cancel(tab_state, registry, args, tx),
     }
 }
 
@@ -155,7 +151,6 @@ fn handle_question_review_action(
             if let Some(tab_state) = params.tabs.get_mut(params.active_tab) {
                 handle_question_review_cancel(
                     tab_state,
-                    params.active_tab,
                     params.registry,
                     params.args,
                     params.tx,

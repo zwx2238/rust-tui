@@ -109,7 +109,7 @@ mod tests {
             stop_reason: None,
         });
         tab.app.code_exec_finished_output = Some("output".to_string());
-        handle_code_exec_exit(&mut tab, 0, &registry, &args, &tx);
+        handle_code_exec_exit(&mut tab, &registry, &args, &tx);
         assert!(tab.app.pending_code_exec.is_none());
         assert!(tab.app.messages.iter().any(|m| m.role == "tool"));
     }
@@ -128,7 +128,7 @@ mod tests {
             requested_at: std::time::Instant::now(),
             stop_reason: None,
         });
-        handle_code_exec_deny(&mut tab, 0, &registry, &args, &tx);
+        handle_code_exec_deny(&mut tab, &registry, &args, &tx);
         assert!(
             tab.app
                 .messages

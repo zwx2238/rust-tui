@@ -58,7 +58,7 @@ fn start_tab_request_for_question(
     };
     let model = model_for_tab(tab_state, registry);
     let flags = request_flags(args);
-    let params = build_request_params(tab_state, tab_idx, question, model, args, tx, flags);
+    let params = build_request_params(tab_state, question, model, args, tx, flags);
     start_tab_request(params);
 }
 
@@ -95,7 +95,6 @@ fn request_flags(args: &Args) -> RequestFlags {
 
 fn build_request_params<'a>(
     tab_state: &'a mut TabState,
-    tab_idx: usize,
     question: &'a str,
     model: &'a crate::model_registry::ModelProfile,
     args: &'a Args,
@@ -112,7 +111,6 @@ fn build_request_params<'a>(
         max_tokens: model.max_tokens,
         show_reasoning: args.show_reasoning,
         tx,
-        tab_id: tab_idx,
         enable_web_search: flags.enable_web_search,
         enable_code_exec: flags.enable_code_exec,
         enable_read_file: flags.enable_read_file,

@@ -47,12 +47,12 @@ mod tests {
 
     fn send_stream_events(out: &mut Vec<UiEvent>) {
         out.push(UiEvent {
-            tab: 0,
+            tab: "id".to_string(),
             request_id: 1,
             event: LlmEvent::Chunk("hi".to_string()),
         });
         out.push(UiEvent {
-            tab: 0,
+            tab: "id".to_string(),
             request_id: 1,
             event: LlmEvent::Done { usage: None },
         });

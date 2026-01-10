@@ -17,7 +17,7 @@ pub(crate) enum LlmEvent {
 }
 
 pub(crate) struct UiEvent {
-    pub(crate) tab: usize,
+    pub(crate) tab: String,
     pub(crate) request_id: u64,
     pub(crate) event: LlmEvent,
 }
@@ -63,7 +63,7 @@ impl EventBatch {
     }
 }
 
-pub(crate) fn send_llm(tx: &Sender<RuntimeEvent>, tab: usize, request_id: u64, event: LlmEvent) {
+pub(crate) fn send_llm(tx: &Sender<RuntimeEvent>, tab: String, request_id: u64, event: LlmEvent) {
     let _ = tx.send(RuntimeEvent::Llm(UiEvent {
         tab,
         request_id,

@@ -35,7 +35,7 @@ impl<'a> ToolService<'a> {
         for call in calls {
             self.handle_tool_call(tab_state, tab_id, call, &mut state);
         }
-        self.finalize_tool_calls(tab_state, tab_id, state);
+        self.finalize_tool_calls(tab_state, state);
     }
 }
 
@@ -89,7 +89,7 @@ impl<'a> ToolService<'a> {
         &self,
         call: &ToolCall,
         tab_state: &mut TabState,
-        tab_id: usize,
+        _tab_id: usize,
         state: &mut ToolApplyState,
     ) {
         log_modify_file_raw(self.args, call);
@@ -97,7 +97,7 @@ impl<'a> ToolService<'a> {
             return;
         }
         match crate::ui::runtime_file_patch::handle_file_patch_request(tab_state, call) {
-            Ok(()) => self.apply_file_patch(tab_state, tab_id, state),
+            Ok(()) => self.apply_file_patch(tab_state, state),
             Err(err) => push_tool_error(tab_state, call, state, err),
         }
     }
@@ -168,7 +168,7 @@ impl<'a> ToolService<'a> {
         }
     }
 
-    fn finalize_tool_calls(&self, tab_state: &mut TabState, tab_id: usize, state: ToolApplyState) {
+    fn finalize_tool_calls(&self, tab_state: &mut TabState, state: ToolApplyState) {
         if state.needs_approval {
             return;
         }
@@ -177,7 +177,7 @@ impl<'a> ToolService<'a> {
             return;
         }
         let model = self.resolve_model(tab_state);
-        self.start_followup(tab_state, tab_id, model);
+        self.start_followup(tab_state, model);
     }
 
     fn reject_modify_file(
@@ -197,16 +197,10 @@ impl<'a> ToolService<'a> {
         false
     }
 
-    fn apply_file_patch(
-        &self,
-        tab_state: &mut TabState,
-        tab_id: usize,
-        state: &mut ToolApplyState,
-    ) {
+    fn apply_file_patch(&self, tab_state: &mut TabState, state: &mut ToolApplyState) {
         if self.args.yolo_enabled() {
             crate::ui::runtime_file_patch::handle_file_patch_apply(
                 tab_state,
-                tab_id,
                 self.registry,
                 self.args,
                 self.tx,
@@ -242,7 +236,7 @@ impl<'a> ToolService<'a> {
             })
     }
 
-    fn start_followup(&self, tab_state: &mut TabState, tab_id: usize, model: &ModelProfile) {
+    fn start_followup(&self, tab_state: &mut TabState, model: &ModelProfile) {
         let log_session_id = tab_state.app.log_session_id.clone();
         start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
             tab_state,
@@ -252,15 +246,14 @@ impl<'a> ToolService<'a> {
             max_tokens: model.max_tokens,
             show_reasoning: self.args.show_reasoning,
             tx: self.tx,
-            tab_id,
-        enable_web_search: self.args.web_search_enabled(),
-        enable_code_exec: self.args.code_exec_enabled(),
-        enable_read_file: self.args.read_file_enabled(),
-        enable_read_code: self.args.read_code_enabled(),
-        enable_modify_file: self.args.modify_file_enabled(),
-        enable_ask_questions: self.args.ask_questions_enabled(),
-        log_requests: self.args.log_requests.clone(),
-        log_session_id,
-    });
-}
+            enable_web_search: self.args.web_search_enabled(),
+            enable_code_exec: self.args.code_exec_enabled(),
+            enable_read_file: self.args.read_file_enabled(),
+            enable_read_code: self.args.read_code_enabled(),
+            enable_modify_file: self.args.modify_file_enabled(),
+            enable_ask_questions: self.args.ask_questions_enabled(),
+            log_requests: self.args.log_requests.clone(),
+            log_session_id,
+        });
+    }
 }
