@@ -97,6 +97,9 @@ fn sync_overlay_state(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
     if view.overlay.is(OverlayKind::FilePatch) {
         handle_file_patch_overlay_key(ctx, view);
     }
+    if view.overlay.is(OverlayKind::QuestionReview) {
+        handle_question_review_overlay_key(ctx, view);
+    }
 }
 
 fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
@@ -110,6 +113,14 @@ fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewSt
 fn handle_file_patch_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
     if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab)
         && tab_state.app.pending_file_patch.is_none()
+    {
+        view.overlay.close();
+    }
+}
+
+fn handle_question_review_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
+    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab)
+        && tab_state.app.pending_question_review.is_none()
     {
         view.overlay.close();
     }

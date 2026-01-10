@@ -227,6 +227,9 @@ fn enabled_tool_names(args: &Args) -> Vec<&'static str> {
     if args.modify_file_enabled() {
         out.push("modify_file");
     }
+    if args.ask_questions_enabled() {
+        out.push("ask_questions");
+    }
     out
 }
 

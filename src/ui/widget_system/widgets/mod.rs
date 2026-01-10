@@ -10,6 +10,7 @@ mod model;
 mod overlay_root;
 mod overlay_table;
 mod prompt;
+mod question_review;
 mod root;
 mod summary;
 mod terminal;
