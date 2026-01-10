@@ -4,6 +4,7 @@ pub(crate) enum OverlayKind {
     Jump,
     Model,
     Prompt,
+    QuestionReview,
     CodeExec,
     FilePatch,
     Terminal,
@@ -30,6 +31,7 @@ impl OverlayState {
             Some(
                 OverlayKind::Summary
                     | OverlayKind::Jump
+                    | OverlayKind::QuestionReview
                     | OverlayKind::Terminal
                     | OverlayKind::Help
             )

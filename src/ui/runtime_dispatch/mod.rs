@@ -63,6 +63,7 @@ pub(crate) fn start_pending_request(
         enable_read_file: args.read_file_enabled(),
         enable_read_code: args.read_code_enabled(),
         enable_modify_file: args.modify_file_enabled(),
+        enable_ask_questions: args.ask_questions_enabled(),
         log_requests: args.log_requests.clone(),
         log_session_id,
     });
@@ -124,11 +125,18 @@ fn overlay_areas(layout: LayoutContext) -> OverlayAreas {
 }
 
 fn overlay_counts(ctx: &DispatchContext<'_>) -> OverlayRowCounts {
+    let question_reviews = ctx
+        .tabs
+        .get(*ctx.active_tab)
+        .and_then(|tab| tab.app.pending_question_review.as_ref())
+        .map(|pending| pending.questions.len())
+        .unwrap_or(0);
     OverlayRowCounts {
         tabs: ctx.tabs.len(),
         jump: 0,
         models: ctx.registry.models.len(),
         prompts: ctx.prompt_registry.prompts.len(),
+        question_reviews,
         help: crate::ui::shortcut_help::help_rows_len(),
     }
 }

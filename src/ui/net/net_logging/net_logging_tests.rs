@@ -48,7 +48,7 @@ fn write_logs(dir: &std::path::Path, ctx: &RigRequestContext) {
 
 #[test]
 fn build_enabled_tools_collects_flags() {
-    let tools = build_enabled_tools(true, false, true, false, true);
+    let tools = build_enabled_tools(true, false, true, false, true, false);
     assert!(tools.contains(&"web_search"));
     assert!(tools.contains(&"read_file"));
     assert!(tools.contains(&"list_dir"));

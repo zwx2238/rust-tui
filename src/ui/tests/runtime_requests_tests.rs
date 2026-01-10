@@ -31,6 +31,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -61,6 +62,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -93,6 +95,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -124,6 +127,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -155,6 +159,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -187,6 +192,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -215,6 +221,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });
@@ -245,6 +252,7 @@ mod tests {
             enable_read_file: false,
             enable_read_code: false,
             enable_modify_file: false,
+            enable_ask_questions: false,
             log_requests: None,
             log_session_id,
         });

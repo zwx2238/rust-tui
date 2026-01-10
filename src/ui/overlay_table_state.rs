@@ -20,6 +20,7 @@ pub(crate) struct OverlayRowCounts {
     pub(crate) jump: usize,
     pub(crate) models: usize,
     pub(crate) prompts: usize,
+    pub(crate) question_reviews: usize,
     pub(crate) help: usize,
 }
 
@@ -76,6 +77,7 @@ pub(crate) fn overlay_table_metrics(
         OverlayKind::Jump => jump_metrics(areas, counts),
         OverlayKind::Model => model_metrics(areas, counts),
         OverlayKind::Prompt => prompt_metrics(areas, counts),
+        OverlayKind::QuestionReview => question_review_metrics(areas, counts),
         OverlayKind::CodeExec | OverlayKind::FilePatch | OverlayKind::Terminal => {
             empty_metrics(areas)
         }
@@ -108,6 +110,16 @@ fn prompt_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTable
     OverlayTableMetrics {
         area: prompt_popup_area(areas.full, counts.prompts),
         rows: counts.prompts,
+    }
+}
+
+fn question_review_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
+    OverlayTableMetrics {
+        area: crate::ui::question_review_popup::question_review_list_area(
+            areas.full,
+            counts.question_reviews,
+        ),
+        rows: counts.question_reviews,
     }
 }
 
@@ -153,6 +165,7 @@ pub(crate) fn with_active_table_handle<R>(
         OverlayKind::Jump => &mut view.jump,
         OverlayKind::Model => &mut view.model,
         OverlayKind::Prompt => &mut view.prompt,
+        OverlayKind::QuestionReview => &mut view.question_review,
         OverlayKind::Terminal => &mut view.summary,
         OverlayKind::Help => &mut view.help,
         OverlayKind::CodeExec | OverlayKind::FilePatch => &mut view.summary,

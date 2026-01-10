@@ -21,6 +21,7 @@ mod tests {
             jump: 5,
             models: 2,
             prompts: 4,
+            question_reviews: 0,
             help: 6,
         }
     }

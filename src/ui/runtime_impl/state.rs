@@ -25,6 +25,8 @@ pub enum PendingCommand {
     StopCodeExec,
     ApplyFilePatch,
     CancelFilePatch,
+    SubmitQuestionReview,
+    CancelQuestionReview,
     NewTab,
     NewCategory,
     OpenConversation,
@@ -112,6 +114,7 @@ pub struct App {
     pub file_patch_hover: Option<FilePatchHover>,
     pub file_patch_selecting: bool,
     pub file_patch_selection: Option<crate::ui::selection::Selection>,
+    pub pending_question_review: Option<PendingQuestionReview>,
     pub pending_category_name: Option<String>,
     pub pending_open_conversation: Option<String>,
     pub terminal: Option<crate::ui::terminal::TerminalSession>,
@@ -161,6 +164,36 @@ pub struct PendingFilePatch {
     pub path: Option<String>,
     pub diff: String,
     pub preview: String,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum QuestionDecision {
+    Pending,
+    Approved,
+    Rejected,
+}
+
+impl QuestionDecision {
+    pub fn label(self) -> &'static str {
+        match self {
+            QuestionDecision::Pending => "未确认",
+            QuestionDecision::Approved => "通过",
+            QuestionDecision::Rejected => "拒绝",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct PendingQuestionReview {
+    pub call_id: String,
+    pub questions: Vec<PendingQuestionItem>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PendingQuestionItem {
+    pub question: String,
+    pub decision: QuestionDecision,
+    pub model_key: String,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

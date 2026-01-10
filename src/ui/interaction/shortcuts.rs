@@ -7,6 +7,7 @@ pub(crate) enum ShortcutScope {
     Jump,
     Model,
     Prompt,
+    QuestionReview,
     CodeExec,
     Help,
 }
@@ -168,6 +169,36 @@ const SHORTCUTS: &[Shortcut] = &[
         scope: ShortcutScope::Prompt,
         keys: "Enter",
         description: "确认系统提示词",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "↑/↓",
+        description: "选择问题",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "Space / Y / N",
+        description: "通过 / 拒绝当前问题",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "A / R",
+        description: "全部通过 / 全部拒绝",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "m / M",
+        description: "切换模型 / 全部使用当前模型",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "PgUp / PgDn",
+        description: "滚动详情",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "Enter / Esc",
+        description: "提交 / 取消",
     },
     Shortcut {
         scope: ShortcutScope::CodeExec,

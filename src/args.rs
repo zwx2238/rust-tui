@@ -63,7 +63,7 @@ pub struct Args {
     /// 工具开关表达式（逗号分隔，前缀 - 表示禁用）
     ///
     /// 默认：全部关闭（不向模型暴露任何 tools）。
-    /// 示例：--enable "read_file,read_code" 或 --enable "code_exec,-modify_file"
+    /// 示例：--enable "read_file,read_code" 或 --enable "code_exec,-modify_file" 或 --enable "ask_questions"
     #[arg(long, allow_hyphen_values = true)]
     pub enable: Option<String>,
 
@@ -100,26 +100,30 @@ pub struct Args {
 
 impl Args {
     pub fn web_search_enabled(&self) -> bool {
-        self.resolve_enabled().0
+        self.resolve_enabled().web_search
     }
 
     pub fn code_exec_enabled(&self) -> bool {
-        self.resolve_enabled().1
+        self.resolve_enabled().code_exec
     }
 
     pub fn read_file_enabled(&self) -> bool {
-        self.resolve_enabled().2
+        self.resolve_enabled().read_file
     }
 
     pub fn read_code_enabled(&self) -> bool {
-        self.resolve_enabled().3
+        self.resolve_enabled().read_code
     }
 
     pub fn modify_file_enabled(&self) -> bool {
         if self.read_only {
             return false;
         }
-        self.resolve_enabled().4
+        self.resolve_enabled().modify_file
+    }
+
+    pub fn ask_questions_enabled(&self) -> bool {
+        self.resolve_enabled().ask_questions
     }
 
     pub fn yolo_enabled(&self) -> bool {
@@ -130,11 +134,11 @@ impl Args {
         self.read_only
     }
 
-    fn resolve_enabled(&self) -> (bool, bool, bool, bool, bool) {
+    fn resolve_enabled(&self) -> ToolFlags {
         let Some(expr) = self.enable.as_deref() else {
-            return default_tool_flags().to_tuple();
+            return default_tool_flags();
         };
-        resolve_enabled_from_expr(expr).to_tuple()
+        resolve_enabled_from_expr(expr)
     }
 }
 
@@ -145,18 +149,7 @@ struct ToolFlags {
     read_file: bool,
     read_code: bool,
     modify_file: bool,
-}
-
-impl ToolFlags {
-    fn to_tuple(self) -> (bool, bool, bool, bool, bool) {
-        (
-            self.web_search,
-            self.code_exec,
-            self.read_file,
-            self.read_code,
-            self.modify_file,
-        )
-    }
+    ask_questions: bool,
 }
 
 fn default_tool_flags() -> ToolFlags {
@@ -166,6 +159,7 @@ fn default_tool_flags() -> ToolFlags {
         read_file: false,
         read_code: false,
         modify_file: false,
+        ask_questions: false,
     }
 }
 
@@ -198,6 +192,7 @@ fn apply_tool_flag(flags: &mut ToolFlags, name: &str, enable: bool) {
         "read_file" => flags.read_file = enable,
         "read_code" => flags.read_code = enable,
         "modify_file" => flags.modify_file = enable,
+        "ask_questions" => flags.ask_questions = enable,
         _ => {}
     }
 }

@@ -187,6 +187,7 @@ mod tests {
             Some(OverlayKind::Jump),
             Some(OverlayKind::Model),
             Some(OverlayKind::Prompt),
+            Some(OverlayKind::QuestionReview),
             Some(OverlayKind::CodeExec),
             Some(OverlayKind::FilePatch),
             Some(OverlayKind::Terminal),
