@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::ui::runtime_view::{ViewAction, ViewState};
 
@@ -176,8 +176,20 @@ pub(crate) fn handle_question_review_key(view: &mut ViewState, key: KeyEvent) ->
         }
         KeyCode::Char('a') | KeyCode::Char('A') => ViewAction::QuestionReviewApproveAll,
         KeyCode::Char('r') | KeyCode::Char('R') => ViewAction::QuestionReviewRejectAll,
-        KeyCode::Char('m') => ViewAction::QuestionReviewNextModel(view.question_review.selected),
-        KeyCode::Char('M') => ViewAction::QuestionReviewSetAllModel(view.question_review.selected),
+        KeyCode::Char('m') => {
+            if key.modifiers.contains(KeyModifiers::ALT) {
+                ViewAction::QuestionReviewSetAllModel(view.question_review.selected)
+            } else {
+                ViewAction::QuestionReviewNextModel(view.question_review.selected)
+            }
+        }
+        KeyCode::Char('M') => {
+            if key.modifiers.contains(KeyModifiers::ALT) {
+                ViewAction::QuestionReviewSetAllModel(view.question_review.selected)
+            } else {
+                ViewAction::QuestionReviewPrevModel(view.question_review.selected)
+            }
+        }
         KeyCode::PageUp => {
             view.question_review_detail_scroll =
                 view.question_review_detail_scroll.saturating_sub(PAGE_STEP);

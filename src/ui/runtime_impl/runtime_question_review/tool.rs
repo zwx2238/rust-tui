@@ -86,6 +86,21 @@ pub(crate) fn cycle_question_model(
     true
 }
 
+pub(crate) fn cycle_question_model_prev(
+    tab_state: &mut TabState,
+    idx: usize,
+    registry: &crate::model_registry::ModelRegistry,
+) -> bool {
+    let Some(item) = pending_item_mut(tab_state, idx) else {
+        return false;
+    };
+    let Some(prev) = prev_model_key(&item.model_key, registry) else {
+        return false;
+    };
+    item.model_key = prev;
+    true
+}
+
 pub(crate) fn set_all_models(
     tab_state: &mut TabState,
     model_key: &str,
@@ -194,4 +209,16 @@ fn next_model_key(
     let idx = registry.index_of(current).unwrap_or(0);
     let next = (idx + 1) % registry.models.len();
     registry.models.get(next).map(|m| m.key.clone())
+}
+
+fn prev_model_key(
+    current: &str,
+    registry: &crate::model_registry::ModelRegistry,
+) -> Option<String> {
+    if registry.models.is_empty() {
+        return None;
+    }
+    let idx = registry.index_of(current).unwrap_or(0);
+    let prev = idx.wrapping_add(registry.models.len() - 1) % registry.models.len();
+    registry.models.get(prev).map(|m| m.key.clone())
 }

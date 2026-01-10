@@ -30,7 +30,7 @@ fn build_help_table<'a>(
     let header = help_table_header(theme);
     let body = help_table_rows(rows);
     OverlayTable {
-        title: Line::from("帮助 · F10/Esc 退出"),
+        title: Line::from("帮助 · F3/Esc 退出"),
         header,
         rows: body,
         widths: help_table_widths(),

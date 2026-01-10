@@ -53,6 +53,11 @@ fn handle_global_key(
     jump_rows: &[crate::ui::jump::JumpRow],
     key: crossterm::event::KeyEvent,
 ) -> EventResult {
+    if key_debug_enabled() {
+        if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
+            crate::ui::notice::push_notice(&mut tab_state.app, format_key_event(key));
+        }
+    }
     if is_quit_key(key) {
         return EventResult::quit();
     }
@@ -72,4 +77,30 @@ fn handle_global_key(
         return EventResult::handled();
     }
     EventResult::ignored()
+}
+
+fn key_debug_enabled() -> bool {
+    std::env::var_os("DEEPCHAT_KEY_DEBUG").is_some()
+}
+
+fn format_key_event(key: crossterm::event::KeyEvent) -> String {
+    let mods = format_modifiers(key.modifiers);
+    format!("KeyEvent: code={:?} mods={mods}", key.code)
+}
+
+fn format_modifiers(mods: crossterm::event::KeyModifiers) -> String {
+    if mods.is_empty() {
+        return "NONE".to_string();
+    }
+    let mut parts = Vec::new();
+    if mods.contains(crossterm::event::KeyModifiers::CONTROL) {
+        parts.push("CTRL");
+    }
+    if mods.contains(crossterm::event::KeyModifiers::SHIFT) {
+        parts.push("SHIFT");
+    }
+    if mods.contains(crossterm::event::KeyModifiers::ALT) {
+        parts.push("ALT");
+    }
+    parts.join("+")
 }

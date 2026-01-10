@@ -68,7 +68,7 @@ const SHORTCUTS: &[Shortcut] = &[
     Shortcut {
         scope: ShortcutScope::Chat,
         keys: "F3",
-        description: "切换模型",
+        description: "快捷键帮助",
     },
     Shortcut {
         scope: ShortcutScope::Chat,
@@ -97,8 +97,8 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::Chat,
-        keys: "F10",
-        description: "快捷键帮助",
+        keys: "F10 / Shift+F10",
+        description: "下一个 / 上一个模型",
     },
     Shortcut {
         scope: ShortcutScope::Nav,
@@ -188,7 +188,12 @@ const SHORTCUTS: &[Shortcut] = &[
     Shortcut {
         scope: ShortcutScope::QuestionReview,
         keys: "m / M",
-        description: "切换模型 / 全部使用当前模型",
+        description: "下一个 / 上一个模型",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "Alt+M",
+        description: "全部使用当前模型",
     },
     Shortcut {
         scope: ShortcutScope::QuestionReview,
@@ -212,7 +217,7 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::Help,
-        keys: "Esc / F10",
+        keys: "Esc / F3",
         description: "关闭帮助",
     },
 ];
