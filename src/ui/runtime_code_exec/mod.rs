@@ -199,6 +199,7 @@ fn start_followup(
         enable_read_file: args.read_file_enabled(),
         enable_read_code: args.read_code_enabled(),
         enable_modify_file: args.modify_file_enabled(),
+        enable_ask_questions: args.ask_questions_enabled(),
         log_requests: args.log_requests.clone(),
         log_session_id,
     });

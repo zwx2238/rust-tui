@@ -30,6 +30,7 @@ pub(crate) fn request_llm_stream(params: LlmStreamRequestParams) {
         params.enable_read_file,
         params.enable_read_code,
         params.enable_modify_file,
+        params.enable_ask_questions,
     );
     run_llm_stream_with_input(input, enabled, params.cancel, params.tx);
 }

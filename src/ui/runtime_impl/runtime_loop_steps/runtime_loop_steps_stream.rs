@@ -4,8 +4,9 @@ use crate::ui::events::{RuntimeEvent, UiEvent};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::runtime_tick::{
     ActiveFrameData, build_exec_header_note, collect_stream_events_from_batch, finalize_done_tabs,
-    preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay, sync_file_patch_overlay,
-    update_code_exec_results, update_tab_widths,
+    preheat_inactive_tabs, prepare_active_frame, sync_code_exec_overlay,
+    sync_file_patch_overlay, sync_question_review_overlay, update_code_exec_results,
+    update_tab_widths,
 };
 use crate::ui::runtime_view::ViewState;
 use crate::ui::runtime_yolo::auto_finalize_code_exec;
@@ -141,4 +142,5 @@ fn sync_overlays_if_needed(
         sync_code_exec_overlay(tabs, active_tab, view);
         sync_file_patch_overlay(tabs, active_tab, view);
     }
+    sync_question_review_overlay(tabs, active_tab, view);
 }

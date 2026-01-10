@@ -15,6 +15,7 @@ pub(super) fn build_enabled_tools(
     enable_read_file: bool,
     enable_read_code: bool,
     enable_modify_file: bool,
+    enable_ask_questions: bool,
 ) -> Vec<&'static str> {
     let mut out = Vec::new();
     if enable_web_search {
@@ -33,6 +34,9 @@ pub(super) fn build_enabled_tools(
     }
     if enable_modify_file {
         out.push("modify_file");
+    }
+    if enable_ask_questions {
+        out.push("ask_questions");
     }
     out
 }

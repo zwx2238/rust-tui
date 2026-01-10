@@ -11,7 +11,7 @@ pub(super) fn create_tab_in_active_category(
     args: &Args,
 ) {
     let category = resolve_active_category(categories, active_category);
-    let mut tab = build_new_tab(tabs, *active_tab, &category, registry, prompt_registry, args);
+    let tab = build_new_tab(tabs, *active_tab, &category, registry, prompt_registry, args);
     tabs.push(tab);
     *active_tab = tabs.len().saturating_sub(1);
 }

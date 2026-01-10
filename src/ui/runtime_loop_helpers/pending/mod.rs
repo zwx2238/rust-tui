@@ -80,14 +80,27 @@ fn handled_by_actions(params: &mut HandlePendingCommandParams<'_>) -> bool {
     ) {
         return true;
     }
-    actions::handle_file_patch_command(
+    if actions::handle_file_patch_command(
         params.pending,
         params.tabs,
         *params.active_tab,
         params.registry,
         params.args,
         params.tx,
-    )
+    ) {
+        return true;
+    }
+    actions::handle_question_review_command(actions::QuestionReviewCommandParams {
+        pending: params.pending,
+        tabs: params.tabs,
+        active_tab: *params.active_tab,
+        categories: params.categories,
+        active_category: params.active_category,
+        registry: params.registry,
+        prompt_registry: params.prompt_registry,
+        args: params.args,
+        tx: params.tx,
+    })
 }
 
 fn tab_params<'a>(
