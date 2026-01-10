@@ -313,7 +313,7 @@ mod tests {
 
     fn default_args() -> crate::args::Args {
         crate::args::Args {
-            model: "m".to_string(),
+            model: None,
             system: "sys".to_string(),
             base_url: "http://example.com".to_string(),
             show_reasoning: false,

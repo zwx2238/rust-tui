@@ -31,9 +31,14 @@ pub enum ModelCommand {
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct Args {
-    /// 模型名称
-    #[arg(long, default_value = "deepseek-chat")]
-    pub model: String,
+    /// 模型 key 或模型名称（来自 config.json 的 models）
+    ///
+    /// - 优先按 key 匹配：models[].key
+    /// - 若未命中 key，则按模型名匹配：models[].model（要求唯一）
+    ///
+    /// 不传则使用配置中的 default_model。
+    #[arg(long)]
+    pub model: Option<String>,
 
     /// 系统提示词
     #[arg(long, default_value = "你是一个有帮助的助手。")]

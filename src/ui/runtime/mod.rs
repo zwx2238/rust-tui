@@ -26,9 +26,10 @@ pub fn run(
     cfg: crate::config::Config,
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let registry = build_model_registry(&cfg);
+    let mut registry = build_model_registry(&cfg);
     let prompt_registry = load_prompts(&cfg.prompts_dir, "default", &args.system)?;
     validate_args(&args)?;
+    apply_model_override(&args, &mut registry)?;
     let question_set = load_question_set_option(&args)?;
     let tavily_api_key = cfg.tavily_api_key.clone();
     run_with_context(
@@ -40,6 +41,20 @@ pub fn run(
         question_set.as_ref(),
         &tavily_api_key,
     )
+}
+
+fn apply_model_override(
+    args: &Args,
+    registry: &mut crate::model_registry::ModelRegistry,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let Some(spec) = args.model.as_deref() else {
+        return Ok(());
+    };
+    let key = registry
+        .resolve_key_from_spec(spec)
+        .map_err(|e| format!("--model 无效：{e}"))?;
+    registry.default_key = key;
+    Ok(())
 }
 
 fn run_with_context(

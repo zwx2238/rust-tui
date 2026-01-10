@@ -23,6 +23,37 @@ impl ModelRegistry {
     pub fn index_of(&self, key: &str) -> Option<usize> {
         self.models.iter().position(|m| m.key == key)
     }
+
+    pub fn resolve_key_from_spec(&self, spec: &str) -> Result<String, String> {
+        let spec = spec.trim();
+        if spec.is_empty() {
+            return Err("model 不能为空".to_string());
+        }
+        if self.get(spec).is_some() {
+            return Ok(spec.to_string());
+        }
+        let matched = self
+            .models
+            .iter()
+            .filter(|m| m.model == spec)
+            .map(|m| m.key.as_str())
+            .collect::<Vec<_>>();
+        match matched.len() {
+            0 => Err(format!(
+                "未找到模型：{spec}（可用 key：{}）",
+                self.models
+                    .iter()
+                    .map(|m| m.key.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )),
+            1 => Ok(matched[0].to_string()),
+            _ => Err(format!(
+                "模型名 {spec} 匹配多个 key：{}（请使用 key 作为 --model 参数）",
+                matched.join(", ")
+            )),
+        }
+    }
 }
 
 pub fn build_model_registry(cfg: &Config) -> ModelRegistry {
@@ -69,5 +100,7 @@ mod tests {
         assert_eq!(registry.default_key, "m1");
         assert_eq!(registry.index_of("m1"), Some(0));
         assert_eq!(registry.get("m1").unwrap().base_url, "https://api.test");
+        assert_eq!(registry.resolve_key_from_spec("m1").unwrap(), "m1");
+        assert_eq!(registry.resolve_key_from_spec("m").unwrap(), "m1");
     }
 }

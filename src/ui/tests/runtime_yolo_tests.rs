@@ -21,7 +21,7 @@ mod tests {
 
     fn args(yolo: bool) -> Args {
         Args {
-            model: "m".to_string(),
+        model: None,
             system: "sys".to_string(),
             base_url: "http://example.com".to_string(),
             show_reasoning: false,
