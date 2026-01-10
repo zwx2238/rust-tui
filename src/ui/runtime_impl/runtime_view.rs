@@ -1,12 +1,11 @@
 use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
-
 use crate::ui::overlay::{OverlayKind, OverlayState};
 use crate::ui::runtime_view_handlers::{
-    handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key, handle_summary_key,
+    handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key,
+    handle_question_review_key, handle_summary_key,
 };
 use crate::ui::selection_state::SelectionState;
 use crate::ui::summary::SummarySort;
-
 pub(crate) struct ViewState {
     pub(crate) overlay: OverlayState,
     pub(crate) summary: SelectionState,
@@ -15,9 +14,9 @@ pub(crate) struct ViewState {
     pub(crate) jump: SelectionState,
     pub(crate) model: SelectionState,
     pub(crate) prompt: SelectionState,
+    pub(crate) question_review: SelectionState,
     pub(crate) help: SelectionState,
 }
-
 #[derive(Copy, Clone)]
 pub(crate) enum ViewAction {
     None,
@@ -27,8 +26,9 @@ pub(crate) enum ViewAction {
     SelectModel(usize),
     CycleModel,
     SelectPrompt(usize),
+    QuestionReviewToggle(usize), QuestionReviewApprove(usize), QuestionReviewReject(usize),
+    QuestionReviewApproveAll, QuestionReviewRejectAll, QuestionReviewSubmit, QuestionReviewCancel,
 }
-
 pub(crate) fn apply_view_action(
     action: ViewAction,
     jump_rows: &[crate::ui::jump::JumpRow],
@@ -44,10 +44,13 @@ pub(crate) fn apply_view_action(
         ViewAction::JumpTo(idx) => apply_jump_to(idx, jump_rows, tabs, *active_tab),
         ViewAction::ForkMessage(_) => false,
         ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
+        ViewAction::QuestionReviewToggle(_) | ViewAction::QuestionReviewApprove(_)
+        | ViewAction::QuestionReviewReject(_) | ViewAction::QuestionReviewApproveAll
+        | ViewAction::QuestionReviewRejectAll | ViewAction::QuestionReviewSubmit
+        | ViewAction::QuestionReviewCancel => false,
         ViewAction::None => false,
     }
 }
-
 impl ViewState {
     pub(crate) fn new() -> Self {
         Self {
@@ -58,6 +61,7 @@ impl ViewState {
             jump: SelectionState::default(),
             model: SelectionState::default(),
             prompt: SelectionState::default(),
+            question_review: SelectionState::default(),
             help: SelectionState::default(),
         }
     }
@@ -86,7 +90,6 @@ impl ViewState {
         self.overlay.open(OverlayKind::Help);
     }
 }
-
 pub(crate) fn handle_view_key(
     view: &mut ViewState,
     key: KeyEvent,
@@ -103,12 +106,12 @@ pub(crate) fn handle_view_key(
         Some(OverlayKind::Jump) => handle_jump_key(view, key, jump_len),
         Some(OverlayKind::Model) => handle_model_key(view, key),
         Some(OverlayKind::Prompt) => handle_prompt_key(view, key),
+        Some(OverlayKind::QuestionReview) => handle_question_review_key(view, key),
         Some(OverlayKind::CodeExec | OverlayKind::FilePatch) => ViewAction::None,
         Some(OverlayKind::Terminal) => handle_terminal_key(view, key),
         Some(OverlayKind::Help) => handle_help_key(view, key),
     }
 }
-
 pub(crate) fn handle_view_mouse(
     view: &mut ViewState,
     row: Option<usize>,
@@ -124,13 +127,13 @@ pub(crate) fn handle_view_mouse(
         Some(OverlayKind::Jump) => handle_jump_mouse(view, row, jump_len, kind),
         Some(OverlayKind::Model) => handle_model_mouse(view, row, kind),
         Some(OverlayKind::Prompt) => handle_prompt_mouse(view, row, kind),
+        Some(OverlayKind::QuestionReview) => handle_question_review_mouse(view, row, kind),
         Some(OverlayKind::Help) => handle_help_mouse(view, row, kind),
         Some(OverlayKind::CodeExec | OverlayKind::FilePatch | OverlayKind::Terminal) | None => {
             ViewAction::None
         }
     }
 }
-
 fn handle_function_keys(
     view: &mut ViewState,
     key: KeyEvent,
@@ -149,16 +152,13 @@ fn handle_function_keys(
         _ => None,
     }
 }
-
 fn handle_terminal_key(_view: &mut ViewState, _key: KeyEvent) -> ViewAction {
     ViewAction::None
 }
-
 fn toggle_overlay(view: &mut ViewState, kind: OverlayKind) -> ViewAction {
     view.overlay.toggle(kind);
     ViewAction::None
 }
-
 fn toggle_help(view: &mut ViewState) -> ViewAction {
     if view.overlay.is(OverlayKind::Help) {
         view.overlay.close();
@@ -167,7 +167,6 @@ fn toggle_help(view: &mut ViewState) -> ViewAction {
     }
     ViewAction::None
 }
-
 fn toggle_summary(view: &mut ViewState, active_tab: usize, tabs_len: usize) -> ViewAction {
     if view.overlay.is(OverlayKind::Summary) {
         view.overlay.close();
@@ -176,7 +175,6 @@ fn toggle_summary(view: &mut ViewState, active_tab: usize, tabs_len: usize) -> V
     }
     ViewAction::None
 }
-
 fn toggle_jump(view: &mut ViewState) -> ViewAction {
     if view.overlay.is(OverlayKind::Jump) {
         view.overlay.close();
@@ -185,7 +183,6 @@ fn toggle_jump(view: &mut ViewState) -> ViewAction {
     }
     ViewAction::None
 }
-
 fn toggle_prompt(view: &mut ViewState) -> ViewAction {
     if view.overlay.is(OverlayKind::Prompt) {
         view.overlay.close();
@@ -194,7 +191,6 @@ fn toggle_prompt(view: &mut ViewState) -> ViewAction {
     }
     ViewAction::None
 }
-
 fn apply_switch_tab(
     idx: usize,
     tabs: &mut [crate::ui::runtime_helpers::TabState],
@@ -213,7 +209,6 @@ fn apply_switch_tab(
     }
     true
 }
-
 fn apply_jump_to(
     idx: usize,
     jump_rows: &[crate::ui::jump::JumpRow],
@@ -230,7 +225,6 @@ fn apply_jump_to(
     }
     true
 }
-
 fn handle_summary_mouse(
     view: &mut ViewState,
     row: usize,
@@ -244,7 +238,6 @@ fn handle_summary_mouse(
     }
     ViewAction::None
 }
-
 fn handle_jump_mouse(
     view: &mut ViewState,
     row: usize,
@@ -259,7 +252,6 @@ fn handle_jump_mouse(
     }
     ViewAction::None
 }
-
 fn handle_model_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
     view.model.select(row);
     if matches!(kind, MouseEventKind::Down(_)) {
@@ -268,7 +260,6 @@ fn handle_model_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) ->
     }
     ViewAction::None
 }
-
 fn handle_prompt_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
     view.prompt.select(row);
     if matches!(kind, MouseEventKind::Down(_)) {
@@ -277,7 +268,16 @@ fn handle_prompt_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -
     }
     ViewAction::None
 }
-
+fn handle_question_review_mouse(
+    view: &mut ViewState,
+    row: usize,
+    kind: MouseEventKind,
+) -> ViewAction {
+    if matches!(kind, MouseEventKind::Down(_)) {
+        view.question_review.select(row);
+    }
+    ViewAction::None
+}
 fn handle_help_mouse(view: &mut ViewState, row: usize, kind: MouseEventKind) -> ViewAction {
     if matches!(kind, MouseEventKind::Moved) {
         view.help.select(row);

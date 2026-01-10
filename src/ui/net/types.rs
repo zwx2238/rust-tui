@@ -15,6 +15,7 @@ pub struct LlmStreamRequestParams {
     pub enable_read_file: bool,
     pub enable_read_code: bool,
     pub enable_modify_file: bool,
+    pub enable_ask_questions: bool,
     pub log_dir: Option<String>,
     pub log_session_id: String,
     pub message_index: usize,

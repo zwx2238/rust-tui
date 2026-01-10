@@ -23,6 +23,7 @@ pub(crate) struct StartTabRequestParams<'a> {
     pub enable_read_file: bool,
     pub enable_read_code: bool,
     pub enable_modify_file: bool,
+    pub enable_ask_questions: bool,
     pub log_requests: Option<String>,
     pub log_session_id: String,
 }
@@ -47,6 +48,7 @@ pub(crate) fn start_tab_request(params: StartTabRequestParams<'_>) {
         enable_read_file: params.enable_read_file,
         enable_read_code: params.enable_read_code,
         enable_modify_file: params.enable_modify_file,
+        enable_ask_questions: params.enable_ask_questions,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
     });
@@ -66,6 +68,7 @@ pub(crate) struct StartFollowupRequestParams<'a> {
     pub enable_read_file: bool,
     pub enable_read_code: bool,
     pub enable_modify_file: bool,
+    pub enable_ask_questions: bool,
     pub log_requests: Option<String>,
     pub log_session_id: String,
 }
@@ -87,6 +90,7 @@ pub(crate) fn start_followup_request(params: StartFollowupRequestParams<'_>) {
         enable_read_file: params.enable_read_file,
         enable_read_code: params.enable_read_code,
         enable_modify_file: params.enable_modify_file,
+        enable_ask_questions: params.enable_ask_questions,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
     });
@@ -134,6 +138,7 @@ struct StartRequestCommonParams<'a> {
     enable_read_file: bool,
     enable_read_code: bool,
     enable_modify_file: bool,
+    enable_ask_questions: bool,
     log_requests: Option<String>,
     log_session_id: String,
 }
@@ -186,6 +191,7 @@ fn build_spawn_params(
         enable_read_file: params.enable_read_file,
         enable_read_code: params.enable_read_code,
         enable_modify_file: params.enable_modify_file,
+        enable_ask_questions: params.enable_ask_questions,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
         idx: state.idx,
@@ -209,6 +215,7 @@ struct SpawnLlmRequestParams {
     enable_read_file: bool,
     enable_read_code: bool,
     enable_modify_file: bool,
+    enable_ask_questions: bool,
     log_requests: Option<String>,
     log_session_id: String,
     idx: usize,
@@ -233,6 +240,7 @@ fn spawn_llm_request(params: SpawnLlmRequestParams) {
             enable_read_file: params.enable_read_file,
             enable_read_code: params.enable_read_code,
             enable_modify_file: params.enable_modify_file,
+            enable_ask_questions: params.enable_ask_questions,
             log_dir: params.log_requests,
             log_session_id: params.log_session_id,
             message_index: params.idx,

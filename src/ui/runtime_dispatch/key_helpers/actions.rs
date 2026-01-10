@@ -5,6 +5,8 @@ use crate::ui::runtime_dispatch::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection, cycle_model,
     sync_model_selection, sync_prompt_selection,
 };
+use crate::ui::state::{PendingCommand, QuestionDecision};
+use crate::ui::{notice::push_notice, runtime_question_review};
 
 pub(crate) fn handle_view_action_flow(
     ctx: &mut DispatchContext<'_>,
@@ -24,6 +26,9 @@ pub(crate) fn handle_view_action_flow(
         return true;
     }
     if handle_selection_actions(ctx, action) {
+        return true;
+    }
+    if handle_question_review_actions(ctx, action) {
         return true;
     }
     if handle_apply_view_action(ctx, view, jump_rows, action) {
@@ -80,6 +85,40 @@ fn handle_selection_actions(ctx: &mut DispatchContext<'_>, action: ViewAction) -
         return true;
     }
     false
+}
+
+fn handle_question_review_actions(ctx: &mut DispatchContext<'_>, action: ViewAction) -> bool {
+    let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) else {
+        return false;
+    };
+    match action {
+        ViewAction::QuestionReviewToggle(idx) => {
+            runtime_question_review::toggle_question_decision(tab_state, idx)
+        }
+        ViewAction::QuestionReviewApprove(idx) => runtime_question_review::set_question_decision(tab_state, idx, QuestionDecision::Approved),
+        ViewAction::QuestionReviewReject(idx) => runtime_question_review::set_question_decision(tab_state, idx, QuestionDecision::Rejected),
+        ViewAction::QuestionReviewApproveAll => {
+            runtime_question_review::set_all_decisions(tab_state, QuestionDecision::Approved)
+        }
+        ViewAction::QuestionReviewRejectAll => {
+            runtime_question_review::set_all_decisions(tab_state, QuestionDecision::Rejected)
+        }
+        ViewAction::QuestionReviewSubmit => handle_question_review_submit(tab_state),
+        ViewAction::QuestionReviewCancel => {
+            tab_state.app.pending_command = Some(PendingCommand::CancelQuestionReview);
+            true
+        }
+        _ => false,
+    }
+}
+
+fn handle_question_review_submit(tab_state: &mut crate::ui::runtime_helpers::TabState) -> bool {
+    if !runtime_question_review::all_questions_decided(tab_state) {
+        push_notice(&mut tab_state.app, "仍有未确认的问题");
+        return true;
+    }
+    tab_state.app.pending_command = Some(PendingCommand::SubmitQuestionReview);
+    true
 }
 
 fn handle_apply_view_action(

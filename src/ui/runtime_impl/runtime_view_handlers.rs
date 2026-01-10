@@ -153,6 +153,31 @@ pub(crate) fn handle_prompt_key(view: &mut ViewState, key: KeyEvent) -> ViewActi
     }
 }
 
+pub(crate) fn handle_question_review_key(view: &mut ViewState, key: KeyEvent) -> ViewAction {
+    match key.code {
+        KeyCode::Esc => ViewAction::QuestionReviewCancel,
+        KeyCode::Enter => ViewAction::QuestionReviewSubmit,
+        KeyCode::Up => {
+            view.question_review.move_up();
+            ViewAction::None
+        }
+        KeyCode::Down => {
+            view.question_review.move_down();
+            ViewAction::None
+        }
+        KeyCode::Char(' ') => ViewAction::QuestionReviewToggle(view.question_review.selected),
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            ViewAction::QuestionReviewApprove(view.question_review.selected)
+        }
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            ViewAction::QuestionReviewReject(view.question_review.selected)
+        }
+        KeyCode::Char('a') | KeyCode::Char('A') => ViewAction::QuestionReviewApproveAll,
+        KeyCode::Char('r') | KeyCode::Char('R') => ViewAction::QuestionReviewRejectAll,
+        _ => ViewAction::None,
+    }
+}
+
 pub(crate) fn handle_help_key(view: &mut ViewState, key: KeyEvent) -> ViewAction {
     match key.code {
         KeyCode::Esc => {

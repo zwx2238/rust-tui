@@ -121,11 +121,19 @@ impl<'a> OverlayTableController<'a> {
     }
 
     fn overlay_counts(&self) -> OverlayRowCounts {
+        let question_reviews = self
+            .dispatch
+            .tabs
+            .get(*self.dispatch.active_tab)
+            .and_then(|tab| tab.app.pending_question_review.as_ref())
+            .map(|pending| pending.questions.len())
+            .unwrap_or(0);
         OverlayRowCounts {
             tabs: self.dispatch.tabs.len(),
             jump: self.jump_rows.len(),
             models: self.dispatch.registry.models.len(),
             prompts: self.dispatch.prompt_registry.prompts.len(),
+            question_reviews,
             help: help_rows_len(),
         }
     }
@@ -141,6 +149,12 @@ pub(crate) fn clamp_overlay_tables(view: &mut ViewState, state: &RenderState<'_>
         jump: jump_len,
         models: state.models.len(),
         prompts: state.prompts.len(),
+        question_reviews: state
+            .tabs
+            .get(state.active_tab)
+            .and_then(|tab| tab.app.pending_question_review.as_ref())
+            .map(|pending| pending.questions.len())
+            .unwrap_or(0),
         help: help_rows_len(),
     };
     let _ = with_active_table_handle(view, areas, counts, |mut handle| handle.clamp());
