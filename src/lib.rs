@@ -42,6 +42,11 @@ pub mod question_set;
 /// 负责将消息和内容渲染为终端可显示的格式，包括 Markdown 渲染、布局管理等。
 pub mod render;
 
+/// 框架模块
+///
+/// 提供与 UI 解耦的基础框架能力，如组件系统等。
+pub mod framework;
+
 /// 会话管理模块
 ///
 /// 处理会话的保存、加载和管理。

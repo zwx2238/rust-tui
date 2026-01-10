@@ -9,6 +9,7 @@ mod render;
 mod session;
 mod types;
 mod ui;
+mod framework;
 
 mod cli;
 use args::{Args, Cli, Command, ModelCommand};

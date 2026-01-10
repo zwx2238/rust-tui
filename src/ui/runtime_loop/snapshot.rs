@@ -2,7 +2,7 @@ use super::{RenderSnapshot, RunLoopParams};
 use crate::ui::events::EventBatch;
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::runtime_view::ViewState;
-use crate::ui::widget_system::{LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput, WidgetSystem};
+use crate::framework::widget_system::{LayoutCtx, RenderCtx, UpdateCtx, UpdateOutput, WidgetSystem};
 
 pub(super) fn build_snapshot(
     params: &mut RunLoopParams<'_>,
