@@ -150,18 +150,16 @@ fn handle_function_keys(
     active_tab: usize,
 ) -> Option<ViewAction> {
     match key.code {
-        KeyCode::F(3) => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                Some(ViewAction::CycleModelPrev)
-            } else if key.modifiers.contains(KeyModifiers::SHIFT) {
+        KeyCode::F(3) => Some(toggle_help(view)),
+        KeyCode::F(4) => Some(toggle_overlay(view, OverlayKind::Model)),
+        KeyCode::F(10) => {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
                 Some(ViewAction::CycleModelPrev)
             } else {
                 Some(ViewAction::CycleModel)
             }
         }
-        KeyCode::F(15) => Some(ViewAction::CycleModelPrev),
-        KeyCode::F(4) => Some(toggle_overlay(view, OverlayKind::Model)),
-        KeyCode::F(10) => Some(toggle_help(view)),
+        KeyCode::F(22) => Some(ViewAction::CycleModelPrev),
         KeyCode::F(1) => Some(toggle_summary(view, active_tab, tabs_len)),
         KeyCode::F(2) => Some(toggle_jump(view)),
         KeyCode::F(5) => Some(toggle_prompt(view)),

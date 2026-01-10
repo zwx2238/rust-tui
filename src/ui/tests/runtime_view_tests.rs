@@ -59,7 +59,7 @@ mod tests {
         assert!(view.overlay.is(OverlayKind::Jump));
         let action = handle_view_key(
             &mut view,
-            KeyEvent::new(KeyCode::F(10), KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::F(3), KeyModifiers::NONE),
             3,
             0,
             0,
@@ -116,7 +116,7 @@ mod tests {
         view.overlay.open(OverlayKind::Help);
         let _ = handle_view_key(
             &mut view,
-            KeyEvent::new(KeyCode::F(10), KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::F(3), KeyModifiers::NONE),
             1,
             0,
             0,
@@ -129,7 +129,7 @@ mod tests {
         let mut view = ViewState::new();
         let action = handle_view_key(
             &mut view,
-            KeyEvent::new(KeyCode::F(3), KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::F(10), KeyModifiers::NONE),
             3,
             0,
             0,
@@ -142,7 +142,7 @@ mod tests {
         let mut view = ViewState::new();
         let action = handle_view_key(
             &mut view,
-            KeyEvent::new(KeyCode::F(3), KeyModifiers::CONTROL),
+            KeyEvent::new(KeyCode::F(10), KeyModifiers::SHIFT),
             3,
             0,
             0,
@@ -155,7 +155,7 @@ mod tests {
         let mut view = ViewState::new();
         let action = handle_view_key(
             &mut view,
-            KeyEvent::new(KeyCode::F(15), KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::F(22), KeyModifiers::NONE),
             3,
             0,
             0,
