@@ -1,0 +1,7 @@
+[build]
+rustc-wrapper = "sccache"
+
+[target.'cfg(target_os = "linux")']
+linker = "clang"
+# 使用 lld 作为兼容性更好的最快链接器；如已安装 mold 可改为 -fuse-ld=mold
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
