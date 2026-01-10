@@ -68,7 +68,7 @@ fn model_widths() -> Vec<Constraint> {
 }
 
 fn model_title() -> &'static str {
-    "模型切换 · Enter 确认 · Esc 取消 · F3/Shift+F3 快速切换"
+    "模型切换 · Enter 确认 · Esc 取消 · F3/Ctrl+F3 快速切换"
 }
 
 pub fn model_popup_area(area: Rect, rows: usize) -> Rect {

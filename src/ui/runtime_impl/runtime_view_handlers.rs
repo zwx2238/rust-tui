@@ -184,12 +184,10 @@ pub(crate) fn handle_question_review_key(view: &mut ViewState, key: KeyEvent) ->
             }
         }
         KeyCode::Char('M') => {
-            if key.modifiers.contains(KeyModifiers::SHIFT) {
-                ViewAction::QuestionReviewPrevModel(view.question_review.selected)
-            } else if key.modifiers.contains(KeyModifiers::ALT) {
+            if key.modifiers.contains(KeyModifiers::ALT) {
                 ViewAction::QuestionReviewSetAllModel(view.question_review.selected)
             } else {
-                ViewAction::QuestionReviewNextModel(view.question_review.selected)
+                ViewAction::QuestionReviewPrevModel(view.question_review.selected)
             }
         }
         KeyCode::PageUp => {

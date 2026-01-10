@@ -67,7 +67,7 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::Chat,
-        keys: "F3 / Shift+F3",
+        keys: "F3 / Ctrl+F3",
         description: "下一个 / 上一个模型",
     },
     Shortcut {
@@ -187,7 +187,7 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::QuestionReview,
-        keys: "m / Shift+M",
+        keys: "m / M",
         description: "下一个 / 上一个模型",
     },
     Shortcut {

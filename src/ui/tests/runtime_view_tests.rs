@@ -142,7 +142,7 @@ mod tests {
         let mut view = ViewState::new();
         let action = handle_view_key(
             &mut view,
-            KeyEvent::new(KeyCode::F(3), KeyModifiers::SHIFT),
+            KeyEvent::new(KeyCode::F(3), KeyModifiers::CONTROL),
             3,
             0,
             0,

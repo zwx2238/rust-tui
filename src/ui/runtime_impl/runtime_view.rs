@@ -151,7 +151,9 @@ fn handle_function_keys(
 ) -> Option<ViewAction> {
     match key.code {
         KeyCode::F(3) => {
-            if key.modifiers.contains(KeyModifiers::SHIFT) {
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                Some(ViewAction::CycleModelPrev)
+            } else if key.modifiers.contains(KeyModifiers::SHIFT) {
                 Some(ViewAction::CycleModelPrev)
             } else {
                 Some(ViewAction::CycleModel)
