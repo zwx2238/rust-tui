@@ -16,6 +16,11 @@ pub(crate) fn handle_key_event(
     msg_width: usize,
     theme: &RenderTheme,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    if let Some(tab_state) = tabs.get_mut(active_tab)
+        && key_debug_enabled()
+    {
+        crate::ui::notice::push_notice(&mut tab_state.app, format_key_event(key));
+    }
     if let Some(result) = handle_ctrl_c(key, tabs, active_tab, args, msg_width, theme)? {
         return Ok(result);
     }
@@ -25,6 +30,32 @@ pub(crate) fn handle_key_event(
         return Ok(true);
     }
     Ok(false)
+}
+
+fn key_debug_enabled() -> bool {
+    std::env::var_os("DEEPCHAT_KEY_DEBUG").is_some()
+}
+
+fn format_key_event(key: KeyEvent) -> String {
+    let mods = format_modifiers(key.modifiers);
+    format!("KeyEvent: code={:?} mods={mods}", key.code)
+}
+
+fn format_modifiers(mods: KeyModifiers) -> String {
+    if mods.is_empty() {
+        return "NONE".to_string();
+    }
+    let mut parts = Vec::new();
+    if mods.contains(KeyModifiers::CONTROL) {
+        parts.push("CTRL");
+    }
+    if mods.contains(KeyModifiers::SHIFT) {
+        parts.push("SHIFT");
+    }
+    if mods.contains(KeyModifiers::ALT) {
+        parts.push("ALT");
+    }
+    parts.join("+")
 }
 
 fn handle_ctrl_c(
