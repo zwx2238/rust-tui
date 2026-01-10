@@ -4,7 +4,7 @@ use crate::ui::draw::style::{base_fg, base_style, focus_border_style};
 use crate::ui::scroll::{max_scroll, max_scroll_u16};
 use crate::ui::scroll_debug::{self, ScrollDebug};
 use crate::ui::selection::{Selection, apply_selection_to_text};
-use crate::ui::runtime_events::handle_mouse_event;
+use crate::framework::widget_system::events::{MouseEventParams, handle_mouse_event};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::Focus;
 use crate::framework::widget_system::bindings::bind_event;
@@ -208,7 +208,7 @@ fn handle_messages_mouse(
     m: crossterm::event::MouseEvent,
 ) {
     let binding = bind_event(ctx, layout, update);
-    let _ = handle_mouse_event(crate::ui::runtime_events::MouseEventParams {
+    let _ = handle_mouse_event(MouseEventParams {
         m,
         tabs: binding.dispatch.tabs,
         active_tab: binding.dispatch.active_tab,

@@ -1,4 +1,4 @@
-use crate::ui::runtime_events::{handle_key_event, handle_paste_event};
+use crate::framework::widget_system::events::{handle_key_event, handle_paste_event};
 use crate::framework::widget_system::bindings::bind_active_tab;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;

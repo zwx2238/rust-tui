@@ -1,4 +1,4 @@
-use crate::ui::logic::point_in_rect;
+use crate::framework::widget_system::events::point_in_rect;
 use crate::ui::runtime_helpers::{
     TabState, active_tab_position, tab_labels_for_category, visible_tab_indices,
 };

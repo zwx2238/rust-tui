@@ -4,7 +4,7 @@ mod scroll;
 mod tabs_wheel;
 mod types;
 
-use crate::ui::logic::point_in_rect;
+use crate::framework::widget_system::events::point_in_rect;
 use crossterm::event::MouseEventKind;
 
 pub(crate) use tabs_wheel::handle_tabs_wheel;

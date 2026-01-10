@@ -1,9 +1,8 @@
+use crate::framework::widget_system::events::{point_in_rect, scroll_from_mouse, selection_view_text};
 use crate::render::RenderTheme;
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::draw::{inner_area, scrollbar_area};
 use crate::ui::input_click::click_to_cursor;
-use crate::ui::logic::{point_in_rect, scroll_from_mouse};
-use crate::ui::runtime_events_helpers::selection_view_text;
 use crate::ui::selection::{Selection, chat_position_from_mouse};
 use crate::ui::state::Focus;
 use crossterm::event::MouseEvent;

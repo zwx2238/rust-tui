@@ -28,7 +28,7 @@ impl Widget for MessageHistoryWidget {
         _ctx: &mut LayoutCtx<'_>,
         bc: BoxConstraints,
     ) -> Result<Size, Box<dyn Error>> {
-        let width = crate::ui::runtime_layout::compute_history_width(bc.max.width);
+        let width = crate::framework::widget_system::layout::compute_history_width(bc.max.width);
         Ok(Size {
             width,
             height: bc.max.height,

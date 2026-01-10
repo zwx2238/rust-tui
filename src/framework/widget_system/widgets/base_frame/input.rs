@@ -1,7 +1,9 @@
 use crate::render::RenderTheme;
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
 use crate::ui::draw::style::{base_style, focus_border_style};
-use crate::ui::runtime_events::{handle_key_event, handle_mouse_event, handle_paste_event};
+use crate::framework::widget_system::events::{
+    MouseEventParams, handle_key_event, handle_mouse_event, handle_paste_event,
+};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::state::Focus;
 use crate::framework::widget_system::BoxConstraints;
@@ -29,7 +31,7 @@ impl Widget for InputWidget {
         bc: BoxConstraints,
     ) -> Result<Size, Box<dyn Error>> {
         let rect = ratatui::layout::Rect::new(0, 0, bc.max.width, bc.max.height);
-        let height = crate::ui::runtime_layout::compute_input_height(
+        let height = crate::framework::widget_system::layout::compute_input_height(
             rect,
             ctx.view,
             ctx.tabs,
@@ -181,7 +183,7 @@ fn handle_input_mouse(
         return Ok(EventResult::ignored());
     }
     let binding = bind_event(ctx, layout, update);
-    let _ = handle_mouse_event(crate::ui::runtime_events::MouseEventParams {
+    let _ = handle_mouse_event(MouseEventParams {
         m,
         tabs: binding.dispatch.tabs,
         active_tab: binding.dispatch.active_tab,
