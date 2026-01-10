@@ -164,7 +164,7 @@ fn start_question_request(
     let Some(params) = build_tab_request_params(tabs, tab_idx, question, args, tx, registry) else {
         return;
     };
-    crate::ui::runtime_requests::start_tab_request(params);
+    crate::services::runtime_requests::start_tab_request(params);
 }
 
 fn build_tab_request_params<'a>(
@@ -174,7 +174,7 @@ fn build_tab_request_params<'a>(
     args: &'a Args,
     tx: &'a mpsc::Sender<RuntimeEvent>,
     registry: &'a crate::model_registry::ModelRegistry,
-) -> Option<crate::ui::runtime_requests::StartTabRequestParams<'a>> {
+) -> Option<crate::services::runtime_requests::StartTabRequestParams<'a>> {
     let tab_state = tabs.get_mut(tab_idx)?;
     let log_session_id = tab_state.app.log_session_id.clone();
     let model = model_for_tab(tab_state, registry);
@@ -215,8 +215,8 @@ fn tab_request_params<'a>(
     args: &'a Args,
     tx: &'a mpsc::Sender<RuntimeEvent>,
     log_session_id: String,
-) -> crate::ui::runtime_requests::StartTabRequestParams<'a> {
-    crate::ui::runtime_requests::StartTabRequestParams {
+) -> crate::services::runtime_requests::StartTabRequestParams<'a> {
+    crate::services::runtime_requests::StartTabRequestParams {
         tab_state,
         question,
         base_url: &model.base_url,

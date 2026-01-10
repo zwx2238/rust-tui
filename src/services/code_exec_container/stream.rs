@@ -56,7 +56,7 @@ pub(crate) fn stop_exec(container_id: &str, run_id: &str) -> bool {
         .arg("-lc")
         .arg(format!(
             "pkill -f {}/{}.",
-            crate::ui::code_exec_container_env::run_dir(),
+            crate::services::code_exec_container_env::run_dir(),
             run_id
         ))
         .stdout(Stdio::null())

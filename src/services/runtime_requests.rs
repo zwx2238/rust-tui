@@ -223,7 +223,7 @@ struct SpawnLlmRequestParams {
 
 fn spawn_llm_request(params: SpawnLlmRequestParams) {
     thread::spawn(move || {
-        crate::ui::net::request_llm_stream(crate::ui::net::LlmStreamRequestParams {
+        crate::services::net::request_llm_stream(crate::services::net::LlmStreamRequestParams {
             base_url: params.base_url,
             api_key: params.api_key,
             model: params.model,

@@ -6,7 +6,7 @@ use crate::ui::notice::push_notice;
 use crate::ui::overlay::OverlayKind;
 use crate::ui::overlay_table_state::{OverlayAreas, OverlayRowCounts, overlay_visible_rows};
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_tab_request;
+use crate::services::runtime_requests::start_tab_request;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
@@ -47,7 +47,7 @@ pub(crate) fn start_pending_request(
 ) {
     let model = resolve_model(registry, &tab_state.app.model_key);
     let log_session_id = tab_state.app.log_session_id.clone();
-    start_tab_request(crate::ui::runtime_requests::StartTabRequestParams {
+    start_tab_request(crate::services::runtime_requests::StartTabRequestParams {
         tab_state,
         question: "",
         base_url: &model.base_url,

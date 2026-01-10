@@ -1,11 +1,11 @@
 use crate::args::Args;
 use crate::types::Message;
-use crate::ui::code_exec_container::ensure_container_cached;
+use crate::services::code_exec_container::ensure_container_cached;
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_followup_request;
+use crate::services::runtime_requests::start_followup_request;
 use crate::ui::state::PendingFilePatch;
-use crate::ui::workspace::resolve_workspace;
+use crate::services::workspace::resolve_workspace;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
@@ -121,7 +121,7 @@ fn start_followup(
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
     let log_session_id = tab_state.app.log_session_id.clone();
-    start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
+    start_followup_request(crate::services::runtime_requests::StartFollowupRequestParams {
         tab_state,
         base_url: &model.base_url,
         api_key: &model.api_key,

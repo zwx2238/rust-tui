@@ -1,5 +1,5 @@
-use crate::ui::code_exec_container::ensure_container_cached;
-use crate::ui::workspace::{WorkspaceConfig, resolve_container_path};
+use crate::services::code_exec_container::ensure_container_cached;
+use crate::services::workspace::{WorkspaceConfig, resolve_container_path};
 
 use super::container::run_container_python;
 use super::{ToolResult, tool_err};

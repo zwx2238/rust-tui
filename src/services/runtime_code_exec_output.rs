@@ -1,4 +1,4 @@
-use crate::ui::runtime_code_exec_helpers::filter_pip_output;
+use crate::services::runtime_code_exec_helpers::filter_pip_output;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::{CodeExecLive, CodeExecReasonTarget, PendingCodeExec};
 

@@ -1,11 +1,11 @@
 use crate::args::Args;
 use crate::ui::events::RuntimeEvent;
-use crate::ui::runtime_code_exec::{
+use crate::services::runtime_code_exec::{
     handle_code_exec_approve, handle_code_exec_deny, handle_code_exec_exit, handle_code_exec_stop,
 };
-use crate::ui::runtime_file_patch::{handle_file_patch_apply, handle_file_patch_cancel};
+use crate::services::runtime_file_patch::{handle_file_patch_apply, handle_file_patch_cancel};
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_question_review::{
+use crate::services::runtime_question_review::{
     QuestionReviewSubmitParams, handle_question_review_cancel, handle_question_review_submit,
 };
 use crate::ui::state::PendingCommand;

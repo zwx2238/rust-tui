@@ -1,5 +1,5 @@
 use crate::types::ToolCall;
-use crate::ui::workspace::WorkspaceConfig;
+use crate::services::workspace::WorkspaceConfig;
 
 use super::ToolResult;
 use super::list_dir::run_list_dir;

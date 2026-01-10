@@ -2,11 +2,11 @@ use crate::args::Args;
 use crate::model_registry::{ModelProfile, ModelRegistry};
 use crate::types::ToolCall;
 use crate::ui::events::RuntimeEvent;
-use crate::ui::runtime_code_exec::{handle_bash_exec_request, handle_code_exec_request};
+use crate::services::runtime_code_exec::{handle_bash_exec_request, handle_code_exec_request};
+use crate::services::runtime_requests::start_followup_request;
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_followup_request;
-use crate::ui::tools::run_tool;
-use crate::ui::workspace::resolve_workspace;
+use crate::services::tools::run_tool;
+use crate::services::workspace::resolve_workspace;
 use std::sync::mpsc;
 
 use super::helpers::{
@@ -96,7 +96,7 @@ impl<'a> ToolService<'a> {
         if self.reject_modify_file(tab_state, call, state) {
             return;
         }
-        match crate::ui::runtime_file_patch::handle_file_patch_request(tab_state, call) {
+        match crate::services::runtime_file_patch::handle_file_patch_request(tab_state, call) {
             Ok(()) => self.apply_file_patch(tab_state, state),
             Err(err) => push_tool_error(tab_state, call, state, err),
         }
@@ -146,7 +146,7 @@ impl<'a> ToolService<'a> {
             push_tool_error(tab_state, call, state, "ask_questions 未启用");
             return;
         }
-        match crate::ui::runtime_question_review::handle_question_review_request(
+        match crate::services::runtime_question_review::handle_question_review_request(
             tab_state,
             call,
             self.registry,
@@ -199,7 +199,7 @@ impl<'a> ToolService<'a> {
 
     fn apply_file_patch(&self, tab_state: &mut TabState, state: &mut ToolApplyState) {
         if self.args.yolo_enabled() {
-            crate::ui::runtime_file_patch::handle_file_patch_apply(
+            crate::services::runtime_file_patch::handle_file_patch_apply(
                 tab_state,
                 self.registry,
                 self.args,
@@ -213,7 +213,7 @@ impl<'a> ToolService<'a> {
 
     fn apply_code_exec(&self, tab_state: &mut TabState, tab_id: usize, state: &mut ToolApplyState) {
         if self.args.yolo_enabled() {
-            crate::ui::runtime_code_exec::handle_code_exec_approve(
+            crate::services::runtime_code_exec::handle_code_exec_approve(
                 tab_state,
                 tab_id,
                 self.registry,
@@ -238,7 +238,7 @@ impl<'a> ToolService<'a> {
 
     fn start_followup(&self, tab_state: &mut TabState, model: &ModelProfile) {
         let log_session_id = tab_state.app.log_session_id.clone();
-        start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
+        start_followup_request(crate::services::runtime_requests::StartFollowupRequestParams {
             tab_state,
             base_url: &model.base_url,
             api_key: &model.api_key,
