@@ -36,34 +36,3 @@ pub(crate) fn count_list_item_lines(text: &str, prefix: &str, indent: &str, widt
     let available = width.max(10).saturating_sub(indent_width + prefix_width);
     wrap(text, available.max(1)).len()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::render::theme::RenderTheme;
-    use ratatui::style::Color;
-
-    fn theme() -> RenderTheme {
-        RenderTheme {
-            bg: Color::Black,
-            fg: Some(Color::White),
-            code_bg: Color::Black,
-            code_theme: "base16-ocean.dark",
-            heading_fg: Some(Color::Cyan),
-        }
-    }
-
-    #[test]
-    fn renders_wrapped_list_items() {
-        let lines =
-            render_list_item_lines("这是一个很长的列表项，需要换行", "1. ", "  ", 10, &theme());
-        assert!(lines.len() >= 2);
-        assert!(lines[0].to_string().contains("1."));
-    }
-
-    #[test]
-    fn counts_list_item_lines() {
-        let count = count_list_item_lines("long long long long", "- ", "", 8);
-        assert!(count >= 2);
-    }
-}

@@ -148,10 +148,6 @@ fn start_request_common(params: StartRequestCommonParams<'_>) {
         return;
     }
     let state = build_request_state(params.app);
-    #[cfg(test)]
-    if std::env::var("DEEPCHAT_TEST_SKIP_REQUEST").is_ok() {
-        return;
-    }
     spawn_llm_request(build_spawn_params(params, state));
 }
 

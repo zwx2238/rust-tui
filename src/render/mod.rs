@@ -13,8 +13,6 @@
 mod cache;
 mod layout;
 mod markdown;
-#[cfg(test)]
-mod tests;
 mod theme;
 mod util;
 

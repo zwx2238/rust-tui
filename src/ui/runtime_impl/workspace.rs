@@ -1,6 +1,5 @@
 use crate::args::Args;
 use std::path::{Path, PathBuf};
-#[cfg(not(test))]
 use std::sync::OnceLock;
 
 pub(crate) const WORKSPACE_MOUNT: &str = "/workspace";
@@ -12,15 +11,8 @@ pub(crate) struct WorkspaceConfig {
     pub(crate) mount_path: String,
 }
 
-#[cfg(not(test))]
 static WORKSPACE_CACHE: OnceLock<Result<WorkspaceConfig, String>> = OnceLock::new();
 
-#[cfg(test)]
-pub(crate) fn resolve_workspace(args: &Args) -> Result<WorkspaceConfig, String> {
-    build_workspace_config(args)
-}
-
-#[cfg(not(test))]
 pub(crate) fn resolve_workspace(args: &Args) -> Result<WorkspaceConfig, String> {
     WORKSPACE_CACHE
         .get_or_init(|| build_workspace_config(args))

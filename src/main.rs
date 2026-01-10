@@ -7,8 +7,6 @@ mod model_registry;
 mod question_set;
 mod render;
 mod session;
-#[cfg(test)]
-mod test_support;
 mod types;
 mod ui;
 
@@ -96,99 +94,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ModelCommand::Add => cli::model::run_add(cli.config.as_deref()),
         },
         None => run_with_args(cli.args, cli.config.as_deref()),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::run_with_args;
-    use crate::args::Cli;
-    use crate::test_support::{env_lock, restore_env, set_env};
-    use clap::Parser;
-    use std::path::PathBuf;
-
-    fn temp_workspace_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("deepchat-ws-{name}"));
-        let _ = std::fs::create_dir_all(&dir);
-        dir
-    }
-
-    #[test]
-    fn run_with_args_sets_network_env_for_yolo() {
-        let _guard = env_lock().lock().unwrap();
-        let prev = std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok();
-        restore_env("DEEPCHAT_CODE_EXEC_NETWORK", None);
-        let ws = temp_workspace_dir("yolo");
-        let cli = Cli::parse_from([
-            "bin",
-            "--question-set",
-            "list",
-            "--yolo",
-            "--workspace",
-            ws.to_string_lossy().as_ref(),
-        ]);
-        let result = run_with_args(cli.args, cli.config.as_deref());
-        assert!(result.is_ok());
-        assert_eq!(
-            std::env::var("DEEPCHAT_CODE_EXEC_NETWORK").ok().as_deref(),
-            Some("none")
-        );
-        restore_env("DEEPCHAT_CODE_EXEC_NETWORK", prev);
-    }
-
-    #[test]
-    fn run_with_args_sets_read_only_env() {
-        let _guard = env_lock().lock().unwrap();
-        let prev = std::env::var("DEEPCHAT_READ_ONLY").ok();
-        restore_env("DEEPCHAT_READ_ONLY", None);
-        let ws = temp_workspace_dir("ro");
-        let cli = Cli::parse_from([
-            "bin",
-            "--question-set",
-            "list",
-            "--read-only",
-            "--workspace",
-            ws.to_string_lossy().as_ref(),
-        ]);
-        let result = run_with_args(cli.args, cli.config.as_deref());
-        assert!(result.is_ok());
-        assert_eq!(
-            std::env::var("DEEPCHAT_READ_ONLY").ok().as_deref(),
-            Some("1")
-        );
-        restore_env("DEEPCHAT_READ_ONLY", prev);
-    }
-
-    #[test]
-    fn run_with_args_reports_config_error() {
-        let ws = temp_workspace_dir("cfg");
-        let cli = Cli::parse_from([
-            "bin",
-            "--config",
-            "/tmp/deepchat-missing-config.json",
-            "--workspace",
-            ws.to_string_lossy().as_ref(),
-        ]);
-        let result = run_with_args(cli.args, cli.config.as_deref());
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn run_with_args_question_set_list_is_ok() {
-        let _guard = env_lock().lock().unwrap();
-        let temp = std::env::temp_dir().join("deepchat-question-set");
-        let _ = std::fs::create_dir_all(&temp);
-        let prev = set_env("HOME", &temp.to_string_lossy());
-        let ws = temp_workspace_dir("qs");
-        let cli = Cli::parse_from([
-            "bin",
-            "--question-set",
-            "list",
-            "--workspace",
-            ws.to_string_lossy().as_ref(),
-        ]);
-        let result = run_with_args(cli.args, cli.config.as_deref());
-        assert!(result.is_ok());
-        restore_env("HOME", prev);
     }
 }

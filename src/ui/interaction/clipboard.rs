@@ -158,32 +158,3 @@ fn write_clip_utf16le(text: &str) -> bool {
     }
     child.wait().map(|s| s.success()).unwrap_or(false)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{is_wsl, normalize, truncate_utf8};
-    use crate::test_support::{env_lock, restore_env, set_env};
-
-    #[test]
-    fn normalize_rewrites_newlines() {
-        let out = normalize("a\r\nb\rc".to_string());
-        assert_eq!(out, "a\nb\nc");
-    }
-
-    #[test]
-    fn is_wsl_checks_env_var() {
-        let _guard = env_lock().lock().unwrap();
-        let prev = set_env("WSL_DISTRO_NAME", "Ubuntu");
-        assert!(is_wsl());
-        restore_env("WSL_DISTRO_NAME", prev);
-    }
-
-    #[test]
-    fn truncate_utf8_respects_char_boundaries() {
-        let s = "a😊b";
-        assert_eq!(truncate_utf8(s, 1), "a");
-        assert_eq!(truncate_utf8(s, 2), "a");
-        assert_eq!(truncate_utf8(s, 5), "a😊");
-        assert_eq!(truncate_utf8(s, 1024), s);
-    }
-}

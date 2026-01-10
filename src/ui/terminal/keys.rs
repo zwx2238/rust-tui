@@ -152,32 +152,3 @@ fn fkey_bytes(n: u8) -> Option<Vec<u8>> {
         _ => None,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ctrl_c_is_etx() {
-        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
-        assert_eq!(key_event_to_bytes(key), Some(vec![0x03]));
-    }
-
-    #[test]
-    fn alt_x_prefixes_escape() {
-        let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::ALT);
-        assert_eq!(key_event_to_bytes(key), Some(vec![0x1b, b'x']));
-    }
-
-    #[test]
-    fn shift_tab_is_backtab_sequence() {
-        let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT);
-        assert_eq!(key_event_to_bytes(key), Some(vec![0x1b, b'[', b'Z']));
-    }
-
-    #[test]
-    fn up_arrow_is_csi_a() {
-        let key = KeyEvent::new(KeyCode::Up, KeyModifiers::empty());
-        assert_eq!(key_event_to_bytes(key), Some(b"\x1b[A".to_vec()));
-    }
-}

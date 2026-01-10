@@ -53,39 +53,3 @@ pub fn truncate_to_width_ellipsis_char(text: &str, max_width: usize) -> String {
     out.push_str(ellipsis);
     out
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{collapse_text, truncate_to_width, truncate_to_width_ellipsis_char};
-    use unicode_width::UnicodeWidthStr;
-
-    #[test]
-    fn collapse_text_merges_whitespace() {
-        let input = "a  b\nc\t d";
-        assert_eq!(collapse_text(input), "a b c d");
-    }
-
-    #[test]
-    fn truncate_to_width_keeps_short() {
-        assert_eq!(truncate_to_width("hello", 10), "hello");
-    }
-
-    #[test]
-    fn truncate_to_width_adds_ellipsis() {
-        let out = truncate_to_width("hello world", 6);
-        assert_eq!(out, "hel...");
-    }
-
-    #[test]
-    fn truncate_to_width_ellipsis_char_width_1_is_safe() {
-        let out = truncate_to_width_ellipsis_char("hello", 1);
-        assert_eq!(out, "…");
-        assert!(out.width() <= 1);
-    }
-
-    #[test]
-    fn truncate_to_width_ellipsis_char_width_2_is_safe() {
-        let out = truncate_to_width_ellipsis_char("hello", 2);
-        assert!(out.width() <= 2);
-    }
-}

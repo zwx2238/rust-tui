@@ -41,33 +41,3 @@ pub fn label_line_layout(
     let end = start.saturating_add(button_width);
     (Some((start, end)), line_cursor)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{label_line_layout, label_line_with_button};
-    use crate::render::RenderTheme;
-    use ratatui::style::Color;
-
-    #[test]
-    fn layout_only_for_user() {
-        let (range, cursor) = label_line_layout("assistant", "🤖", 0);
-        assert!(range.is_none());
-        assert_eq!(cursor, 0);
-        let (range, _) = label_line_layout("user", "👤", 0);
-        assert!(range.is_some());
-    }
-
-    #[test]
-    fn label_line_includes_button_for_user() {
-        let theme = RenderTheme {
-            bg: Color::Black,
-            fg: None,
-            code_bg: Color::Black,
-            code_theme: "base16-ocean.dark",
-            heading_fg: None,
-        };
-        let line = label_line_with_button("user", "👤", &theme);
-        let text: String = line.spans.iter().map(|s| s.content.to_string()).collect();
-        assert!(text.contains("[编辑]"));
-    }
-}

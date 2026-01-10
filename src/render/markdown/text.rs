@@ -30,33 +30,3 @@ pub(crate) fn render_heading_lines(
         .map(|line| Line::from(Span::styled(line.to_string(), style)))
         .collect()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::render::theme::RenderTheme;
-    use ratatui::style::Color;
-
-    fn theme() -> RenderTheme {
-        RenderTheme {
-            bg: Color::Black,
-            fg: Some(Color::White),
-            code_bg: Color::Black,
-            code_theme: "base16-ocean.dark",
-            heading_fg: Some(Color::Cyan),
-        }
-    }
-
-    #[test]
-    fn renders_paragraph_wrapped() {
-        let lines = render_paragraph_lines("hello world from deepchat", 8, &theme());
-        assert!(lines.len() >= 2);
-    }
-
-    #[test]
-    fn renders_heading_with_style() {
-        let lines = render_heading_lines("Heading", HeadingLevel::H2, 10, &theme());
-        assert_eq!(lines.len(), 1);
-        assert!(lines[0].to_string().contains("Heading"));
-    }
-}

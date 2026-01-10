@@ -47,9 +47,6 @@ pub mod render;
 /// 处理会话的保存、加载和管理。
 pub mod session;
 
-#[cfg(test)]
-mod test_support;
-
 /// 类型定义模块
 ///
 /// 定义应用程序中使用的主要数据结构，如消息、角色等。

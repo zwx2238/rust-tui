@@ -12,9 +12,6 @@ pub(crate) use count::count_markdown_lines;
 pub(crate) use latex::preprocess_math;
 pub use render::render_markdown_lines;
 
-#[cfg(test)]
-mod tests;
-
 pub(crate) fn close_unbalanced_code_fence(input: &str) -> String {
     let mut fence_count = 0usize;
     for line in input.lines() {

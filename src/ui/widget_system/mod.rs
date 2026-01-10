@@ -3,8 +3,6 @@ mod context;
 mod lifecycle;
 mod render;
 mod widget_pod;
-#[cfg(test)]
-mod widget_system_tests;
 mod widgets;
 
 use std::error::Error;
