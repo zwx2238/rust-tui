@@ -1,4 +1,4 @@
-use crate::ui::runtime_helpers::{
+use crate::framework::widget_system::runtime::runtime_helpers::{
     TabState, active_tab_position, tab_position_in_category, visible_tab_indices,
 };
 

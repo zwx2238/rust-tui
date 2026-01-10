@@ -1,4 +1,4 @@
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::box_constraints::BoxConstraints;
 use crate::framework::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
@@ -64,7 +64,7 @@ impl<A: Widget, B: Widget> Widget for Stack2<A, B> {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::ui::jump::JumpRow],
+        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let Some((x, y)) = mouse_pos(event) else {

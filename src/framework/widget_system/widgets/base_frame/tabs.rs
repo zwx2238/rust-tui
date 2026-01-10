@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::style::base_fg;
-use crate::ui::tab_bar::build_tab_bar_view;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::draw::style::base_fg;
+use crate::framework::widget_system::widgets::tab_bar::build_tab_bar_view;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
@@ -31,7 +31,7 @@ impl Widget for TabsWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {
@@ -80,7 +80,7 @@ fn draw_tabs(
 }
 
 fn build_tab_spans(
-    view: &crate::ui::tab_bar::TabBarView,
+    view: &crate::framework::widget_system::widgets::tab_bar::TabBarView,
     theme: &RenderTheme,
 ) -> Vec<Span<'static>> {
     let mut spans = Vec::new();

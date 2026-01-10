@@ -1,12 +1,12 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y, inner_area, scrollbar_area};
-use crate::ui::draw::style::{base_fg, base_style, focus_border_style};
-use crate::ui::scroll::{max_scroll, max_scroll_u16};
-use crate::ui::scroll_debug::{self, ScrollDebug};
-use crate::ui::selection::{Selection, apply_selection_to_text};
+use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y, inner_area, scrollbar_area};
+use crate::framework::widget_system::draw::style::{base_fg, base_style, focus_border_style};
+use crate::framework::widget_system::interaction::scroll::{max_scroll, max_scroll_u16};
+use crate::framework::widget_system::interaction::scroll_debug::{self, ScrollDebug};
+use crate::framework::widget_system::interaction::selection::{Selection, apply_selection_to_text};
 use crate::framework::widget_system::events::{MouseEventParams, handle_mouse_event};
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::state::Focus;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::state::Focus;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
@@ -39,7 +39,7 @@ impl Widget for MessagesWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {

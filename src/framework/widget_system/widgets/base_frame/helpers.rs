@@ -5,7 +5,7 @@ use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;
 use crate::framework::widget_system::widget_pod::WidgetPod;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use std::error::Error;
 
 pub(super) fn point_in_rect(column: u16, row: u16, rect: ratatui::layout::Rect) -> bool {
@@ -13,7 +13,7 @@ pub(super) fn point_in_rect(column: u16, row: u16, rect: ratatui::layout::Rect) 
 }
 
 pub(super) fn scrollbar_hit(area: ratatui::layout::Rect, column: u16, row: u16) -> bool {
-    let scroll = crate::ui::draw::scrollbar_area(area);
+    let scroll = crate::framework::widget_system::draw::scrollbar_area(area);
     point_in_rect(column, row, scroll)
 }
 
@@ -80,7 +80,7 @@ pub(super) fn pod_event_handled<T: crate::framework::widget_system::lifecycle::W
     event: &crossterm::event::Event,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
 ) -> Result<bool, Box<dyn Error>> {
     Ok(pod.event(ctx, event, layout, update, jump_rows)?.handled)
 }

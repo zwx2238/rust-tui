@@ -23,8 +23,8 @@ pub(super) fn is_mouse_drag(kind: crossterm::event::MouseEventKind) -> bool {
 
 pub(super) fn scroll_delta(kind: crossterm::event::MouseEventKind) -> Option<i32> {
     match kind {
-        crossterm::event::MouseEventKind::ScrollUp => Some(-crate::ui::scroll::SCROLL_STEP_I32),
-        crossterm::event::MouseEventKind::ScrollDown => Some(crate::ui::scroll::SCROLL_STEP_I32),
+        crossterm::event::MouseEventKind::ScrollUp => Some(-crate::framework::widget_system::interaction::scroll::SCROLL_STEP_I32),
+        crossterm::event::MouseEventKind::ScrollDown => Some(crate::framework::widget_system::interaction::scroll::SCROLL_STEP_I32),
         _ => None,
     }
 }

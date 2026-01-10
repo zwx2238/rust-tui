@@ -1,4 +1,4 @@
-use crate::ui::draw::{inner_height, inner_width};
+use crate::framework::widget_system::draw::{inner_height, inner_width};
 use crate::framework::widget_system::layout::LayoutInfo;
 use crate::framework::widget_system::BoxConstraints;
 use crate::framework::widget_system::context::{
@@ -6,7 +6,8 @@ use crate::framework::widget_system::context::{
 };
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use crate::framework::widget_system::widget_pod::WidgetPod;
-use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::widgets::jump::JumpRow;
 use ratatui::layout::Size;
 use std::error::Error;
 

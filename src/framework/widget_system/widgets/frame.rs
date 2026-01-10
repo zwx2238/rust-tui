@@ -1,8 +1,8 @@
-use crate::ui::runtime_loop_steps::{
+use crate::framework::widget_system::runtime::runtime_loop_steps::{
     FrameLayout, ProcessStreamUpdatesParams, active_frame_data, handle_pending_line, header_note,
     prepare_categories, process_stream_updates, tab_labels_and_pos,
 };
-use crate::ui::runtime_tick::{ActiveFrameData, apply_preheat_results};
+use crate::framework::widget_system::runtime_tick::{ActiveFrameData, apply_preheat_results};
 use std::error::Error;
 
 use super::super::context::{UpdateCtx, UpdateOutput};
@@ -16,7 +16,7 @@ impl FrameLifecycle {
         layout: &FrameLayout,
     ) -> Result<UpdateOutput, Box<dyn Error>> {
         apply_preheat_results(&mut ctx.events.preheat, ctx.tabs);
-        crate::ui::terminal::apply_terminal_events(&mut ctx.events.terminal, ctx.tabs);
+        crate::framework::widget_system::widgets::terminal::apply_terminal_events(&mut ctx.events.terminal, ctx.tabs);
         let tabs = prepare_tabs(ctx);
         run_stream_updates(ctx, layout)?;
         let active_data = build_active_data(ctx, layout);
@@ -63,7 +63,7 @@ fn run_stream_updates(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> Result<(
 }
 
 fn build_active_data(ctx: &mut UpdateCtx<'_>, layout: &FrameLayout) -> ActiveFrameData {
-    active_frame_data(crate::ui::runtime_loop_steps::ActiveFrameDataParams {
+    active_frame_data(crate::framework::widget_system::runtime::runtime_loop_steps::ActiveFrameDataParams {
         tabs: ctx.tabs,
         active_tab: *ctx.active_tab,
         args: ctx.args,
@@ -84,8 +84,8 @@ fn handle_pending_actions(ctx: &mut UpdateCtx<'_>, active_data: &ActiveFrameData
         ctx.args,
         ctx.tx,
     );
-    crate::ui::runtime_loop_helpers::handle_pending_command_if_any(
-        crate::ui::runtime_loop_helpers::HandlePendingCommandIfAnyParams {
+    crate::framework::widget_system::runtime_loop_helpers::handle_pending_command_if_any(
+        crate::framework::widget_system::runtime_loop_helpers::HandlePendingCommandIfAnyParams {
             pending_command: active_data.pending_command,
             tabs: ctx.tabs,
             active_tab: ctx.active_tab,

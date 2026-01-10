@@ -1,5 +1,5 @@
-use crate::ui::jump::JumpRow;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::widgets::jump::JumpRow;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::box_constraints::BoxConstraints;
 use crossterm::event::Event;
 use ratatui::layout::{Rect, Size};

@@ -1,11 +1,11 @@
 use crate::args::Args;
 use crate::render::{RenderTheme, messages_to_plain_lines};
-use crate::ui::clipboard;
-use crate::ui::input::handle_key;
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_tick::build_display_messages;
-use crate::ui::selection::extract_selection;
-use crate::ui::state::Focus;
+use crate::framework::widget_system::interaction::clipboard;
+use crate::framework::widget_system::interaction::input::handle_key;
+use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::runtime_tick::build_display_messages;
+use crate::framework::widget_system::interaction::selection::extract_selection;
+use crate::framework::widget_system::runtime::state::Focus;
 use crossterm::event::{KeyEvent, KeyModifiers};
 
 pub(crate) fn handle_key_event(
@@ -54,7 +54,7 @@ fn is_ctrl_c(key: KeyEvent) -> bool {
         && key.code == crossterm::event::KeyCode::Char('c')
 }
 
-fn copy_input_selection(app: &mut crate::ui::state::App) -> bool {
+fn copy_input_selection(app: &mut crate::framework::widget_system::runtime::state::App) -> bool {
     if app.focus != Focus::Input || !app.input.is_selecting() {
         return false;
     }
@@ -65,7 +65,7 @@ fn copy_input_selection(app: &mut crate::ui::state::App) -> bool {
 }
 
 fn copy_chat_selection(
-    app: &mut crate::ui::state::App,
+    app: &mut crate::framework::widget_system::runtime::state::App,
     args: &Args,
     msg_width: usize,
     theme: &RenderTheme,

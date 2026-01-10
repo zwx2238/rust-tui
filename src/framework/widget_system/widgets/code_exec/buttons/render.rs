@@ -1,6 +1,6 @@
-use crate::ui::code_exec_popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::state::{CodeExecHover, CodeExecReasonTarget};
+use super::super::popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::state::{CodeExecHover, CodeExecReasonTarget};
 use crate::framework::widget_system::context::{UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::Widget;
 use ratatui::style::{Modifier, Style};
@@ -12,7 +12,7 @@ pub(in super::super) struct CodeExecButtonsRenderParams<'a> {
     pub(in super::super) area: ratatui::layout::Rect,
     pub(in super::super) hover: Option<CodeExecHover>,
     pub(in super::super) reason_target: Option<CodeExecReasonTarget>,
-    pub(in super::super) live: Option<&'a crate::ui::state::CodeExecLive>,
+    pub(in super::super) live: Option<&'a crate::framework::widget_system::runtime::state::CodeExecLive>,
     pub(in super::super) theme: &'a crate::render::RenderTheme,
     pub(in super::super) layout: &'a FrameLayout,
     pub(in super::super) update: &'a UpdateOutput,
@@ -149,9 +149,9 @@ fn button_style(
 ) -> Style {
     match hover {
         Some(h) if h == target => Style::default()
-            .bg(crate::ui::draw::style::selection_bg(theme.bg))
-            .fg(crate::ui::draw::style::base_fg(theme))
+            .bg(crate::framework::widget_system::draw::style::selection_bg(theme.bg))
+            .fg(crate::framework::widget_system::draw::style::base_fg(theme))
             .add_modifier(Modifier::BOLD),
-        _ => crate::ui::draw::style::base_style(theme),
+        _ => crate::framework::widget_system::draw::style::base_style(theme),
     }
 }

@@ -1,9 +1,12 @@
-use crate::ui::code_exec_popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
-use crate::ui::code_exec_popup_text::{code_max_scroll, stderr_max_scroll, stdout_max_scroll};
-use crate::ui::draw::style::{base_fg, base_style, selection_bg};
-use crate::ui::selection::{Selection, apply_selection_to_text};
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCodeExec};
+use super::popup_layout::{CodeExecPopupLayout, OUTER_MARGIN, code_exec_popup_layout};
+use super::popup_text::{
+    build_code_text, build_stderr_text, build_stdout_text, code_max_scroll, stderr_max_scroll,
+    stdout_max_scroll,
+};
+use crate::framework::widget_system::draw::style::{base_fg, base_style, selection_bg};
+use crate::framework::widget_system::interaction::selection::{Selection, apply_selection_to_text};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::state::{CodeExecHover, CodeExecReasonTarget, PendingCodeExec};
 use crate::framework::widget_system::context::{UpdateOutput, WidgetFrame};
 use std::error::Error;
 use ratatui::layout::Rect;
@@ -104,9 +107,9 @@ pub(super) fn hover_at(
 fn build_params<'a>(
     area: ratatui::layout::Rect,
     theme: &'a crate::render::RenderTheme,
-    tab_state: &'a mut crate::ui::runtime_helpers::TabState,
+    tab_state: &'a mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     pending: &'a PendingCodeExec,
-    live: Option<&'a crate::ui::state::CodeExecLive>,
+    live: Option<&'a crate::framework::widget_system::runtime::state::CodeExecLive>,
     reason_input: &'a mut tui_textarea::TextArea<'static>,
 ) -> CodeExecPopupParams<'a, 'static> {
     CodeExecPopupParams {
@@ -127,10 +130,10 @@ fn build_params<'a>(
 
 fn prepare_code_exec_overlay(
     theme: &crate::render::RenderTheme,
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     layout: CodeExecPopupLayout,
-) -> Option<crate::ui::state::CodeExecLive> {
+) -> Option<crate::framework::widget_system::runtime::state::CodeExecLive> {
     let (stdout, stderr, live_snapshot) = snapshot_live(tab_state);
     clamp_code_scroll(theme, tab_state, pending, layout);
     clamp_output_scrolls(theme, tab_state, &stdout, &stderr, layout);
@@ -139,8 +142,8 @@ fn prepare_code_exec_overlay(
 
 fn clamp_code_scroll(
     theme: &crate::render::RenderTheme,
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     layout: CodeExecPopupLayout,
 ) {
     let max_scroll = code_max_scroll(
@@ -156,7 +159,7 @@ fn clamp_code_scroll(
 
 fn clamp_output_scrolls(
     theme: &crate::render::RenderTheme,
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stdout: &str,
     stderr: &str,
     layout: CodeExecPopupLayout,
@@ -189,7 +192,7 @@ struct CodeExecPopupParams<'a, 'b> {
     stderr_scroll: usize,
     reason_target: Option<CodeExecReasonTarget>,
     reason_input: &'a mut TextArea<'b>,
-    live: Option<&'a crate::ui::state::CodeExecLive>,
+    live: Option<&'a crate::framework::widget_system::runtime::state::CodeExecLive>,
     code_selection: Option<Selection>,
     stdout_selection: Option<Selection>,
     stderr_selection: Option<Selection>,
@@ -268,19 +271,19 @@ fn popup_mask(area: Rect, popup: Rect) -> Rect {
     let max_y = area.y.saturating_add(area.height);
     let mask_x = popup
         .x
-        .saturating_sub(crate::ui::code_exec_popup_layout::OUTER_MARGIN)
+        .saturating_sub(OUTER_MARGIN)
         .max(area.x);
     let mask_y = popup
         .y
-        .saturating_sub(crate::ui::code_exec_popup_layout::OUTER_MARGIN)
+        .saturating_sub(OUTER_MARGIN)
         .max(area.y);
     let mask_w = popup
         .width
-        .saturating_add(crate::ui::code_exec_popup_layout::OUTER_MARGIN.saturating_mul(2))
+        .saturating_add(OUTER_MARGIN.saturating_mul(2))
         .min(max_x.saturating_sub(mask_x));
     let mask_h = popup
         .height
-        .saturating_add(crate::ui::code_exec_popup_layout::OUTER_MARGIN.saturating_mul(2))
+        .saturating_add(OUTER_MARGIN.saturating_mul(2))
         .min(max_y.saturating_sub(mask_y));
     Rect {
         x: mask_x,
@@ -324,7 +327,7 @@ fn render_code_panel(
     scroll: usize,
     selection: Option<Selection>,
 ) {
-    let (text, total_lines) = crate::ui::code_exec_popup_text::build_code_text(
+    let (text, total_lines) = build_code_text(
         &pending.code,
         layout.code_text_area.width,
         layout.code_text_area.height,
@@ -350,11 +353,11 @@ fn render_stdout_panel(
     f: &mut ratatui::Frame<'_>,
     theme: &crate::render::RenderTheme,
     layout: CodeExecPopupLayout,
-    live: Option<&crate::ui::state::CodeExecLive>,
+    live: Option<&crate::framework::widget_system::runtime::state::CodeExecLive>,
     scroll: usize,
     selection: Option<Selection>,
 ) {
-    let (text, total_lines) = crate::ui::code_exec_popup_text::build_stdout_text(
+    let (text, total_lines) = build_stdout_text(
         live.map(|l| l.stdout.as_str()),
         layout.stdout_text_area.width,
         layout.stdout_text_area.height,
@@ -380,11 +383,11 @@ fn render_stderr_panel(
     f: &mut ratatui::Frame<'_>,
     theme: &crate::render::RenderTheme,
     layout: CodeExecPopupLayout,
-    live: Option<&crate::ui::state::CodeExecLive>,
+    live: Option<&crate::framework::widget_system::runtime::state::CodeExecLive>,
     scroll: usize,
     selection: Option<Selection>,
 ) {
-    let (text, total_lines) = crate::ui::code_exec_popup_text::build_stderr_text(
+    let (text, total_lines) = build_stderr_text(
         live.map(|l| l.stderr.as_str()),
         layout.stderr_text_area.width,
         layout.stderr_text_area.height,
@@ -504,14 +507,14 @@ fn draw_reason_input(
     f.render_widget(&*input, area);
 }
 
-fn build_title(live: Option<&crate::ui::state::CodeExecLive>) -> String {
+fn build_title(live: Option<&crate::framework::widget_system::runtime::state::CodeExecLive>) -> String {
     match live {
         Some(live) => build_live_title(live),
         None => "代码执行确认 · 等待确认".to_string(),
     }
 }
 
-fn build_live_title(live: &crate::ui::state::CodeExecLive) -> String {
+fn build_live_title(live: &crate::framework::widget_system::runtime::state::CodeExecLive) -> String {
     if live.done || live.exit_code.is_some() {
         let finished_at = live.finished_at.unwrap_or_else(std::time::Instant::now);
         let exec = finished_at.duration_since(live.started_at).as_secs_f32();

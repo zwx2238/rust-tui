@@ -1,7 +1,7 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::style::base_fg;
-use crate::ui::text_utils::truncate_to_width;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::draw::style::base_fg;
+use crate::framework::widget_system::interaction::text_utils::truncate_to_width;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::BoxConstraints;
 use crate::framework::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
@@ -46,7 +46,7 @@ impl Widget for CategoriesWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {

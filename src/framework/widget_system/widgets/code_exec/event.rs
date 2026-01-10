@@ -1,6 +1,6 @@
-use crate::ui::code_exec_popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
-use crate::ui::jump::JumpRow;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use super::popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
+use crate::framework::widget_system::widgets::jump::JumpRow;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;
@@ -281,7 +281,7 @@ fn click_outside_tabs(layout: &FrameLayout, m: crossterm::event::MouseEvent) -> 
 
 struct MouseState {
     active_tab: usize,
-    pending: crate::ui::state::PendingCodeExec,
+    pending: crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
-    reason_target: Option<crate::ui::state::CodeExecReasonTarget>,
+    reason_target: Option<crate::framework::widget_system::runtime::state::CodeExecReasonTarget>,
 }

@@ -1,8 +1,8 @@
-use crate::ui::overlay::OverlayKind;
-use crate::ui::runtime_dispatch::key_helpers::{
+use crate::framework::widget_system::overlay::OverlayKind;
+use crate::framework::widget_system::runtime_dispatch::key_helpers::{
     handle_pre_key_actions, handle_view_action_flow, is_quit_key, resolve_view_action,
 };
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
@@ -33,7 +33,7 @@ impl Widget for TerminalWidget {
             return Ok(());
         }
         let popup = compute_terminal_popup_layout(layout.size);
-        crate::ui::terminal::ensure_terminal_for_active_tab(
+        super::ensure_terminal_for_active_tab(
             ctx.tabs.as_mut_slice(),
             *ctx.active_tab,
             popup.terminal_area.width,
@@ -49,7 +49,7 @@ impl Widget for TerminalWidget {
         event: &Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::ui::jump::JumpRow],
+        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {
@@ -80,7 +80,7 @@ fn handle_key(
     ctx: &mut EventCtx<'_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     key: crossterm::event::KeyEvent,
 ) -> EventResult {
     if is_quit_key(key) {
@@ -143,7 +143,7 @@ fn handle_mouse(ctx: &mut EventCtx<'_>, kind: MouseEventKind) -> EventResult {
 }
 
 fn send_key_to_terminal(
-    tabs: &mut [crate::ui::runtime_helpers::TabState],
+    tabs: &mut [crate::framework::widget_system::runtime::runtime_helpers::TabState],
     active_tab: usize,
     key: crossterm::event::KeyEvent,
 ) {

@@ -1,14 +1,14 @@
-use crate::ui::file_patch_popup_layout::{FilePatchPopupLayout, file_patch_popup_layout};
-use crate::ui::file_patch_popup_text::patch_max_scroll;
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::selection::{Selection, chat_position_from_mouse, extract_selection};
-use crate::ui::state::FilePatchHover;
+use super::popup_layout::{FilePatchPopupLayout, file_patch_popup_layout};
+use super::popup_text::patch_max_scroll;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::interaction::selection::{Selection, chat_position_from_mouse, extract_selection};
+use crate::framework::widget_system::runtime::state::FilePatchHover;
 
 use super::helpers::point_in_rect;
 
 pub(super) fn handle_file_patch_selection_start(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingFilePatch,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
     popup: FilePatchPopupLayout,
     theme: &crate::render::RenderTheme,
     m: crossterm::event::MouseEvent,
@@ -16,7 +16,7 @@ pub(super) fn handle_file_patch_selection_start(
     if !point_in_rect(m.column, m.row, popup.preview_area) {
         return false;
     }
-    let (text, _) = crate::ui::file_patch_popup_text::build_patch_text(
+    let (text, _) = super::popup_text::build_patch_text(
         &pending.preview,
         popup.preview_area.width,
         popup.preview_area.height,
@@ -38,8 +38,8 @@ pub(super) fn handle_file_patch_selection_start(
 }
 
 pub(super) fn handle_file_patch_selection_drag(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingFilePatch,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
     popup: FilePatchPopupLayout,
     theme: &crate::render::RenderTheme,
     m: crossterm::event::MouseEvent,
@@ -47,7 +47,7 @@ pub(super) fn handle_file_patch_selection_drag(
     if !tab_state.app.file_patch_selecting {
         return false;
     }
-    let (text, _) = crate::ui::file_patch_popup_text::build_patch_text(
+    let (text, _) = super::popup_text::build_patch_text(
         &pending.preview,
         popup.preview_area.width,
         popup.preview_area.height,
@@ -65,7 +65,7 @@ pub(super) fn handle_file_patch_selection_drag(
 }
 
 pub(super) fn clear_file_patch_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
 ) -> bool {
     if !tab_state.app.file_patch_selecting {
         return false;
@@ -93,7 +93,7 @@ pub(super) fn selection_position_for_panel(
 }
 
 fn update_drag_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     pos: (usize, usize),
 ) {
     let next = match tab_state.app.file_patch_selection {
@@ -124,8 +124,8 @@ pub(super) fn hover_at(
 
 pub(super) fn clamp_patch_scroll(
     theme: &crate::render::RenderTheme,
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingFilePatch,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
     layout: FilePatchPopupLayout,
 ) {
     let max_scroll = patch_max_scroll(
@@ -140,8 +140,8 @@ pub(super) fn clamp_patch_scroll(
 }
 
 pub(super) fn copy_file_patch_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingFilePatch,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
     layout: &FrameLayout,
     theme: &crate::render::RenderTheme,
 ) -> bool {
@@ -149,14 +149,14 @@ pub(super) fn copy_file_patch_selection(
         return false;
     };
     let popup = file_patch_popup_layout(layout.size);
-    let lines = crate::ui::file_patch_popup_text::patch_plain_lines(
+    let lines = super::popup_text::patch_plain_lines(
         &pending.preview,
         popup.preview_area.width,
         theme,
     );
     let text = extract_selection(&lines, selection);
     if !text.is_empty() {
-        crate::ui::clipboard::set(&text);
+        crate::framework::widget_system::interaction::clipboard::set(&text);
     }
     true
 }

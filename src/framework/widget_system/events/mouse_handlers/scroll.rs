@@ -1,6 +1,6 @@
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::scroll::SCROLL_STEP_U16;
-use crate::ui::state::Focus;
+use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::interaction::scroll::SCROLL_STEP_U16;
+use crate::framework::widget_system::runtime::state::Focus;
 
 pub(crate) fn handle_mouse_up(tabs: &mut [TabState], active_tab: usize) {
     if let Some(tab_state) = tabs.get_mut(active_tab) {

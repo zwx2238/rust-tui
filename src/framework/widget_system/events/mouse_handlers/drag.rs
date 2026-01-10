@@ -1,10 +1,10 @@
 use crate::framework::widget_system::events::{point_in_rect, scroll_from_mouse, selection_view_text};
 use crate::render::RenderTheme;
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
-use crate::ui::draw::{inner_area, scrollbar_area};
-use crate::ui::input_click::click_to_cursor;
-use crate::ui::selection::{Selection, chat_position_from_mouse};
-use crate::ui::state::Focus;
+use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
+use crate::framework::widget_system::draw::{inner_area, scrollbar_area};
+use crate::framework::widget_system::interaction::input_click::click_to_cursor;
+use crate::framework::widget_system::interaction::selection::{Selection, chat_position_from_mouse};
+use crate::framework::widget_system::runtime::state::Focus;
 use crossterm::event::MouseEvent;
 use ratatui::layout::Rect;
 use tui_textarea::CursorMove;
@@ -34,7 +34,7 @@ pub(crate) fn handle_mouse_drag(params: MouseDragParams<'_>) {
 }
 
 fn drag_scrollbar_if_needed(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     msg_area: Rect,
     view_height: u16,
     total_lines: usize,
@@ -48,7 +48,7 @@ fn drag_scrollbar_if_needed(
 }
 
 fn drag_input_if_needed(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     input_area: Rect,
     m: MouseEvent,
 ) -> bool {
@@ -60,7 +60,7 @@ fn drag_input_if_needed(
 }
 
 fn drag_scrollbar(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     msg_area: Rect,
     view_height: u16,
     total_lines: usize,
@@ -74,7 +74,7 @@ fn drag_scrollbar(
 }
 
 fn drag_input_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     input_area: Rect,
     m: MouseEvent,
 ) {
@@ -88,7 +88,7 @@ fn drag_input_selection(
 }
 
 fn drag_chat_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     msg_area: Rect,
     msg_width: usize,
     view_height: u16,

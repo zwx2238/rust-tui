@@ -1,5 +1,5 @@
-use crate::ui::code_exec_popup_layout::CodeExecPopupLayout;
-use crate::ui::code_exec_popup_text::{code_max_scroll, stderr_max_scroll, stdout_max_scroll};
+use super::popup_layout::CodeExecPopupLayout;
+use super::popup_text::{code_max_scroll, stderr_max_scroll, stdout_max_scroll};
 
 use super::helpers::code_exec_output;
 use super::helpers::{apply_scroll, point_in_rect};
@@ -7,8 +7,8 @@ use super::helpers::{apply_scroll, point_in_rect};
 pub(super) fn handle_code_exec_scroll(
     m: crossterm::event::MouseEvent,
     theme: &crate::render::RenderTheme,
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
     delta: i32,
 ) -> bool {
@@ -29,8 +29,8 @@ pub(super) fn handle_code_exec_scroll(
 }
 
 fn scroll_code(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
     delta: i32,
@@ -46,7 +46,7 @@ fn scroll_code(
 }
 
 fn scroll_stdout(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stdout: &str,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
@@ -67,7 +67,7 @@ fn scroll_stdout(
 }
 
 fn scroll_stderr(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stderr: &str,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,

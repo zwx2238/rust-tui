@@ -1,11 +1,11 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
-use crate::ui::draw::style::{base_style, focus_border_style};
+use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
+use crate::framework::widget_system::draw::style::{base_style, focus_border_style};
 use crate::framework::widget_system::events::{
     MouseEventParams, handle_key_event, handle_mouse_event, handle_paste_event,
 };
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::state::Focus;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::state::Focus;
 use crate::framework::widget_system::BoxConstraints;
 use crate::framework::widget_system::bindings::{bind_active_tab, bind_event};
 use crate::framework::widget_system::context::{
@@ -58,7 +58,7 @@ impl Widget for InputWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {

@@ -1,5 +1,5 @@
-use crate::ui::jump::JumpRow;
-use crate::ui::runtime_loop_steps::{FrameLayout, note_elapsed};
+use crate::framework::widget_system::widgets::jump::JumpRow;
+use crate::framework::widget_system::runtime::runtime_loop_steps::{FrameLayout, note_elapsed};
 use std::error::Error;
 
 use super::context::{RenderCtx, RenderState, UpdateOutput, WidgetFrame};

@@ -1,16 +1,17 @@
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::state::{CodeExecHover, CodeExecReasonTarget, PendingCommand};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::state::{CodeExecHover, CodeExecReasonTarget, PendingCommand};
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::Widget;
 
 use super::super::helpers::point_in_rect;
+use super::super::popup_layout::CodeExecPopupLayout;
 use super::super::widget::CodeExecWidget;
 use super::mode::{CodeExecButtonsMode, resolve_code_exec_mode};
 use super::render::configure_buttons;
 
 pub(in super::super) struct CodeExecButtonParams<'a> {
     pub(in super::super) active_tab: usize,
-    pub(in super::super) layout: crate::ui::code_exec_popup_layout::CodeExecPopupLayout,
+    pub(in super::super) layout: CodeExecPopupLayout,
     pub(in super::super) theme: &'a crate::render::RenderTheme,
     pub(in super::super) frame_layout: &'a FrameLayout,
     pub(in super::super) update: &'a UpdateOutput,
@@ -138,7 +139,7 @@ fn read_button_state(
 ) -> (
     Option<CodeExecHover>,
     Option<CodeExecReasonTarget>,
-    Option<crate::ui::state::CodeExecLive>,
+    Option<crate::framework::widget_system::runtime::state::CodeExecLive>,
 ) {
     ctx.tabs
         .get(active_tab)
@@ -209,7 +210,7 @@ fn handle_exit_click(ctx: &mut EventCtx<'_>, active_tab: usize) -> bool {
 }
 
 fn handle_code_exec_approve(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     mode: CodeExecButtonsMode,
 ) -> bool {
     if let Some(target) = mode.reason_target {
@@ -235,7 +236,7 @@ fn handle_code_exec_approve(
 }
 
 fn handle_code_exec_deny(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     mode: CodeExecButtonsMode,
 ) -> bool {
     if let Some(_target) = mode.reason_target {

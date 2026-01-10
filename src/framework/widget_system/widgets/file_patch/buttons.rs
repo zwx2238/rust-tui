@@ -1,6 +1,6 @@
-use crate::ui::file_patch_popup_layout::{FilePatchPopupLayout, file_patch_popup_layout};
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::state::{FilePatchHover, PendingCommand};
+use super::popup_layout::{FilePatchPopupLayout, file_patch_popup_layout};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::state::{FilePatchHover, PendingCommand};
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::Widget;
 use ratatui::style::{Modifier, Style};
@@ -126,9 +126,9 @@ fn button_style(
 ) -> Style {
     match hover {
         Some(h) if h == target => Style::default()
-            .bg(crate::ui::draw::style::selection_bg(theme.bg))
-            .fg(crate::ui::draw::style::base_fg(theme))
+            .bg(crate::framework::widget_system::draw::style::selection_bg(theme.bg))
+            .fg(crate::framework::widget_system::draw::style::base_fg(theme))
             .add_modifier(Modifier::BOLD),
-        _ => crate::ui::draw::style::base_style(theme),
+        _ => crate::framework::widget_system::draw::style::base_style(theme),
     }
 }

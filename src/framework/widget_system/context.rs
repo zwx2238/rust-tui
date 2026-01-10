@@ -1,10 +1,10 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::ui::events::{EventBatch, RuntimeEvent};
-use crate::ui::runtime_helpers::{PreheatTask, TabState};
-use crate::ui::runtime_tick::ActiveFrameData;
-use crate::ui::runtime_view::ViewState;
-use crate::ui::state::App;
+use crate::framework::widget_system::runtime::events::{EventBatch, RuntimeEvent};
+use crate::framework::widget_system::runtime::runtime_helpers::{PreheatTask, TabState};
+use crate::framework::widget_system::runtime_tick::ActiveFrameData;
+use crate::framework::widget_system::runtime::runtime_view::ViewState;
+use crate::framework::widget_system::runtime::state::App;
 use ratatui::layout::Rect;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::sync::mpsc;
@@ -56,7 +56,7 @@ pub(crate) struct WidgetFrame<'frame, 'state, 'data, 'buf> {
     pub(crate) frame: &'frame mut ratatui::Frame<'buf>,
     pub(crate) state: &'state mut RenderState<'data>,
     pub(crate) view: &'state mut ViewState,
-    pub(crate) jump_rows: &'state mut Vec<crate::ui::jump::JumpRow>,
+    pub(crate) jump_rows: &'state mut Vec<crate::framework::widget_system::widgets::jump::JumpRow>,
 }
 
 pub(crate) struct LayoutCtx<'a> {

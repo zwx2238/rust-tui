@@ -1,4 +1,4 @@
-use crate::ui::scroll::max_scroll_u16;
+use crate::framework::widget_system::interaction::scroll::max_scroll_u16;
 
 pub(crate) fn point_in_rect(x: u16, y: u16, rect: ratatui::layout::Rect) -> bool {
     x >= rect.x
