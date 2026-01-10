@@ -157,6 +157,7 @@ fn handle_function_keys(
                 Some(ViewAction::CycleModel)
             }
         }
+        KeyCode::F(15) => Some(ViewAction::CycleModelPrev),
         KeyCode::F(4) => Some(toggle_overlay(view, OverlayKind::Model)),
         KeyCode::F(10) => Some(toggle_help(view)),
         KeyCode::F(1) => Some(toggle_summary(view, active_tab, tabs_len)),
