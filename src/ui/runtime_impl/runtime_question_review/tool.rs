@@ -10,6 +10,7 @@ struct QuestionReviewArgs {
 pub(crate) fn handle_question_review_request(
     tab_state: &mut TabState,
     call: &crate::types::ToolCall,
+    registry: &crate::model_registry::ModelRegistry,
 ) -> Result<(), String> {
     if tab_state.app.pending_question_review.is_some() {
         return Err("已有待审批的问题集".to_string());
@@ -17,6 +18,7 @@ pub(crate) fn handle_question_review_request(
     let args: QuestionReviewArgs = serde_json::from_str(&call.function.arguments)
         .map_err(|e| format!("ask_questions 参数解析失败：{e}"))?;
     let questions = sanitize_questions(args.questions)?;
+    let default_model = resolve_default_model(tab_state, registry);
     tab_state.app.pending_question_review = Some(PendingQuestionReview {
         call_id: call.id.clone(),
         questions: questions
@@ -24,6 +26,7 @@ pub(crate) fn handle_question_review_request(
             .map(|q| PendingQuestionItem {
                 question: q,
                 decision: QuestionDecision::Pending,
+                model_key: default_model.clone(),
             })
             .collect(),
     });
@@ -67,6 +70,43 @@ pub(crate) fn set_all_decisions(
     true
 }
 
+pub(crate) fn cycle_question_model(
+    tab_state: &mut TabState,
+    idx: usize,
+    registry: &crate::model_registry::ModelRegistry,
+) -> bool {
+    let Some(item) = pending_item_mut(tab_state, idx) else {
+        return false;
+    };
+    let Some(next) = next_model_key(&item.model_key, registry) else {
+        return false;
+    };
+    item.model_key = next;
+    true
+}
+
+pub(crate) fn set_all_models(
+    tab_state: &mut TabState,
+    model_key: &str,
+) -> bool {
+    let Some(pending) = tab_state.app.pending_question_review.as_mut() else {
+        return false;
+    };
+    for item in &mut pending.questions {
+        item.model_key = model_key.to_string();
+    }
+    true
+}
+
+pub(crate) fn selected_model_key(tab_state: &TabState, idx: usize) -> Option<&str> {
+    tab_state
+        .app
+        .pending_question_review
+        .as_ref()
+        .and_then(|pending| pending.questions.get(idx))
+        .map(|item| item.model_key.as_str())
+}
+
 pub(crate) fn all_questions_decided(tab_state: &TabState) -> bool {
     tab_state
         .app
@@ -101,4 +141,26 @@ fn sanitize_questions(raw: Vec<String>) -> Result<Vec<String>, String> {
         return Err("ask_questions 至少需要一个问题".to_string());
     }
     Ok(out)
+}
+
+fn resolve_default_model(
+    tab_state: &TabState,
+    registry: &crate::model_registry::ModelRegistry,
+) -> String {
+    if registry.get(&tab_state.app.model_key).is_some() {
+        return tab_state.app.model_key.clone();
+    }
+    registry.default_key.clone()
+}
+
+fn next_model_key(
+    current: &str,
+    registry: &crate::model_registry::ModelRegistry,
+) -> Option<String> {
+    if registry.models.is_empty() {
+        return None;
+    }
+    let idx = registry.index_of(current).unwrap_or(0);
+    let next = (idx + 1) % registry.models.len();
+    registry.models.get(next).map(|m| m.key.clone())
 }

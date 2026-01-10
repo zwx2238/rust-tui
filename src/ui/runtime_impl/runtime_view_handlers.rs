@@ -159,10 +159,12 @@ pub(crate) fn handle_question_review_key(view: &mut ViewState, key: KeyEvent) ->
         KeyCode::Enter => ViewAction::QuestionReviewSubmit,
         KeyCode::Up => {
             view.question_review.move_up();
+            view.question_review_detail_scroll = 0;
             ViewAction::None
         }
         KeyCode::Down => {
             view.question_review.move_down();
+            view.question_review_detail_scroll = 0;
             ViewAction::None
         }
         KeyCode::Char(' ') => ViewAction::QuestionReviewToggle(view.question_review.selected),
@@ -174,6 +176,18 @@ pub(crate) fn handle_question_review_key(view: &mut ViewState, key: KeyEvent) ->
         }
         KeyCode::Char('a') | KeyCode::Char('A') => ViewAction::QuestionReviewApproveAll,
         KeyCode::Char('r') | KeyCode::Char('R') => ViewAction::QuestionReviewRejectAll,
+        KeyCode::Char('m') => ViewAction::QuestionReviewNextModel(view.question_review.selected),
+        KeyCode::Char('M') => ViewAction::QuestionReviewSetAllModel(view.question_review.selected),
+        KeyCode::PageUp => {
+            view.question_review_detail_scroll =
+                view.question_review_detail_scroll.saturating_sub(PAGE_STEP);
+            ViewAction::None
+        }
+        KeyCode::PageDown => {
+            view.question_review_detail_scroll =
+                view.question_review_detail_scroll.saturating_add(PAGE_STEP);
+            ViewAction::None
+        }
         _ => ViewAction::None,
     }
 }

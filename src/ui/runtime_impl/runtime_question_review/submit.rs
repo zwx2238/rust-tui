@@ -66,13 +66,16 @@ fn has_pending_questions(pending: &PendingQuestionReview) -> bool {
         .any(|q| q.decision == QuestionDecision::Pending)
 }
 
-fn split_questions(questions: Vec<PendingQuestionItem>) -> (Vec<String>, usize, usize) {
+fn split_questions(questions: Vec<PendingQuestionItem>) -> (Vec<ApprovedQuestion>, usize, usize) {
     let mut approved = Vec::new();
     let mut rejected = 0usize;
     let total = questions.len();
     for item in questions {
         match item.decision {
-            QuestionDecision::Approved => approved.push(item.question),
+            QuestionDecision::Approved => approved.push(ApprovedQuestion {
+                question: item.question,
+                model_key: item.model_key,
+            }),
             _ => rejected += 1,
         }
     }
@@ -81,7 +84,7 @@ fn split_questions(questions: Vec<PendingQuestionItem>) -> (Vec<String>, usize, 
 
 fn apply_review_submit(
     params: &mut QuestionReviewSubmitParams<'_>,
-    approved: Vec<String>,
+    approved: Vec<ApprovedQuestion>,
     rejected: usize,
     total: usize,
     call_id: String,
@@ -92,7 +95,7 @@ fn apply_review_submit(
 
 fn spawn_question_tabs_if_needed(
     params: &mut QuestionReviewSubmitParams<'_>,
-    approved: &[String],
+    approved: &[ApprovedQuestion],
 ) {
     if approved.is_empty() {
         return;
@@ -131,6 +134,11 @@ fn finalize_review_submit(
         params.args,
         params.tx,
     );
+}
+
+pub(super) struct ApprovedQuestion {
+    pub(super) question: String,
+    pub(super) model_key: String,
 }
 
 fn build_submit_message(total: usize, approved: usize, rejected: usize) -> String {

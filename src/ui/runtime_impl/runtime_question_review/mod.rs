@@ -20,6 +20,6 @@ pub(crate) struct QuestionReviewSubmitParams<'a> {
 
 pub(crate) use submit::{handle_question_review_cancel, handle_question_review_submit};
 pub(crate) use tool::{
-    all_questions_decided, handle_question_review_request, set_all_decisions, set_question_decision,
-    toggle_question_decision,
+    all_questions_decided, cycle_question_model, handle_question_review_request, selected_model_key,
+    set_all_decisions, set_all_models, set_question_decision, toggle_question_decision,
 };
