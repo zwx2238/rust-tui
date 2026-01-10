@@ -18,6 +18,7 @@ pub(crate) fn handle_question_review_request(
     let args: QuestionReviewArgs = serde_json::from_str(&call.function.arguments)
         .map_err(|e| format!("ask_questions 参数解析失败：{e}"))?;
     let questions = sanitize_questions(args.questions)?;
+    ensure_questions_independent(&questions)?;
     let default_model = resolve_default_model(tab_state, registry);
     tab_state.app.pending_question_review = Some(PendingQuestionReview {
         call_id: call.id.clone(),
@@ -141,6 +142,36 @@ fn sanitize_questions(raw: Vec<String>) -> Result<Vec<String>, String> {
         return Err("ask_questions 至少需要一个问题".to_string());
     }
     Ok(out)
+}
+
+fn ensure_questions_independent(questions: &[String]) -> Result<(), String> {
+    for question in questions {
+        if has_dependency_marker(question) {
+            return Err("ask_questions 的每个问题必须自洽，不能依赖其他问题或上文".to_string());
+        }
+    }
+    Ok(())
+}
+
+fn has_dependency_marker(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    let markers = [
+        "上文",
+        "前文",
+        "上述",
+        "以上",
+        "如下",
+        "如上",
+        "同上",
+        "见上",
+        "上一题",
+        "上一个问题",
+        "the above",
+        "previous question",
+        "earlier question",
+        "as mentioned above",
+    ];
+    markers.iter().any(|marker| lower.contains(marker))
 }
 
 fn resolve_default_model(
