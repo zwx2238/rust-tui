@@ -193,6 +193,7 @@ pub struct PendingQuestionReview {
 pub struct PendingQuestionItem {
     pub question: String,
     pub decision: QuestionDecision,
+    pub model_key: String,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

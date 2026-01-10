@@ -33,6 +33,7 @@ pub fn sync_question_review_overlay(
         let has_pending = tab_state.app.pending_question_review.is_some();
         if has_pending && view.overlay.is_chat() {
             view.overlay.open(OverlayKind::QuestionReview);
+            view.question_review_detail_scroll = 0;
         } else if !has_pending && view.overlay.is(OverlayKind::QuestionReview) {
             view.overlay.close();
         }

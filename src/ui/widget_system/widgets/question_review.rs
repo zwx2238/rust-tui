@@ -67,6 +67,7 @@ impl Widget for QuestionReviewWidget {
             pending,
             frame.view.question_review.selected,
             frame.view.question_review.scroll,
+            &mut frame.view.question_review_detail_scroll,
             frame.state.theme,
         );
         Ok(())

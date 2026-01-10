@@ -115,7 +115,7 @@ fn prompt_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTable
 
 fn question_review_metrics(areas: OverlayAreas, counts: OverlayRowCounts) -> OverlayTableMetrics {
     OverlayTableMetrics {
-        area: crate::ui::question_review_popup::question_review_popup_area(
+        area: crate::ui::question_review_popup::question_review_list_area(
             areas.full,
             counts.question_reviews,
         ),

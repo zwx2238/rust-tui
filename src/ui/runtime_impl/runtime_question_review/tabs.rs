@@ -1,6 +1,7 @@
 use crate::args::Args;
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
+use super::submit::ApprovedQuestion;
 use std::sync::mpsc;
 
 pub(super) struct QuestionTabSpawnParams<'a> {
@@ -14,7 +15,7 @@ pub(super) struct QuestionTabSpawnParams<'a> {
     pub(super) tx: &'a mpsc::Sender<RuntimeEvent>,
 }
 
-pub(super) fn spawn_question_tabs(params: QuestionTabSpawnParams<'_>, approved: &[String]) {
+pub(super) fn spawn_question_tabs(params: QuestionTabSpawnParams<'_>, approved: &[ApprovedQuestion]) {
     let Some(seed) = seed_from_active(
         params.tabs,
         params.active_tab,
@@ -26,11 +27,12 @@ pub(super) fn spawn_question_tabs(params: QuestionTabSpawnParams<'_>, approved: 
     };
     ensure_category(params.categories, params.active_category, &seed.category);
     for question in approved {
-        let tab_idx = create_question_tab(params.tabs, &seed);
+        let model_key = resolve_model_key(&question.model_key, params.registry, &seed);
+        let tab_idx = create_question_tab(params.tabs, &seed, &model_key);
         start_question_request(
             params.tabs.as_mut_slice(),
             tab_idx,
-            question,
+            &question.question,
             params.args,
             params.tx,
             params.registry,
@@ -101,7 +103,11 @@ fn resolve_system_prompt(
         .unwrap_or_else(|| args.system.clone())
 }
 
-fn create_question_tab(tabs: &mut Vec<TabState>, seed: &QuestionTabSeed) -> usize {
+fn create_question_tab(
+    tabs: &mut Vec<TabState>,
+    seed: &QuestionTabSeed,
+    model_key: &str,
+) -> usize {
     let conv_id =
         crate::conversation::new_conversation_id().unwrap_or_else(|_| tabs.len().to_string());
     let mut tab = TabState::new(
@@ -109,13 +115,13 @@ fn create_question_tab(tabs: &mut Vec<TabState>, seed: &QuestionTabSeed) -> usiz
         seed.category.clone(),
         &seed.system,
         seed.perf,
-        &seed.model_key,
+        model_key,
         &seed.prompt_key,
     );
     tab.app.set_log_session_id(&seed.log_session_id);
     tab.app.prompts_dir = seed.prompts_dir.clone();
     tab.app.tavily_api_key = seed.tavily_api_key.clone();
-    tab.app.model_key = seed.model_key.clone();
+    tab.app.model_key = model_key.to_string();
     tab.app.prompt_key = seed.prompt_key.clone();
     tabs.push(tab);
     tabs.len().saturating_sub(1)
@@ -168,6 +174,17 @@ fn build_tab_request_params<'a>(
         tab_idx,
         log_session_id,
     ))
+}
+
+fn resolve_model_key(
+    model_key: &str,
+    registry: &crate::model_registry::ModelRegistry,
+    seed: &QuestionTabSeed,
+) -> String {
+    if registry.get(model_key).is_some() {
+        return model_key.to_string();
+    }
+    seed.model_key.clone()
 }
 
 fn model_for_tab<'a>(

@@ -103,6 +103,18 @@ fn handle_question_review_actions(ctx: &mut DispatchContext<'_>, action: ViewAct
         ViewAction::QuestionReviewRejectAll => {
             runtime_question_review::set_all_decisions(tab_state, QuestionDecision::Rejected)
         }
+        ViewAction::QuestionReviewNextModel(idx) => {
+            runtime_question_review::cycle_question_model(tab_state, idx, ctx.registry)
+        }
+        ViewAction::QuestionReviewSetAllModel(idx) => {
+            let key = runtime_question_review::selected_model_key(tab_state, idx)
+                .map(|key| key.to_string());
+            if let Some(key) = key {
+                runtime_question_review::set_all_models(tab_state, &key)
+            } else {
+                false
+            }
+        }
         ViewAction::QuestionReviewSubmit => handle_question_review_submit(tab_state),
         ViewAction::QuestionReviewCancel => {
             tab_state.app.pending_command = Some(PendingCommand::CancelQuestionReview);
