@@ -23,3 +23,18 @@ pub fn sync_file_patch_overlay(tabs: &mut [TabState], active_tab: usize, view: &
         }
     }
 }
+
+pub fn sync_question_review_overlay(
+    tabs: &mut [TabState],
+    active_tab: usize,
+    view: &mut ViewState,
+) {
+    if let Some(tab_state) = tabs.get_mut(active_tab) {
+        let has_pending = tab_state.app.pending_question_review.is_some();
+        if has_pending && view.overlay.is_chat() {
+            view.overlay.open(OverlayKind::QuestionReview);
+        } else if !has_pending && view.overlay.is(OverlayKind::QuestionReview) {
+            view.overlay.close();
+        }
+    }
+}

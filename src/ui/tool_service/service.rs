@@ -55,6 +55,7 @@ impl<'a> ToolService<'a> {
             "modify_file" => self.handle_modify_file(call, tab_state, tab_id, state),
             "code_exec" => self.handle_code_exec(call, tab_state, tab_id, state),
             "bash_exec" => self.handle_bash_exec(call, tab_state, tab_id, state),
+            "ask_questions" => self.handle_question_review(call, tab_state, state),
             _ => {}
         }
     }
@@ -131,6 +132,25 @@ impl<'a> ToolService<'a> {
         }
         match handle_bash_exec_request(tab_state, call) {
             Ok(()) => self.apply_code_exec(tab_state, tab_id, state),
+            Err(err) => push_tool_error(tab_state, call, state, err),
+        }
+    }
+
+    fn handle_question_review(
+        &self,
+        call: &ToolCall,
+        tab_state: &mut TabState,
+        state: &mut ToolApplyState,
+    ) {
+        if !self.args.ask_questions_enabled() {
+            push_tool_error(tab_state, call, state, "ask_questions 未启用");
+            return;
+        }
+        match crate::ui::runtime_question_review::handle_question_review_request(tab_state, call) {
+            Ok(()) => {
+                state.needs_approval = true;
+                state.any_results = true;
+            }
             Err(err) => push_tool_error(tab_state, call, state, err),
         }
     }
@@ -229,13 +249,14 @@ impl<'a> ToolService<'a> {
             show_reasoning: self.args.show_reasoning,
             tx: self.tx,
             tab_id,
-            enable_web_search: self.args.web_search_enabled(),
-            enable_code_exec: self.args.code_exec_enabled(),
-            enable_read_file: self.args.read_file_enabled(),
-            enable_read_code: self.args.read_code_enabled(),
-            enable_modify_file: self.args.modify_file_enabled(),
-            log_requests: self.args.log_requests.clone(),
-            log_session_id,
-        });
-    }
+        enable_web_search: self.args.web_search_enabled(),
+        enable_code_exec: self.args.code_exec_enabled(),
+        enable_read_file: self.args.read_file_enabled(),
+        enable_read_code: self.args.read_code_enabled(),
+        enable_modify_file: self.args.modify_file_enabled(),
+        enable_ask_questions: self.args.ask_questions_enabled(),
+        log_requests: self.args.log_requests.clone(),
+        log_session_id,
+    });
+}
 }

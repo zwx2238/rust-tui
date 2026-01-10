@@ -77,6 +77,7 @@ struct RequestFlags {
     enable_read_file: bool,
     enable_read_code: bool,
     enable_modify_file: bool,
+    enable_ask_questions: bool,
     log_requests: Option<String>,
 }
 
@@ -87,6 +88,7 @@ fn request_flags(args: &Args) -> RequestFlags {
         enable_read_file: args.read_file_enabled(),
         enable_read_code: args.read_code_enabled(),
         enable_modify_file: args.modify_file_enabled(),
+        enable_ask_questions: args.ask_questions_enabled(),
         log_requests: args.log_requests.clone(),
     }
 }
@@ -116,6 +118,7 @@ fn build_request_params<'a>(
         enable_read_file: flags.enable_read_file,
         enable_read_code: flags.enable_read_code,
         enable_modify_file: flags.enable_modify_file,
+        enable_ask_questions: flags.enable_ask_questions,
         log_requests: flags.log_requests,
         log_session_id,
     }
