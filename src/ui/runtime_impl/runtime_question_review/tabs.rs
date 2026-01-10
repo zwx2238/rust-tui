@@ -4,6 +4,8 @@ use crate::ui::runtime_helpers::TabState;
 use super::submit::ApprovedQuestion;
 use std::sync::mpsc;
 
+const QUESTION_TAB_SYSTEM_SUFFIX: &str = "你正在回答用户已审核的问题，请先直接回答，不要主动生成新的问题或调用 ask_questions。只有当用户明确要求生成问题列表时，才可以调用 ask_questions。若信息不足，先做合理假设并说明，再继续回答。";
+
 pub(super) struct QuestionTabSpawnParams<'a> {
     pub(super) tabs: &'a mut Vec<TabState>,
     pub(super) active_tab: usize,
@@ -110,10 +112,11 @@ fn create_question_tab(
 ) -> usize {
     let conv_id =
         crate::conversation::new_conversation_id().unwrap_or_else(|_| tabs.len().to_string());
+    let system = question_tab_system(&seed.system);
     let mut tab = TabState::new(
         conv_id,
         seed.category.clone(),
-        &seed.system,
+        &system,
         seed.perf,
         model_key,
         &seed.prompt_key,
@@ -138,6 +141,16 @@ fn ensure_category(
     if let Some(idx) = categories.iter().position(|c| c == category) {
         *active_category = idx;
     }
+}
+
+fn question_tab_system(base: &str) -> String {
+    if base.contains(QUESTION_TAB_SYSTEM_SUFFIX) {
+        return base.to_string();
+    }
+    if base.trim().is_empty() {
+        return QUESTION_TAB_SYSTEM_SUFFIX.to_string();
+    }
+    format!("{base}\n\n{QUESTION_TAB_SYSTEM_SUFFIX}")
 }
 
 fn start_question_request(
