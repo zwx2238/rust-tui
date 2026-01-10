@@ -6,7 +6,7 @@ use crate::framework::widget_system::widget_pod::WidgetPod;
 use ratatui::layout::Size;
 use std::error::Error;
 
-use crate::ui::runtime_events::handle_tab_category_click;
+use crate::framework::widget_system::events::handle_tab_category_click;
 use crate::framework::widget_system::bindings::bind_event;
 
 use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
@@ -162,7 +162,7 @@ fn try_tab_category_click(
         return Ok(false);
     }
     let binding = bind_event(ctx, layout, update);
-    let handled = handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+    let handled = handle_tab_category_click(crate::framework::widget_system::events::TabCategoryClickParams {
         mouse_x: m.column,
         mouse_y: m.row,
         tabs: binding.dispatch.tabs,

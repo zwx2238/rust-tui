@@ -1,5 +1,5 @@
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_layout::LayoutInfo;
+use crate::framework::widget_system::layout::LayoutInfo;
 use ratatui::layout::Rect;
 
 pub(crate) struct FrameLayout {

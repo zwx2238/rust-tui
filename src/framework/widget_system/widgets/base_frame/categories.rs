@@ -23,7 +23,8 @@ impl Widget for CategoriesWidget {
         ctx: &mut LayoutCtx<'_>,
         bc: BoxConstraints,
     ) -> Result<Size, Box<dyn Error>> {
-        let width = crate::ui::runtime_layout::compute_sidebar_width(ctx.categories, bc.max.width);
+        let width =
+            crate::framework::widget_system::layout::compute_sidebar_width(ctx.categories, bc.max.width);
         Ok(Size {
             width,
             height: bc.max.height,

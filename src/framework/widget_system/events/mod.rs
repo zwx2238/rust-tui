@@ -1,10 +1,16 @@
-mod runtime_events_key;
-mod runtime_events_mouse;
-mod runtime_events_tabs;
+mod geometry;
+mod helpers;
+mod key;
+mod mouse;
+mod mouse_handlers;
+mod tabs;
 
-pub(crate) use runtime_events_key::handle_key_event;
-pub(crate) use runtime_events_mouse::{MouseEventParams, handle_mouse_event};
-pub(crate) use runtime_events_tabs::{TabCategoryClickParams, handle_tab_category_click};
+pub(crate) use geometry::{point_in_rect, scroll_from_mouse};
+pub(crate) use helpers::{hit_test_edit_button, selection_view_text};
+pub(crate) use key::handle_key_event;
+pub(crate) use mouse::{MouseEventParams, handle_mouse_event};
+pub(crate) use mouse_handlers::handle_tabs_wheel;
+pub(crate) use tabs::{TabCategoryClickParams, handle_tab_category_click};
 
 use crate::ui::command_suggestions::refresh_command_suggestions;
 use crate::ui::runtime_helpers::TabState;

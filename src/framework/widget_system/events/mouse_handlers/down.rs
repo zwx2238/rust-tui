@@ -1,19 +1,19 @@
+use crate::framework::widget_system::events::{
+    handle_tab_category_click, hit_test_edit_button, point_in_rect, scroll_from_mouse,
+    selection_view_text,
+};
 use crate::render::RenderTheme;
 use crate::ui::command_suggestions::{clear_command_suggestions, refresh_command_suggestions};
 use crate::ui::draw::inner_area;
 use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
+use crate::ui::draw::scrollbar_area;
 use crate::ui::input_click::click_to_cursor;
-use crate::ui::logic::{point_in_rect, scroll_from_mouse};
-use crate::ui::runtime_events_helpers::{hit_test_edit_button, selection_view_text};
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::selection::{Selection, chat_position_from_mouse};
 use crate::ui::state::Focus;
 use crossterm::event::MouseEvent;
 use ratatui::layout::Rect;
 use tui_textarea::CursorMove;
-
-use crate::ui::draw::scrollbar_area;
-use crate::ui::runtime_events::handle_tab_category_click;
 
 use super::types::MouseDownParams;
 
@@ -36,7 +36,7 @@ pub(crate) fn handle_mouse_down(params: MouseDownParams<'_>) -> Option<usize> {
 }
 
 fn handle_tab_click(params: &mut MouseDownParams<'_>) -> bool {
-    handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+    handle_tab_category_click(crate::framework::widget_system::events::TabCategoryClickParams {
         mouse_x: params.m.column,
         mouse_y: params.m.row,
         tabs: params.tabs,

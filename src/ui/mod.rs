@@ -5,7 +5,6 @@ pub(crate) mod overlay_table;
 pub(crate) mod overlay_table_state;
 mod runtime;
 pub(crate) mod runtime_dispatch;
-pub(crate) mod runtime_events_mouse_handlers;
 mod runtime_loop;
 pub(crate) mod runtime_loop_helpers;
 mod runtime_session;
@@ -29,8 +28,8 @@ pub(crate) use popup::{
     model_popup, prompt_popup, question_review_popup, terminal_popup_layout,
 };
 pub(crate) use runtime_impl::{
-    events, logic, perf, runtime_events, runtime_events_helpers, runtime_helpers, runtime_layout,
-    runtime_loop_steps, runtime_view, runtime_view_handlers, state,
+    events, logic, perf, runtime_helpers, runtime_loop_steps, runtime_view,
+    runtime_view_handlers, state,
 };
 
 pub use runtime::run;

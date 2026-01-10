@@ -1,10 +1,11 @@
-use crate::ui::runtime_events::handle_tab_category_click;
-use crate::ui::runtime_events_mouse_handlers::handle_tabs_wheel;
+use crate::framework::widget_system::events::{
+    TabCategoryClickParams, handle_tab_category_click, handle_tabs_wheel,
+};
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;
 use crate::framework::widget_system::widget_pod::WidgetPod;
-use crate::ui::{runtime_events, runtime_loop_steps::FrameLayout};
+use crate::ui::runtime_loop_steps::FrameLayout;
 use std::error::Error;
 
 pub(super) fn point_in_rect(column: u16, row: u16, rect: ratatui::layout::Rect) -> bool {
@@ -30,7 +31,7 @@ pub(super) fn handle_tab_category_mouse_down(
         return Ok(EventResult::ignored());
     }
     let binding = bind_event(ctx, layout, update);
-    let handled = handle_tab_category_click(runtime_events::TabCategoryClickParams {
+    let handled = handle_tab_category_click(TabCategoryClickParams {
         mouse_x: m.column,
         mouse_y: m.row,
         tabs: binding.dispatch.tabs,

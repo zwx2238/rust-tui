@@ -1,5 +1,5 @@
 use crate::ui::draw::{inner_height, inner_width};
-use crate::ui::runtime_layout::LayoutInfo;
+use crate::framework::widget_system::layout::LayoutInfo;
 use crate::framework::widget_system::BoxConstraints;
 use crate::framework::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,

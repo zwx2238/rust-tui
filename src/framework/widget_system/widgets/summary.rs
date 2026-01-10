@@ -3,7 +3,7 @@ use crate::ui::draw::layout::{inner_area, layout_chunks};
 use crate::ui::draw::style::base_fg;
 use crate::ui::jump::JumpRow;
 use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};
-use crate::ui::runtime_layout::compute_sidebar_width;
+use crate::framework::widget_system::layout::compute_sidebar_width;
 use crate::ui::runtime_loop_steps::FrameLayout;
 use crate::ui::tab_bar::build_tab_bar_view;
 use crate::ui::text_utils::truncate_to_width;
