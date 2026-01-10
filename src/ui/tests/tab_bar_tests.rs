@@ -24,6 +24,7 @@ mod tests {
                 .iter()
                 .any(|i| matches!(i.kind, TabBarItemKind::MoreRight { .. }))
         );
+        assert!(view.items.iter().any(|i| matches!(i.kind, TabBarItemKind::Add)));
         assert!(view_width(&view) <= 20);
     }
 
@@ -64,13 +65,11 @@ mod tests {
     }
 
     #[test]
-    fn build_tab_bar_view_extremely_narrow_falls_back_to_active_only() {
+    fn build_tab_bar_view_extremely_narrow_shows_add_only() {
         let labels = sample_labels(10);
         let view = build_tab_bar_view(&labels, 7, 1);
         assert_eq!(view.items.len(), 1);
-        assert!(matches!(view.items[0].kind, TabBarItemKind::Tab(7)));
-        assert!(view.items[0].active);
-        assert!(view.items[0].label.width() <= 1);
+        assert!(matches!(view.items[0].kind, TabBarItemKind::Add));
     }
 
     #[test]
@@ -92,7 +91,7 @@ mod tests {
         assert!(matches!(first, Some(TabBarItemKind::MoreLeft { .. })));
 
         let last = hit_test_tab_bar(total - 1, area, &view);
-        assert!(matches!(last, Some(TabBarItemKind::MoreRight { .. })));
+        assert!(matches!(last, Some(TabBarItemKind::Add)));
 
         if view.items.len() >= 2 {
             let first_w = view.items[0].label.width() as u16;

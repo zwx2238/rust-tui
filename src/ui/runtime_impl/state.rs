@@ -25,6 +25,7 @@ pub enum PendingCommand {
     StopCodeExec,
     ApplyFilePatch,
     CancelFilePatch,
+    NewTab,
     NewCategory,
     OpenConversation,
 }

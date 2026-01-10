@@ -4,6 +4,7 @@ use unicode_width::UnicodeWidthStr;
 
 const MORE_LEFT_LABEL: &str = "«";
 const MORE_RIGHT_LABEL: &str = "»";
+const ADD_LABEL: &str = " + ";
 pub(crate) const MAX_TAB_LABEL_WIDTH: usize = 20;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -11,6 +12,7 @@ pub(crate) enum TabBarItemKind {
     Tab(usize),
     MoreLeft { target_pos: usize },
     MoreRight { target_pos: usize },
+    Add,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -28,14 +30,14 @@ pub(crate) struct TabBarView {
 pub(crate) fn build_tab_bar_view(labels: &[String], active_pos: usize, width: u16) -> TabBarView {
     let width = width as usize;
     if width == 0 || labels.is_empty() {
-        return TabBarView { items: Vec::new() };
+        return add_only_view(width);
     }
-    let active_pos = clamp_active_pos(labels.len(), active_pos);
-    let truncated = truncate_labels(labels);
-    if fits_all(&truncated, width) {
-        return build_full_view(&truncated, active_pos);
-    }
-    build_windowed_view(&truncated, active_pos, width)
+    let Some(tab_width) = tab_width_budget(width) else {
+        return add_only_view(width);
+    };
+    let mut view = build_tab_items_view(labels, active_pos, tab_width);
+    view.items.push(add_item());
+    view
 }
 
 pub(crate) fn hit_test_tab_bar(x: u16, area: Rect, view: &TabBarView) -> Option<TabBarItemKind> {
@@ -63,6 +65,41 @@ fn clamp_active_pos(len: usize, active_pos: usize) -> usize {
         return 0;
     }
     active_pos.min(len - 1)
+}
+
+fn tab_width_budget(width: usize) -> Option<usize> {
+    let add_width = ADD_LABEL.width();
+    if width <= add_width {
+        return None;
+    }
+    let budget = width.saturating_sub(add_width + 1);
+    (budget > 0).then_some(budget)
+}
+
+fn add_only_view(width: usize) -> TabBarView {
+    if width == 0 {
+        return TabBarView { items: Vec::new() };
+    }
+    TabBarView {
+        items: vec![add_item()],
+    }
+}
+
+fn add_item() -> TabBarItem {
+    TabBarItem {
+        label: ADD_LABEL.to_string(),
+        kind: TabBarItemKind::Add,
+        active: false,
+    }
+}
+
+fn build_tab_items_view(labels: &[String], active_pos: usize, width: usize) -> TabBarView {
+    let active_pos = clamp_active_pos(labels.len(), active_pos);
+    let truncated = truncate_labels(labels);
+    if fits_all(&truncated, width) {
+        return build_full_view(&truncated, active_pos);
+    }
+    build_windowed_view(&truncated, active_pos, width)
 }
 
 fn truncate_labels(labels: &[String]) -> Vec<String> {

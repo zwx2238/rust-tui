@@ -15,6 +15,17 @@ pub(crate) struct HandleTabCommandParams<'a> {
 
 pub(crate) fn handle_tab_command(params: HandleTabCommandParams<'_>) {
     match params.pending {
+        PendingCommand::NewTab => {
+            crate::ui::runtime_loop_helpers::tabs::create_tab_in_active_category(
+                params.tabs,
+                params.active_tab,
+                params.categories,
+                params.active_category,
+                params.registry,
+                params.prompt_registry,
+                params.args,
+            )
+        }
         PendingCommand::NewCategory => {
             crate::ui::runtime_loop_helpers::category::create_category_and_tab(
                 params.tabs,

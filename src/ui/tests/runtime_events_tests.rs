@@ -2,7 +2,7 @@
 mod tests {
     use crate::ui::runtime_events::{handle_paste_event, handle_tab_category_click};
     use crate::ui::runtime_helpers::TabState;
-    use crate::ui::state::Focus;
+    use crate::ui::state::{Focus, PendingCommand};
     use crate::ui::tab_bar::{TabBarItemKind, build_tab_bar_view};
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
     use ratatui::layout::Rect;
@@ -177,6 +177,42 @@ mod tests {
     }
 
     #[test]
+    fn handle_tab_category_click_add_sets_pending_command() {
+        let mut tabs = vec![TabState::new(
+            "id1".into(),
+            "默认".into(),
+            "",
+            false,
+            "m1",
+            "p1",
+        )];
+        let mut active_tab = 0usize;
+        let categories = vec!["默认".to_string()];
+        let mut active_category = 0usize;
+        let tabs_area = Rect::new(0, 0, 20, 1);
+        let category_area = Rect::new(0, 2, 10, 5);
+
+        let labels = crate::ui::runtime_helpers::tab_labels_for_category(&tabs, "默认");
+        let active_pos = crate::ui::runtime_helpers::active_tab_position(&tabs, "默认", active_tab);
+        let view = build_tab_bar_view(&labels, active_pos, tabs_area.width);
+        let add_x = add_target_and_x(tabs_area, &view);
+
+        let handled =
+            handle_tab_category_click(crate::ui::runtime_events::TabCategoryClickParams {
+                mouse_x: add_x,
+                mouse_y: 0,
+                tabs: &mut tabs,
+                active_tab: &mut active_tab,
+                categories: &categories,
+                active_category: &mut active_category,
+                tabs_area,
+                category_area,
+            });
+        assert!(handled);
+        assert_eq!(tabs[0].app.pending_command, Some(PendingCommand::NewTab));
+    }
+
+    #[test]
     fn handle_tab_category_click_ignores_outside() {
         let mut tabs = vec![TabState::new(
             "id1".into(),
@@ -217,6 +253,20 @@ mod tests {
             }
         }
         panic!("expected MoreRight indicator in overflow view");
+    }
+
+    fn add_target_and_x(area: Rect, view: &crate::ui::tab_bar::TabBarView) -> u16 {
+        let mut cursor = area.x;
+        for (i, item) in view.items.iter().enumerate() {
+            if let TabBarItemKind::Add = item.kind {
+                return cursor;
+            }
+            cursor = cursor.saturating_add(item.label.width() as u16);
+            if i + 1 < view.items.len() {
+                cursor = cursor.saturating_add(1);
+            }
+        }
+        panic!("expected Add item in tab bar view");
     }
 
     #[test]
