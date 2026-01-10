@@ -7,7 +7,7 @@ use crate::render::RenderTheme;
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::{PreheatTask, TabState};
 use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::widget_system::UpdateOutput;
+use crate::framework::widget_system::UpdateOutput;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::sync::mpsc;
 use std::time::Instant;

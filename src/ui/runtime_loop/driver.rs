@@ -3,7 +3,7 @@ use crate::ui::events::EventBatch;
 use crate::ui::runtime_helpers::PreheatResult;
 use crate::ui::runtime_loop::{event_wait, snapshot};
 use crate::ui::runtime_view::ViewState;
-use crate::ui::widget_system::WidgetSystem;
+use crate::framework::widget_system::WidgetSystem;
 
 pub(super) fn run_loop(params: &mut RunLoopParams<'_>) -> Result<(), Box<dyn std::error::Error>> {
     let mut state = LoopState::init(params)?;
@@ -113,7 +113,7 @@ fn dispatch_input_events(
     }
     let widget_system = &mut state.widget_system;
     let snapshot = &state.snapshot;
-    let mut ctx = crate::ui::widget_system::EventCtx {
+    let mut ctx = crate::framework::widget_system::EventCtx {
         tabs: params.tabs,
         active_tab: params.active_tab,
         categories: params.categories,
@@ -134,7 +134,7 @@ fn dispatch_input_events(
 
 fn dispatch_one_input(
     widget_system: &mut WidgetSystem,
-    ctx: &mut crate::ui::widget_system::EventCtx<'_>,
+    ctx: &mut crate::framework::widget_system::EventCtx<'_>,
     snapshot: &RenderSnapshot,
     ev: &crossterm::event::Event,
 ) -> Result<bool, Box<dyn std::error::Error>> {

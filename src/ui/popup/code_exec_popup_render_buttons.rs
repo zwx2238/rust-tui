@@ -54,4 +54,4 @@ fn build_live_title(live: &crate::ui::state::CodeExecLive) -> String {
     }
 }
 
-// CodeExec 的按钮渲染已迁移到 widget_system/widgets/code_exec/buttons。
+// CodeExec 的按钮渲染已迁移到 framework/widget_system/widgets/code_exec/buttons。

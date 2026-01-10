@@ -35,4 +35,4 @@ pub fn sort_summary_rows(rows: &mut [SummaryRow], sort: SummarySort) {
         SummarySort::ExecTime => rows.sort_by_key(rows::exec_time_sort_key),
     }
 }
-// 旧的 Summary「直接重绘」入口已被 widget_system 替代。
+// 旧的 Summary「直接重绘」入口已被 framework/widget_system 替代。
