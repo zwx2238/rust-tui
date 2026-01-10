@@ -6,3 +6,4 @@
 5) 必须通过 `cargo clippy --all-targets --all-features` 且无警告，不允许 `#[allow(clippy::...)]`。
 6) 每次开发新特性或修复问题必须在新分支完成，并通过提 PR 合入。
 7) 开始新分支前，先同步远程最新 `master`，并以该最新 `master` 为基础创建新分支；PR 的 base 固定为远程最新的 `master` 主线。
+8) 每次交付代码（功能或修复）必须创建 PR 并提供链接，未创建 PR 视为流程未完成。
