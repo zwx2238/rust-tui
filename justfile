@@ -22,7 +22,7 @@ install:
 		true
 	else
 		status=$?
-		if grep -Eq "lock file needs to be updated|attempting to access the network but --frozen was specified|offline mode|--offline was specified" "$tmp_log"; then
+		if grep -Eq "lock file needs to be updated|attempting to (access the network|make an HTTP request), but --frozen was specified|offline mode|--offline was specified" "$tmp_log"; then
 			echo "检测到 frozen 限制导致失败，自动降级为非冻结安装"
 			cargo install --path . --root "$INSTALL_ROOT" --force
 		else
