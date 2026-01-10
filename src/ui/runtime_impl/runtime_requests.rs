@@ -286,7 +286,6 @@ fn setup_request_state(app: &mut App) -> (Vec<Message>, usize, u64, Arc<AtomicBo
     app.pending_assistant = Some(idx);
     app.pending_reasoning = None;
     app.stream_buffer.clear();
-    app.follow = true;
     app.dirty_indices.push(idx);
     (outbound_messages, idx, request_id, cancel)
 }

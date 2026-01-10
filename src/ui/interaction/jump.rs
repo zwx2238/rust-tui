@@ -113,7 +113,7 @@ pub(crate) fn draw_jump_layout(f: &mut ratatui::Frame<'_>, params: JumpLayoutPar
         params.theme,
         params.startup_text,
     );
-    draw_footer(f, params.footer_area, params.theme, false);
+    draw_footer(f, params.footer_area, params.theme, false, false);
 }
 
 pub fn max_preview_width(area: Rect) -> usize {

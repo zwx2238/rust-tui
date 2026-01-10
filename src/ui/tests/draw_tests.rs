@@ -36,7 +36,7 @@ mod tests {
         let categories = vec!["默认".to_string(), "分类 2".to_string()];
         with_terminal(|f| {
             draw_header(f, Rect::new(0, 0, 80, 1), &theme(), Some("note"));
-            draw_footer(f, Rect::new(0, 23, 80, 1), &theme(), false);
+            draw_footer(f, Rect::new(0, 23, 80, 1), &theme(), false, false);
             draw_tabs(f, Rect::new(0, 2, 80, 1), &labels, 0, &theme(), None);
             draw_categories(f, Rect::new(0, 3, 12, 10), &categories, 1, &theme());
         });

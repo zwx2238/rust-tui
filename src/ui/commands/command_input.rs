@@ -65,7 +65,7 @@ fn reset_app(app: &mut App) {
     if let Some(sys) = system {
         app.messages.push(sys);
     }
-    app.follow = true;
+    app.follow = false;
 }
 
 fn push_help(app: &mut App) {

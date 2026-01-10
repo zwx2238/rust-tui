@@ -69,7 +69,7 @@ pub(crate) fn draw_summary_layout<'a, 'b>(params: DrawSummaryLayoutParams<'a, 'b
         params.theme,
         params.startup_text,
     );
-    draw_footer(params.f, params.footer_area, params.theme, false);
+    draw_footer(params.f, params.footer_area, params.theme, false, false);
 }
 
 fn max_latest_question_width(body_area: Rect) -> usize {

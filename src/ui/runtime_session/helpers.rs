@@ -220,7 +220,7 @@ fn apply_conversation_state(
     state.app.messages = conv.messages.clone();
     state.app.code_exec_container_id = conv.code_exec_container_id.clone();
     ensure_system_prompt(state, prompt_key, prompt_registry, args);
-    state.app.follow = true;
+    state.app.follow = false;
     state.app.scroll = u16::MAX;
     state.app.dirty_indices = (0..state.app.messages.len()).collect();
 }
