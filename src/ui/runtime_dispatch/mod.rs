@@ -174,6 +174,15 @@ pub(crate) fn cycle_model(registry: &crate::model_registry::ModelRegistry, key: 
     *key = registry.models[next].key.clone();
 }
 
+pub(crate) fn cycle_model_prev(registry: &crate::model_registry::ModelRegistry, key: &mut String) {
+    if registry.models.is_empty() {
+        return;
+    }
+    let idx = registry.index_of(key).unwrap_or(0);
+    let prev = idx.wrapping_add(registry.models.len() - 1) % registry.models.len();
+    *key = registry.models[prev].key.clone();
+}
+
 pub(crate) fn resolve_model<'a>(
     registry: &'a crate::model_registry::ModelRegistry,
     key: &str,

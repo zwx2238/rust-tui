@@ -182,7 +182,7 @@ fn detail_max_scroll(lines: usize, area: Rect) -> usize {
 fn table_title(pending: &PendingQuestionReview) -> String {
     let (pending_count, approved, rejected) = decision_counts(pending);
     format!(
-        "批量提问 · 未确认 {pending_count} · 通过 {approved} · 拒绝 {rejected} · A 全通过 · m 切模型 · M 全同模型 · PgUp/PgDn 滚动详情 · Enter 提交 · Esc 取消"
+        "批量提问 · 未确认 {pending_count} · 通过 {approved} · 拒绝 {rejected} · A 全通过 · m/Shift+M 切模型 · Alt+M 全同模型 · PgUp/PgDn 滚动详情 · Enter 提交 · Esc 取消"
     )
 }
 

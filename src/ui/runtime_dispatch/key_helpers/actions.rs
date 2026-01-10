@@ -3,7 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::ui::runtime_dispatch::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection, cycle_model,
-    sync_model_selection, sync_prompt_selection,
+    cycle_model_prev, sync_model_selection, sync_prompt_selection,
 };
 use crate::ui::state::{PendingCommand, QuestionDecision};
 use crate::ui::{notice::push_notice, runtime_question_review};
@@ -38,11 +38,17 @@ pub(crate) fn handle_view_action_flow(
 }
 
 fn handle_model_cycle(ctx: &mut DispatchContext<'_>, action: ViewAction) -> bool {
-    if !matches!(action, ViewAction::CycleModel) {
+    if !matches!(action, ViewAction::CycleModel | ViewAction::CycleModelPrev) {
         return false;
     }
     if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-        cycle_model(ctx.registry, &mut tab_state.app.model_key);
+        match action {
+            ViewAction::CycleModel => cycle_model(ctx.registry, &mut tab_state.app.model_key),
+            ViewAction::CycleModelPrev => {
+                cycle_model_prev(ctx.registry, &mut tab_state.app.model_key)
+            }
+            _ => {}
+        }
     }
     true
 }
@@ -105,6 +111,9 @@ fn handle_question_review_actions(ctx: &mut DispatchContext<'_>, action: ViewAct
         }
         ViewAction::QuestionReviewNextModel(idx) => {
             runtime_question_review::cycle_question_model(tab_state, idx, ctx.registry)
+        }
+        ViewAction::QuestionReviewPrevModel(idx) => {
+            runtime_question_review::cycle_question_model_prev(tab_state, idx, ctx.registry)
         }
         ViewAction::QuestionReviewSetAllModel(idx) => {
             let key = runtime_question_review::selected_model_key(tab_state, idx)

@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 use crate::ui::overlay::{OverlayKind, OverlayState};
 use crate::ui::runtime_view_handlers::{
     handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key,
@@ -26,9 +26,11 @@ pub(crate) enum ViewAction {
     ForkMessage(usize),
     SelectModel(usize),
     CycleModel,
+    CycleModelPrev,
     SelectPrompt(usize),
     QuestionReviewToggle(usize), QuestionReviewApprove(usize), QuestionReviewReject(usize),
     QuestionReviewApproveAll, QuestionReviewRejectAll, QuestionReviewNextModel(usize),
+    QuestionReviewPrevModel(usize),
     QuestionReviewSetAllModel(usize), QuestionReviewSubmit, QuestionReviewCancel,
 }
 pub(crate) fn apply_view_action(
@@ -45,10 +47,12 @@ pub(crate) fn apply_view_action(
         }
         ViewAction::JumpTo(idx) => apply_jump_to(idx, jump_rows, tabs, *active_tab),
         ViewAction::ForkMessage(_) => false,
-        ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
+        ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::CycleModelPrev
+        | ViewAction::SelectPrompt(_) => false,
         ViewAction::QuestionReviewToggle(_) | ViewAction::QuestionReviewApprove(_)
         | ViewAction::QuestionReviewReject(_) | ViewAction::QuestionReviewApproveAll
         | ViewAction::QuestionReviewRejectAll | ViewAction::QuestionReviewNextModel(_)
+        | ViewAction::QuestionReviewPrevModel(_)
         | ViewAction::QuestionReviewSetAllModel(_) | ViewAction::QuestionReviewSubmit
         | ViewAction::QuestionReviewCancel => false,
         ViewAction::None => false,
@@ -146,7 +150,13 @@ fn handle_function_keys(
     active_tab: usize,
 ) -> Option<ViewAction> {
     match key.code {
-        KeyCode::F(3) => Some(ViewAction::CycleModel),
+        KeyCode::F(3) => {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                Some(ViewAction::CycleModelPrev)
+            } else {
+                Some(ViewAction::CycleModel)
+            }
+        }
         KeyCode::F(4) => Some(toggle_overlay(view, OverlayKind::Model)),
         KeyCode::F(10) => Some(toggle_help(view)),
         KeyCode::F(1) => Some(toggle_summary(view, active_tab, tabs_len)),

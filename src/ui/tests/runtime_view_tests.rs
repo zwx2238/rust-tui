@@ -138,6 +138,19 @@ mod tests {
     }
 
     #[test]
+    fn handle_view_key_cycles_model_prev() {
+        let mut view = ViewState::new();
+        let action = handle_view_key(
+            &mut view,
+            KeyEvent::new(KeyCode::F(3), KeyModifiers::SHIFT),
+            3,
+            0,
+            0,
+        );
+        assert!(matches!(action, ViewAction::CycleModelPrev));
+    }
+
+    #[test]
     fn handle_view_mouse_switches() {
         let mut view = ViewState::new();
         view.overlay.open(OverlayKind::Summary);
