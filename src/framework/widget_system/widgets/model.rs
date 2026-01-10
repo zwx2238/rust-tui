@@ -1,7 +1,12 @@
+use crate::model_registry::ModelProfile;
+use crate::render::RenderTheme;
 use crate::ui::jump::JumpRow;
-use crate::ui::model_popup::draw_model_popup;
+use crate::ui::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::ui::runtime_loop_steps::FrameLayout;
 use std::error::Error;
+use ratatui::layout::{Constraint, Rect};
+use ratatui::text::Line;
+use ratatui::widgets::{Cell, Row};
 
 use super::super::bindings::bind_event;
 use super::super::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
@@ -65,4 +70,68 @@ impl Widget for ModelWidget {
         );
         Ok(())
     }
+}
+
+fn draw_model_popup(
+    f: &mut ratatui::Frame<'_>,
+    area: Rect,
+    models: &[ModelProfile],
+    selected: usize,
+    scroll: usize,
+    theme: &RenderTheme,
+) {
+    let popup = crate::ui::model_popup::model_popup_area(area, models.len());
+    let popup_spec = build_model_table(models, selected, scroll, theme);
+    draw_overlay_table(f, popup, popup_spec);
+}
+
+fn build_model_table<'a>(
+    models: &'a [ModelProfile],
+    selected: usize,
+    scroll: usize,
+    theme: &'a RenderTheme,
+) -> OverlayTable<'a> {
+    OverlayTable {
+        title: Line::from(model_title()),
+        header: model_header(theme),
+        rows: model_body(models),
+        widths: model_widths(),
+        selected,
+        scroll,
+        theme,
+    }
+}
+
+fn model_header(theme: &RenderTheme) -> Row<'static> {
+    Row::new(vec![
+        Cell::from("名称"),
+        Cell::from("模型"),
+        Cell::from("Base URL"),
+    ])
+    .style(header_style(theme))
+}
+
+fn model_body<'a>(models: &'a [ModelProfile]) -> Vec<Row<'a>> {
+    models
+        .iter()
+        .map(|m| {
+            Row::new(vec![
+                Cell::from(m.key.clone()),
+                Cell::from(m.model.clone()),
+                Cell::from(m.base_url.clone()),
+            ])
+        })
+        .collect()
+}
+
+fn model_widths() -> Vec<Constraint> {
+    vec![
+        Constraint::Length(12),
+        Constraint::Length(22),
+        Constraint::Min(10),
+    ]
+}
+
+fn model_title() -> &'static str {
+    "模型切换 · Enter 确认 · Esc 取消 · F10/Shift+F10 快速切换"
 }

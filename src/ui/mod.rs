@@ -1,11 +1,10 @@
 mod code_exec_container;
 mod code_exec_container_env;
 pub(crate) mod draw;
-pub(crate) mod draw_input;
 mod net;
 pub(crate) mod notice;
 pub(crate) mod overlay;
-mod overlay_table;
+pub(crate) mod overlay_table;
 pub(crate) mod overlay_table_state;
 mod runtime;
 mod runtime_code_exec;
@@ -16,7 +15,7 @@ pub(crate) mod runtime_loop_helpers;
 mod runtime_session;
 pub(crate) mod runtime_tick;
 pub(crate) mod summary;
-mod tab_bar;
+pub(crate) mod tab_bar;
 pub(crate) mod terminal;
 mod tool_service;
 mod tools;
@@ -32,9 +31,8 @@ pub(crate) use interaction::{
     selection_state, shortcut_help, shortcuts, text_utils,
 };
 pub(crate) use popup::{
-    code_exec_popup, code_exec_popup_layout, code_exec_popup_text, file_patch_popup,
-    file_patch_popup_layout, file_patch_popup_text, model_popup, prompt_popup,
-    question_review_popup, terminal_popup_layout,
+    code_exec_popup_layout, code_exec_popup_text, file_patch_popup_layout, file_patch_popup_text,
+    model_popup, prompt_popup, question_review_popup, terminal_popup_layout,
 };
 pub(crate) use runtime_impl::workspace;
 pub(crate) use runtime_impl::{

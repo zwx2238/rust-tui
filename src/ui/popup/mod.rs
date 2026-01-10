@@ -1,9 +1,5 @@
-pub(crate) mod code_exec_popup;
 pub(crate) mod code_exec_popup_layout;
-mod code_exec_popup_render_base;
-mod code_exec_popup_render_buttons;
 pub(crate) mod code_exec_popup_text;
-pub(crate) mod file_patch_popup;
 pub(crate) mod file_patch_popup_layout;
 pub(crate) mod file_patch_popup_text;
 pub(crate) mod model_popup;
