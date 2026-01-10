@@ -1,6 +1,4 @@
-pub(crate) mod layout;
 mod rows;
-pub(crate) mod table;
 
 use crate::ui::runtime_helpers::TabState;
 use std::time::Instant;
