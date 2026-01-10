@@ -10,6 +10,7 @@ mod session;
 mod types;
 mod ui;
 mod framework;
+mod services;
 
 mod cli;
 use args::{Args, Cli, Command, ModelCommand};
@@ -28,7 +29,7 @@ fn run_with_args(
         debug::wait_for_gdb_attach()?;
     }
     apply_env_from_args(&args);
-    crate::ui::workspace::resolve_workspace(&args)
+    crate::services::workspace::resolve_workspace(&args)
         .map_err(|e| format!("workspace 校验失败：{e}"))?;
     if maybe_list_question_sets(&args)? {
         return Ok(());

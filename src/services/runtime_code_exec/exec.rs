@@ -1,7 +1,7 @@
-use crate::ui::code_exec_container::{
+use crate::services::code_exec_container::{
     run_bash_in_container_stream, run_python_in_container_stream,
 };
-use crate::ui::runtime_code_exec::helpers::{mark_exec_error, mark_unsupported_language};
+use crate::services::runtime_code_exec::helpers::{mark_exec_error, mark_unsupported_language};
 use crate::ui::state::{CodeExecLive, PendingCodeExec};
 
 pub(super) fn spawn_exec(

@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::types::ToolCall;
-use crate::ui::workspace::resolve_workspace;
+use crate::services::workspace::resolve_workspace;
 use std::fs::{OpenOptions, create_dir_all};
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,7 +20,7 @@ pub(super) fn log_modify_file_raw(args: &Args, call: &ToolCall) {
 }
 
 fn open_modify_file_log(
-    workspace: &crate::ui::workspace::WorkspaceConfig,
+    workspace: &crate::services::workspace::WorkspaceConfig,
 ) -> Option<std::fs::File> {
     let log_dir = workspace.host_path.join(".deepchat");
     if create_dir_all(&log_dir).is_err() {

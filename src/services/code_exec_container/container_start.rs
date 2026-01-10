@@ -1,8 +1,8 @@
-use crate::ui::code_exec_container_env::{
+use crate::services::code_exec_container_env::{
     code_exec_image, code_exec_network_mode, pip_cache_dir, pip_extra_index_url, pip_index_url,
     pip_target_dir, prepare_pip_cache_dir, site_tmpfs_mb, tmp_dir, work_dir,
 };
-use crate::ui::workspace::WorkspaceConfig;
+use crate::services::workspace::WorkspaceConfig;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -119,13 +119,13 @@ fn add_pip_index_envs(cmd: &mut Command) {
 
 fn apply_network_mode(cmd: &mut Command) {
     match code_exec_network_mode() {
-        crate::ui::code_exec_container_env::CodeExecNetwork::None => {
+        crate::services::code_exec_container_env::CodeExecNetwork::None => {
             cmd.arg("--network=none");
         }
-        crate::ui::code_exec_container_env::CodeExecNetwork::Host => {
+        crate::services::code_exec_container_env::CodeExecNetwork::Host => {
             cmd.arg("--network=host");
         }
-        crate::ui::code_exec_container_env::CodeExecNetwork::Bridge => {}
+        crate::services::code_exec_container_env::CodeExecNetwork::Bridge => {}
     }
 }
 

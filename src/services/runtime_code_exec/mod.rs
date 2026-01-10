@@ -3,14 +3,14 @@ mod helpers;
 mod pending;
 
 use crate::args::Args;
-use crate::ui::code_exec_container::ensure_container_cached;
+use crate::services::code_exec_container::ensure_container_cached;
 use crate::ui::events::RuntimeEvent;
-use crate::ui::runtime_code_exec_helpers::inject_requirements;
-use crate::ui::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
+use crate::services::runtime_code_exec_helpers::inject_requirements;
+use crate::services::runtime_code_exec_output::{escape_json_string, take_code_exec_reason};
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_followup_request;
+use crate::services::runtime_requests::start_followup_request;
 use crate::ui::state::{CodeExecReasonTarget, PendingCodeExec};
-use crate::ui::tools::{parse_bash_exec_args, parse_code_exec_args};
+use crate::services::tools::{parse_bash_exec_args, parse_code_exec_args};
 use std::sync::mpsc;
 use std::time::Instant;
 
@@ -96,7 +96,7 @@ pub(crate) fn handle_code_exec_approve(
     let (live, cancel, run_id) = init_exec_state(tab_state);
     let exec_code = build_exec_code(&pending);
     helpers::store_exec_code(&mut tab_state.app, &mut pending, exec_code);
-    let workspace = match crate::ui::workspace::resolve_workspace(args) {
+    let workspace = match crate::services::workspace::resolve_workspace(args) {
         Ok(val) => val,
         Err(err) => {
             helpers::mark_exec_error(&live, err);
@@ -128,7 +128,7 @@ fn build_exec_code(pending: &PendingCodeExec) -> String {
 }
 
 fn spawn_exec_thread(
-    workspace: crate::ui::workspace::WorkspaceConfig,
+    workspace: crate::services::workspace::WorkspaceConfig,
     pending: PendingCodeExec,
     live: std::sync::Arc<std::sync::Mutex<crate::ui::state::CodeExecLive>>,
     cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -182,7 +182,7 @@ fn start_followup(
         .get(&tab_state.app.model_key)
         .unwrap_or_else(|| registry.get(&registry.default_key).expect("model"));
     let log_session_id = tab_state.app.log_session_id.clone();
-    start_followup_request(crate::ui::runtime_requests::StartFollowupRequestParams {
+    start_followup_request(crate::services::runtime_requests::StartFollowupRequestParams {
         tab_state,
         base_url: &model.base_url,
         api_key: &model.api_key,

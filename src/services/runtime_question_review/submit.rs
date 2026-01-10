@@ -7,7 +7,7 @@ use crate::types::Message;
 use crate::ui::events::RuntimeEvent;
 use crate::ui::notice::push_notice;
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_followup_request;
+use crate::services::runtime_requests::start_followup_request;
 use crate::ui::state::{PendingQuestionItem, PendingQuestionReview, QuestionDecision};
 use std::sync::mpsc;
 
@@ -173,12 +173,12 @@ fn build_followup_params<'a>(
     registry: &'a crate::model_registry::ModelRegistry,
     args: &'a Args,
     tx: &'a mpsc::Sender<RuntimeEvent>,
-) -> Option<crate::ui::runtime_requests::StartFollowupRequestParams<'a>> {
+) -> Option<crate::services::runtime_requests::StartFollowupRequestParams<'a>> {
     let model = registry.get(&tab_state.app.model_key).unwrap_or_else(|| {
         registry.get(&registry.default_key).expect("model")
     });
     let log_session_id = tab_state.app.log_session_id.clone();
-    Some(crate::ui::runtime_requests::StartFollowupRequestParams {
+    Some(crate::services::runtime_requests::StartFollowupRequestParams {
         tab_state,
         base_url: &model.base_url,
         api_key: &model.api_key,

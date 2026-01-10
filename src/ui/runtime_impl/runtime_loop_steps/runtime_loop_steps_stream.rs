@@ -9,8 +9,8 @@ use crate::ui::runtime_tick::{
     update_tab_widths,
 };
 use crate::ui::runtime_view::ViewState;
-use crate::ui::runtime_yolo::auto_finalize_code_exec;
-use crate::ui::tool_service::ToolService;
+use crate::services::runtime_yolo::auto_finalize_code_exec;
+use crate::services::tool_service::ToolService;
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};

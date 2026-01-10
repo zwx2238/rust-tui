@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::model_registry::ModelRegistry;
 use crate::ui::events::RuntimeEvent;
-use crate::ui::runtime_code_exec::handle_code_exec_exit;
+use crate::services::runtime_code_exec::handle_code_exec_exit;
 use crate::ui::runtime_helpers::TabState;
 use std::sync::mpsc;
 

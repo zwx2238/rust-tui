@@ -6,7 +6,8 @@ use crate::ui::runtime_dispatch::{
     cycle_model_prev, sync_model_selection, sync_prompt_selection,
 };
 use crate::ui::state::{PendingCommand, QuestionDecision};
-use crate::ui::{notice::push_notice, runtime_question_review};
+use crate::ui::notice::push_notice;
+use crate::services::runtime_question_review;
 
 pub(crate) fn handle_view_action_flow(
     ctx: &mut DispatchContext<'_>,
@@ -117,7 +118,7 @@ fn handle_question_review_actions(ctx: &mut DispatchContext<'_>, action: ViewAct
         }
         ViewAction::QuestionReviewSetAllModel(idx) => {
             let key = runtime_question_review::selected_model_key(tab_state, idx)
-                .map(|key| key.to_string());
+                .map(|key: &str| key.to_string());
             if let Some(key) = key {
                 runtime_question_review::set_all_models(tab_state, &key)
             } else {

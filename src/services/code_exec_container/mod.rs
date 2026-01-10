@@ -1,4 +1,4 @@
-use crate::ui::workspace::WorkspaceConfig;
+use crate::services::workspace::WorkspaceConfig;
 use std::sync::{Mutex, OnceLock};
 
 mod container_start;

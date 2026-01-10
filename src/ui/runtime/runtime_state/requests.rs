@@ -3,7 +3,7 @@ use crate::args::Args;
 use crate::model_registry::ModelRegistry;
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_requests::start_tab_request;
+use crate::services::runtime_requests::start_tab_request;
 use std::sync::mpsc;
 
 pub(crate) fn run_initial_requests(
@@ -100,9 +100,9 @@ fn build_request_params<'a>(
     args: &'a Args,
     tx: &'a mpsc::Sender<RuntimeEvent>,
     flags: RequestFlags,
-) -> crate::ui::runtime_requests::StartTabRequestParams<'a> {
+) -> crate::services::runtime_requests::StartTabRequestParams<'a> {
     let log_session_id = tab_state.app.log_session_id.clone();
-    crate::ui::runtime_requests::StartTabRequestParams {
+    crate::services::runtime_requests::StartTabRequestParams {
         tab_state,
         question,
         base_url: &model.base_url,
