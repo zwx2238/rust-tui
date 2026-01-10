@@ -2,6 +2,7 @@ use crate::ui::logic::point_in_rect;
 use crate::ui::runtime_helpers::{
     TabState, active_tab_position, tab_labels_for_category, visible_tab_indices,
 };
+use crate::ui::state::PendingCommand;
 use crate::ui::tab_bar::{TabBarItemKind, build_tab_bar_view, hit_test_tab_bar};
 use ratatui::layout::Rect;
 
@@ -75,23 +76,43 @@ fn handle_tabs_click(
     if !point_in_rect(mouse_x, mouse_y, tabs_area) {
         return false;
     }
-    let category = categories
-        .get(active_category)
-        .map(|s| s.as_str())
-        .unwrap_or("默认");
+    let category = active_category_name(categories, active_category);
     let labels = tab_labels_for_category(tabs, category);
     let visible = visible_tab_indices(tabs, category);
     let active_pos = active_tab_position(tabs, category, *active_tab);
     let view = build_tab_bar_view(&labels, active_pos, tabs_area.width);
-    if let Some(kind) = hit_test_tab_bar(mouse_x, tabs_area, &view) {
-        let target = match kind {
-            TabBarItemKind::Tab(pos) => visible.get(pos).copied(),
-            TabBarItemKind::MoreLeft { target_pos } => visible.get(target_pos).copied(),
-            TabBarItemKind::MoreRight { target_pos } => visible.get(target_pos).copied(),
-        };
-        if let Some(idx) = target {
-            *active_tab = idx;
+    hit_test_tab_bar(mouse_x, tabs_area, &view)
+        .map(|kind| handle_tab_bar_hit(kind, tabs, active_tab, &visible))
+        .unwrap_or(true)
+}
+
+fn active_category_name(categories: &[String], active_category: usize) -> &str {
+    categories
+        .get(active_category)
+        .map(|s| s.as_str())
+        .unwrap_or("默认")
+}
+
+fn handle_tab_bar_hit(
+    kind: TabBarItemKind,
+    tabs: &mut [TabState],
+    active_tab: &mut usize,
+    visible: &[usize],
+) -> bool {
+    if matches!(kind, TabBarItemKind::Add) {
+        if let Some(tab) = tabs.get_mut(*active_tab) {
+            tab.app.pending_command = Some(PendingCommand::NewTab);
         }
+        return true;
+    }
+    let target = match kind {
+        TabBarItemKind::Tab(pos) => visible.get(pos).copied(),
+        TabBarItemKind::MoreLeft { target_pos } => visible.get(target_pos).copied(),
+        TabBarItemKind::MoreRight { target_pos } => visible.get(target_pos).copied(),
+        TabBarItemKind::Add => None,
+    };
+    if let Some(idx) = target {
+        *active_tab = idx;
     }
     true
 }
