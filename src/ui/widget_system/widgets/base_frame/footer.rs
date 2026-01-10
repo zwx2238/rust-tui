@@ -36,7 +36,7 @@ impl Widget for FooterWidget {
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(app) = frame.state.active_app() {
-            draw_footer(frame.frame, rect, frame.state.theme, app.nav_mode);
+            draw_footer(frame.frame, rect, frame.state.theme, app.nav_mode, app.follow);
         }
         Ok(())
     }

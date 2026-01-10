@@ -58,7 +58,7 @@ fn handle_category_click(
         if let Some(category) = categories.get(row)
             && let Some(idx) = tabs.iter().position(|t| t.category == category.as_str())
         {
-            *active_tab = idx;
+            set_active_tab(tabs, active_tab, idx);
         }
     }
     true
@@ -112,7 +112,17 @@ fn handle_tab_bar_hit(
         TabBarItemKind::Add => None,
     };
     if let Some(idx) = target {
-        *active_tab = idx;
+        set_active_tab(tabs, active_tab, idx);
     }
     true
+}
+
+fn set_active_tab(tabs: &mut [TabState], active_tab: &mut usize, idx: usize) {
+    if *active_tab == idx {
+        return;
+    }
+    *active_tab = idx;
+    if let Some(tab) = tabs.get_mut(idx) {
+        tab.app.follow = false;
+    }
 }

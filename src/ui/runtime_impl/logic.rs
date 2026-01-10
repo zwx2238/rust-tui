@@ -121,7 +121,6 @@ pub fn stop_stream(app: &mut App) -> bool {
     app.stream_buffer.clear();
     app.busy = false;
     app.busy_since = None;
-    app.follow = true;
     true
 }
 

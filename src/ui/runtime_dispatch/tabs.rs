@@ -25,7 +25,8 @@ pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
         tab.app.set_log_session_id(&active.app.log_session_id);
     }
     ctx.tabs.push(tab);
-    *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+    let next = ctx.tabs.len().saturating_sub(1);
+    set_active_tab(ctx, next);
     sync_active_category(ctx);
 }
 
@@ -35,9 +36,11 @@ pub(crate) fn close_tab(ctx: &mut DispatchContext<'_>) {
             let _ = crate::conversation::save_conversation(&tab_to_conversation(tab));
         }
         ctx.tabs.remove(*ctx.active_tab);
-        if *ctx.active_tab >= ctx.tabs.len() {
-            *ctx.active_tab = ctx.tabs.len().saturating_sub(1);
+        let mut next = *ctx.active_tab;
+        if next >= ctx.tabs.len() {
+            next = ctx.tabs.len().saturating_sub(1);
         }
+        set_active_tab(ctx, next);
         cleanup_categories(ctx);
         ensure_active_tab_in_category(ctx);
     }
@@ -56,7 +59,7 @@ pub(crate) fn close_other_tabs(ctx: &mut DispatchContext<'_>) {
     }
     ctx.tabs.clear();
     ctx.tabs.push(active);
-    *ctx.active_tab = 0;
+    set_active_tab(ctx, 0);
     ctx.categories.clear();
     let keep_category = ctx
         .tabs
@@ -74,7 +77,7 @@ pub(crate) fn close_all_tabs(ctx: &mut DispatchContext<'_>) {
     let mut tab = build_default_tab(ctx);
     apply_keep_config(&mut tab, keep);
     ctx.tabs.push(tab);
-    *ctx.active_tab = 0;
+    set_active_tab(ctx, 0);
 }
 
 struct KeepConfig {
@@ -148,7 +151,7 @@ pub(crate) fn prev_tab(ctx: &mut DispatchContext<'_>) {
         .position(|idx| *idx == *ctx.active_tab)
         .unwrap_or(0);
     let next_pos = if pos == 0 { visible.len() - 1 } else { pos - 1 };
-    *ctx.active_tab = visible[next_pos];
+    set_active_tab(ctx, visible[next_pos]);
 }
 
 pub(crate) fn next_tab(ctx: &mut DispatchContext<'_>) {
@@ -162,7 +165,7 @@ pub(crate) fn next_tab(ctx: &mut DispatchContext<'_>) {
         .position(|idx| *idx == *ctx.active_tab)
         .unwrap_or(0);
     let next_pos = (pos + 1) % visible.len();
-    *ctx.active_tab = visible[next_pos];
+    set_active_tab(ctx, visible[next_pos]);
 }
 
 pub(crate) fn prev_category(ctx: &mut DispatchContext<'_>) {
@@ -201,9 +204,9 @@ fn ensure_active_tab_in_category(ctx: &mut DispatchContext<'_>) {
     }
     let category = active_category_name(ctx);
     if let Some(idx) = ctx.tabs.iter().position(|t| t.category == category) {
-        *ctx.active_tab = idx;
+        set_active_tab(ctx, idx);
     } else {
-        *ctx.active_tab = 0;
+        set_active_tab(ctx, 0);
         sync_active_category(ctx);
     }
 }
@@ -232,5 +235,15 @@ fn cleanup_categories(ctx: &mut DispatchContext<'_>) {
     }
     if *ctx.active_category >= ctx.categories.len() {
         *ctx.active_category = 0;
+    }
+}
+
+fn set_active_tab(ctx: &mut DispatchContext<'_>, idx: usize) {
+    if *ctx.active_tab == idx {
+        return;
+    }
+    *ctx.active_tab = idx;
+    if let Some(tab) = ctx.tabs.get_mut(idx) {
+        tab.app.follow = false;
     }
 }

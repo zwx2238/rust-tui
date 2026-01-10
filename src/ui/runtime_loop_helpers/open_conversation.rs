@@ -157,7 +157,7 @@ fn apply_conversation_state(
     ensure_system_prompt(tab, prompt_key, prompt_registry, args);
     tab.app.model_key = model_key.to_string();
     tab.app.prompt_key = prompt_key.to_string();
-    tab.app.follow = true;
+    tab.app.follow = false;
     tab.app.scroll = u16::MAX;
     tab.app.dirty_indices = (0..tab.app.messages.len()).collect();
 }

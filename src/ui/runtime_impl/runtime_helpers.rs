@@ -231,7 +231,6 @@ fn apply_message_removals(tab_state: &mut TabState, remove: &[usize]) {
 
 fn reset_edit_state(app: &mut App, user_text: &str) {
     clear_stream_state(app);
-    app.follow = true;
     app.dirty_indices = (0..app.messages.len()).collect();
     app.input = tui_textarea::TextArea::default();
     if !user_text.is_empty() {

@@ -29,13 +29,16 @@ pub(crate) fn draw_footer(
     area: Rect,
     theme: &RenderTheme,
     nav_mode: bool,
+    follow: bool,
 ) {
     let time = chrono::Local::now().format("%H:%M:%S").to_string();
-    let text = if nav_mode {
-        format!("{time}  NAV")
-    } else {
-        time
-    };
+    let mut parts = vec![time];
+    if nav_mode {
+        parts.push("NAV".to_string());
+    }
+    let follow_text = if follow { "追底:开" } else { "追底:关" };
+    parts.push(follow_text.to_string());
+    let text = parts.join("  ");
     let style = Style::default().bg(theme.bg).fg(base_fg(theme));
     let line = Line::from(Span::styled(text, style));
     let paragraph = Paragraph::new(line);

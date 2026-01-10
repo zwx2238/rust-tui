@@ -23,12 +23,22 @@ pub(crate) fn handle_tabs_wheel(
 
     if down {
         if let Some(idx) = visible.get(pos + 1).copied() {
-            *active_tab = idx;
+            set_active_tab(tabs, active_tab, idx);
         }
         return;
     }
     if pos == 0 {
         return;
     }
-    *active_tab = visible[pos - 1];
+    set_active_tab(tabs, active_tab, visible[pos - 1]);
+}
+
+fn set_active_tab(tabs: &mut [TabState], active_tab: &mut usize, idx: usize) {
+    if *active_tab == idx {
+        return;
+    }
+    *active_tab = idx;
+    if let Some(tab) = tabs.get_mut(idx) {
+        tab.app.follow = false;
+    }
 }

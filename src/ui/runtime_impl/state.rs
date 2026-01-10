@@ -250,7 +250,7 @@ fn base_app(messages: Vec<Message>, default_model: &str, default_prompt: &str) -
         messages,
         model_key: default_model.to_string(),
         prompt_key: default_prompt.to_string(),
-        follow: true,
+        follow: false,
         next_request_id: 1,
         ..Default::default()
     }

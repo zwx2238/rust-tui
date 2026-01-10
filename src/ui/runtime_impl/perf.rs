@@ -15,7 +15,7 @@ pub fn seed_perf_messages(app: &mut App) {
             tool_calls: None,
         });
     }
-    app.follow = true;
+    app.follow = false;
     app.scroll = u16::MAX;
 }
 
@@ -56,7 +56,7 @@ mod tests {
         let mut app = App::new("", "m1", "p1");
         seed_perf_messages(&mut app);
         assert_eq!(app.messages.len(), 50);
-        assert!(app.follow);
+        assert!(!app.follow);
         assert_eq!(app.scroll, u16::MAX);
     }
 }
