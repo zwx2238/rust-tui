@@ -15,6 +15,7 @@ pub(crate) struct ViewState {
     pub(crate) model: SelectionState,
     pub(crate) prompt: SelectionState,
     pub(crate) question_review: SelectionState,
+    pub(crate) question_review_detail_scroll: usize,
     pub(crate) help: SelectionState,
 }
 #[derive(Copy, Clone)]
@@ -27,7 +28,8 @@ pub(crate) enum ViewAction {
     CycleModel,
     SelectPrompt(usize),
     QuestionReviewToggle(usize), QuestionReviewApprove(usize), QuestionReviewReject(usize),
-    QuestionReviewApproveAll, QuestionReviewRejectAll, QuestionReviewSubmit, QuestionReviewCancel,
+    QuestionReviewApproveAll, QuestionReviewRejectAll, QuestionReviewNextModel(usize),
+    QuestionReviewSetAllModel(usize), QuestionReviewSubmit, QuestionReviewCancel,
 }
 pub(crate) fn apply_view_action(
     action: ViewAction,
@@ -46,7 +48,8 @@ pub(crate) fn apply_view_action(
         ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::SelectPrompt(_) => false,
         ViewAction::QuestionReviewToggle(_) | ViewAction::QuestionReviewApprove(_)
         | ViewAction::QuestionReviewReject(_) | ViewAction::QuestionReviewApproveAll
-        | ViewAction::QuestionReviewRejectAll | ViewAction::QuestionReviewSubmit
+        | ViewAction::QuestionReviewRejectAll | ViewAction::QuestionReviewNextModel(_)
+        | ViewAction::QuestionReviewSetAllModel(_) | ViewAction::QuestionReviewSubmit
         | ViewAction::QuestionReviewCancel => false,
         ViewAction::None => false,
     }
@@ -62,6 +65,7 @@ impl ViewState {
             model: SelectionState::default(),
             prompt: SelectionState::default(),
             question_review: SelectionState::default(),
+            question_review_detail_scroll: 0,
             help: SelectionState::default(),
         }
     }
@@ -275,6 +279,7 @@ fn handle_question_review_mouse(
 ) -> ViewAction {
     if matches!(kind, MouseEventKind::Down(_)) {
         view.question_review.select(row);
+        view.question_review_detail_scroll = 0;
     }
     ViewAction::None
 }

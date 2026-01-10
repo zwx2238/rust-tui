@@ -146,7 +146,11 @@ impl<'a> ToolService<'a> {
             push_tool_error(tab_state, call, state, "ask_questions 未启用");
             return;
         }
-        match crate::ui::runtime_question_review::handle_question_review_request(tab_state, call) {
+        match crate::ui::runtime_question_review::handle_question_review_request(
+            tab_state,
+            call,
+            self.registry,
+        ) {
             Ok(()) => {
                 state.needs_approval = true;
                 state.any_results = true;

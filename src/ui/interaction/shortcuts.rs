@@ -187,6 +187,16 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::QuestionReview,
+        keys: "m / M",
+        description: "切换模型 / 全部使用当前模型",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
+        keys: "PgUp / PgDn",
+        description: "滚动详情",
+    },
+    Shortcut {
+        scope: ShortcutScope::QuestionReview,
         keys: "Enter / Esc",
         description: "提交 / 取消",
     },
