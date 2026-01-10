@@ -48,7 +48,6 @@ pub(crate) fn handle_file_patch_request(
 
 pub(crate) fn handle_file_patch_apply(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -59,12 +58,11 @@ pub(crate) fn handle_file_patch_apply(
     let message = build_apply_message(&pending, apply_patch(&pending.diff, args));
     push_tool_message(&mut tab_state.app, message, pending.call_id);
     reset_patch_ui(&mut tab_state.app);
-    start_followup(tab_state, tab_id, registry, args, tx);
+    start_followup(tab_state, registry, args, tx);
 }
 
 pub(crate) fn handle_file_patch_cancel(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -78,7 +76,7 @@ pub(crate) fn handle_file_patch_cancel(
         pending.call_id,
     );
     reset_patch_ui(&mut tab_state.app);
-    start_followup(tab_state, tab_id, registry, args, tx);
+    start_followup(tab_state, registry, args, tx);
 }
 
 fn build_apply_message(pending: &PendingFilePatch, result: Result<(), String>) -> String {
@@ -115,7 +113,6 @@ fn reset_patch_ui(app: &mut crate::ui::state::App) {
 
 fn start_followup(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -132,7 +129,6 @@ fn start_followup(
         max_tokens: model.max_tokens,
         show_reasoning: args.show_reasoning,
         tx,
-        tab_id,
         enable_web_search: args.web_search_enabled(),
         enable_code_exec: args.code_exec_enabled(),
         enable_read_file: args.read_file_enabled(),

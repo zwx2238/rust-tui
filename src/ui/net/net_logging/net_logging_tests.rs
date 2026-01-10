@@ -36,14 +36,14 @@ fn write_logs(dir: &std::path::Path, ctx: &RigRequestContext) {
     write_request_log(
         dir.to_string_lossy().as_ref(),
         "sess",
-        0,
+        "1",
         0,
         "http://example.com",
         "model",
         ctx,
     )
     .unwrap();
-    write_response_log(dir.to_string_lossy().as_ref(), "sess", 0, 0, "output").unwrap();
+    write_response_log(dir.to_string_lossy().as_ref(), "sess", "1", 0, "output").unwrap();
 }
 
 #[test]
@@ -65,9 +65,9 @@ fn sanitize_log_part_replaces_invalid() {
 #[test]
 fn build_log_path_creates_dir_and_sanitizes() {
     let dir = temp_dir("path");
-    let path = build_log_path(dir.to_string_lossy().as_ref(), "a/b", 0, 1, "input.txt").unwrap();
+    let path = build_log_path(dir.to_string_lossy().as_ref(), "a/b", "c", 1, "input.txt").unwrap();
     assert!(path.exists() || path.parent().is_some());
-    assert!(path.to_string_lossy().contains("a_b_tab1_msg2_input.txt"));
+    assert!(path.to_string_lossy().contains("a_b_tabc_msg2_input.txt"));
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -91,7 +91,7 @@ fn write_request_and_response_log_outputs_files() {
 fn stream_chunks_sends_events() {
     let (tx, rx) = mpsc::channel();
     let cancel = Arc::new(AtomicBool::new(false));
-    stream_chunks("hello", &cancel, &tx, 1, 2);
+    stream_chunks("hello", &cancel, &tx, "1", 2);
     let msg = rx.recv_timeout(Duration::from_millis(50)).unwrap();
     match msg {
         crate::ui::events::RuntimeEvent::Llm(ui) => match ui.event {

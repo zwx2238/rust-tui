@@ -74,7 +74,7 @@ mod tests {
         let mut tab = TabState::new("id".into(), "默认".into(), "", false, "m1", "p1");
         let call = patch_call(r#"{"diff":"diff --git a/a b/a\n","path":"a"}"#);
         handle_file_patch_request(&mut tab, &call).unwrap();
-        handle_file_patch_cancel(&mut tab, 0, &registry, &args, &tx);
+        handle_file_patch_cancel(&mut tab, &registry, &args, &tx);
         assert!(
             tab.app
                 .messages
@@ -103,7 +103,7 @@ mod tests {
             diff: "diff --git a/nope b/nope\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/nope\n@@\n+hi\n".to_string(),
             preview: "preview".to_string(),
         });
-        crate::ui::runtime_file_patch::handle_file_patch_apply(&mut tab, 0, &registry, &args, &tx);
+        crate::ui::runtime_file_patch::handle_file_patch_apply(&mut tab, &registry, &args, &tx);
         assert!(
             tab.app
                 .messages

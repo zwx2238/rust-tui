@@ -21,6 +21,6 @@ pub struct LlmStreamRequestParams {
     pub message_index: usize,
     pub cancel: Arc<AtomicBool>,
     pub tx: Sender<crate::ui::events::RuntimeEvent>,
-    pub tab: usize,
+    pub tab: String,
     pub request_id: u64,
 }

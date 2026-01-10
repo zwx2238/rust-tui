@@ -13,7 +13,7 @@ pub(super) fn log_request(
         let _ = super::net_logging::write_request_log(
             dir,
             &input.log_session_id,
-            input.tab,
+            &input.tab,
             input.message_index,
             &input.base_url,
             &input.model,
@@ -27,7 +27,7 @@ pub(super) fn log_response_text(input: &super::request::RequestInput, text: &str
         let _ = write_response_log(
             dir,
             &input.log_session_id,
-            input.tab,
+            &input.tab,
             input.message_index,
             text,
         );
@@ -39,7 +39,7 @@ pub(super) fn send_chunk(
     input: &super::request::RequestInput,
     chunk: String,
 ) {
-    send_llm(tx, input.tab, input.request_id, LlmEvent::Chunk(chunk));
+    send_llm(tx, input.tab.clone(), input.request_id, LlmEvent::Chunk(chunk));
 }
 
 pub(super) fn send_done(
@@ -47,7 +47,7 @@ pub(super) fn send_done(
     tx: &Sender<RuntimeEvent>,
     usage: Option<Usage>,
 ) {
-    send_llm(tx, input.tab, input.request_id, LlmEvent::Done { usage });
+    send_llm(tx, input.tab.clone(), input.request_id, LlmEvent::Done { usage });
 }
 
 pub(super) fn send_reasoning_chunk(
@@ -55,7 +55,12 @@ pub(super) fn send_reasoning_chunk(
     tx: &Sender<RuntimeEvent>,
     chunk: String,
 ) {
-    send_llm(tx, input.tab, input.request_id, LlmEvent::ReasoningChunk(chunk));
+    send_llm(
+        tx,
+        input.tab.clone(),
+        input.request_id,
+        LlmEvent::ReasoningChunk(chunk),
+    );
 }
 
 pub(super) fn send_tool_calls(
@@ -66,7 +71,7 @@ pub(super) fn send_tool_calls(
 ) {
     send_llm(
         tx,
-        input.tab,
+        input.tab.clone(),
         input.request_id,
         LlmEvent::ToolCalls { calls, usage },
     );
@@ -74,7 +79,7 @@ pub(super) fn send_tool_calls(
 
 pub(super) fn convert_tool_call(
     call: &rig::message::ToolCall,
-    tab: usize,
+    tab: &str,
     request_id: u64,
 ) -> ToolCall {
     ToolCall {
@@ -112,7 +117,7 @@ pub(super) fn log_tool_call(
         let _ = write_response_log(
             dir,
             &input.log_session_id,
-            input.tab,
+            &input.tab,
             input.message_index,
             &payload,
         );
@@ -129,14 +134,14 @@ pub(super) fn handle_request_error(
         let _ = write_response_log(
             dir,
             &input.log_session_id,
-            input.tab,
+            &input.tab,
             input.message_index,
             &payload,
         );
     }
     send_llm(
         tx,
-        input.tab,
+        input.tab.clone(),
         input.request_id,
         LlmEvent::Error(error.to_string()),
     );

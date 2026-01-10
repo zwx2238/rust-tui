@@ -27,7 +27,6 @@ pub(crate) fn handle_question_review_submit(mut params: QuestionReviewSubmitPara
 
 pub(crate) fn handle_question_review_cancel(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
@@ -40,7 +39,7 @@ pub(crate) fn handle_question_review_cancel(
         r#"{"error":"用户取消"}"#.to_string(),
         pending.call_id,
     );
-    start_followup(tab_state, tab_id, registry, args, tx);
+    start_followup(tab_state, registry, args, tx);
 }
 
 fn take_pending_review(tab_state: &mut TabState) -> Option<PendingQuestionReview> {
@@ -129,7 +128,6 @@ fn finalize_review_submit(
     push_tool_message(&mut tab_state.app, content, call_id);
     start_followup(
         tab_state,
-        params.active_tab,
         params.registry,
         params.args,
         params.tx,
@@ -160,12 +158,11 @@ fn push_tool_message(app: &mut crate::ui::state::App, content: String, call_id: 
 
 fn start_followup(
     tab_state: &mut TabState,
-    tab_id: usize,
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
 ) {
-    let Some(params) = build_followup_params(tab_state, tab_id, registry, args, tx) else {
+    let Some(params) = build_followup_params(tab_state, registry, args, tx) else {
         return;
     };
     start_followup_request(params);
@@ -173,7 +170,6 @@ fn start_followup(
 
 fn build_followup_params<'a>(
     tab_state: &'a mut TabState,
-    tab_id: usize,
     registry: &'a crate::model_registry::ModelRegistry,
     args: &'a Args,
     tx: &'a mpsc::Sender<RuntimeEvent>,
@@ -190,7 +186,6 @@ fn build_followup_params<'a>(
         max_tokens: model.max_tokens,
         show_reasoning: args.show_reasoning,
         tx,
-        tab_id,
         enable_web_search: args.web_search_enabled(),
         enable_code_exec: args.code_exec_enabled(),
         enable_read_file: args.read_file_enabled(),

@@ -184,7 +184,6 @@ fn build_tab_request_params<'a>(
         model,
         args,
         tx,
-        tab_idx,
         log_session_id,
     ))
 }
@@ -215,7 +214,6 @@ fn tab_request_params<'a>(
     model: &'a crate::model_registry::ModelProfile,
     args: &'a Args,
     tx: &'a mpsc::Sender<RuntimeEvent>,
-    tab_idx: usize,
     log_session_id: String,
 ) -> crate::ui::runtime_requests::StartTabRequestParams<'a> {
     crate::ui::runtime_requests::StartTabRequestParams {
@@ -227,7 +225,6 @@ fn tab_request_params<'a>(
         max_tokens: model.max_tokens,
         show_reasoning: args.show_reasoning,
         tx,
-        tab_id: tab_idx,
         enable_web_search: args.web_search_enabled(),
         enable_code_exec: args.code_exec_enabled(),
         enable_read_file: args.read_file_enabled(),

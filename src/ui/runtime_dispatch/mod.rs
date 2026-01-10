@@ -43,7 +43,6 @@ pub(crate) fn start_pending_request(
     registry: &crate::model_registry::ModelRegistry,
     args: &Args,
     tx: &mpsc::Sender<RuntimeEvent>,
-    active_tab: usize,
     tab_state: &mut TabState,
 ) {
     let model = resolve_model(registry, &tab_state.app.model_key);
@@ -57,7 +56,6 @@ pub(crate) fn start_pending_request(
         max_tokens: model.max_tokens,
         show_reasoning: args.show_reasoning,
         tx,
-        tab_id: active_tab,
         enable_web_search: args.web_search_enabled(),
         enable_code_exec: args.code_exec_enabled(),
         enable_read_file: args.read_file_enabled(),

@@ -17,7 +17,6 @@ pub(crate) struct StartTabRequestParams<'a> {
     pub max_tokens: Option<u64>,
     pub show_reasoning: bool,
     pub tx: &'a mpsc::Sender<RuntimeEvent>,
-    pub tab_id: usize,
     pub enable_web_search: bool,
     pub enable_code_exec: bool,
     pub enable_read_file: bool,
@@ -30,6 +29,7 @@ pub(crate) struct StartTabRequestParams<'a> {
 
 pub(crate) fn start_tab_request(params: StartTabRequestParams<'_>) {
     let app = &mut params.tab_state.app;
+    let tab_id = params.tab_state.conversation_id.clone();
     cancel_active_request(app);
     if !push_user_message(app, params.question) {
         return;
@@ -42,7 +42,7 @@ pub(crate) fn start_tab_request(params: StartTabRequestParams<'_>) {
         max_tokens: params.max_tokens,
         show_reasoning: params.show_reasoning,
         tx: params.tx,
-        tab_id: params.tab_id,
+        tab_id,
         enable_web_search: params.enable_web_search,
         enable_code_exec: params.enable_code_exec,
         enable_read_file: params.enable_read_file,
@@ -62,7 +62,6 @@ pub(crate) struct StartFollowupRequestParams<'a> {
     pub max_tokens: Option<u64>,
     pub show_reasoning: bool,
     pub tx: &'a mpsc::Sender<RuntimeEvent>,
-    pub tab_id: usize,
     pub enable_web_search: bool,
     pub enable_code_exec: bool,
     pub enable_read_file: bool,
@@ -75,6 +74,7 @@ pub(crate) struct StartFollowupRequestParams<'a> {
 
 pub(crate) fn start_followup_request(params: StartFollowupRequestParams<'_>) {
     let app = &mut params.tab_state.app;
+    let tab_id = params.tab_state.conversation_id.clone();
     cancel_active_request(app);
     start_request_common(StartRequestCommonParams {
         app,
@@ -84,7 +84,7 @@ pub(crate) fn start_followup_request(params: StartFollowupRequestParams<'_>) {
         max_tokens: params.max_tokens,
         show_reasoning: params.show_reasoning,
         tx: params.tx,
-        tab_id: params.tab_id,
+        tab_id,
         enable_web_search: params.enable_web_search,
         enable_code_exec: params.enable_code_exec,
         enable_read_file: params.enable_read_file,
@@ -132,7 +132,7 @@ struct StartRequestCommonParams<'a> {
     max_tokens: Option<u64>,
     show_reasoning: bool,
     tx: &'a mpsc::Sender<RuntimeEvent>,
-    tab_id: usize,
+    tab_id: String,
     enable_web_search: bool,
     enable_code_exec: bool,
     enable_read_file: bool,
@@ -221,7 +221,7 @@ struct SpawnLlmRequestParams {
     idx: usize,
     cancel: Arc<AtomicBool>,
     tx: mpsc::Sender<RuntimeEvent>,
-    tab_id: usize,
+    tab_id: String,
     request_id: u64,
 }
 
