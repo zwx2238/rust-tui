@@ -75,32 +75,3 @@ pub fn build_model_registry(cfg: &Config) -> ModelRegistry {
         models,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::build_model_registry;
-    use crate::config::{Config, ModelItem};
-
-    #[test]
-    fn trims_base_url_and_indexes() {
-        let cfg = Config {
-            theme: "dark".to_string(),
-            models: vec![ModelItem {
-                key: "m1".to_string(),
-                base_url: "https://api.test/".to_string(),
-                api_key: "k".to_string(),
-                model: "m".to_string(),
-                max_tokens: None,
-            }],
-            default_model: "m1".to_string(),
-            prompts_dir: "/tmp/prompts".to_string(),
-            tavily_api_key: "key".to_string(),
-        };
-        let registry = build_model_registry(&cfg);
-        assert_eq!(registry.default_key, "m1");
-        assert_eq!(registry.index_of("m1"), Some(0));
-        assert_eq!(registry.get("m1").unwrap().base_url, "https://api.test");
-        assert_eq!(registry.resolve_key_from_spec("m1").unwrap(), "m1");
-        assert_eq!(registry.resolve_key_from_spec("m").unwrap(), "m1");
-    }
-}

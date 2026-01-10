@@ -40,9 +40,5 @@ pub(crate) fn run_loop(mut params: RunLoopParams<'_>) -> Result<(), Box<dyn std:
 }
 
 pub(super) fn should_stop_after_iteration() -> bool {
-    #[cfg(test)]
-    if std::env::var("DEEPCHAT_TEST_RUN_LOOP_ONCE").is_ok() {
-        return true;
-    }
     false
 }

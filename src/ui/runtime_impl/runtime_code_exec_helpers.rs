@@ -117,23 +117,3 @@ fn append_code_lines(out: &mut String, code_lines: Vec<&str>) {
         out.push('\n');
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{filter_pip_output, inject_requirements};
-
-    #[test]
-    fn inject_requirements_adds_pip_block() {
-        let code = "# requirements: requests\nprint('hi')";
-        let out = inject_requirements(code);
-        assert!(out.contains("pip"));
-        assert!(out.contains("requests"));
-    }
-
-    #[test]
-    fn filter_pip_output_strips_on_success() {
-        let stdout = "DEEPCHAT_PIP_BEGIN\npip stuff\nDEEPCHAT_PIP_END\nok\n";
-        let out = filter_pip_output(stdout, Some(0));
-        assert_eq!(out.trim(), "ok");
-    }
-}

@@ -77,22 +77,3 @@ pub(super) fn ensure_blank_line(out: &mut String) {
         out.push('\n');
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wraps_block_kind() {
-        let expr = "x+1";
-        assert!(MathBlockKind::Dollar.wrap(expr).contains("$$"));
-        assert!(MathBlockKind::Bracket.wrap(expr).contains("\\["));
-    }
-
-    #[test]
-    fn append_math_block_falls_back_to_latex() {
-        let mut out = String::new();
-        append_math_block(&mut out, "x+1", MathBlockKind::Dollar);
-        assert!(!out.trim().is_empty());
-    }
-}

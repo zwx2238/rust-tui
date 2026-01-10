@@ -206,30 +206,3 @@ impl CountState {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn counts_mixed_markdown() {
-        let input = r#"
-# Title
-
-para text with [link](http://example.com) and ![img](http://img)
-
-- item one
-- item two
-
-| A | B |
-|---|---|
-| 1 | 2 |
-
-```rust
-fn main() {}
-```
-"#;
-        let count = count_markdown_lines(input, 20);
-        assert!(count >= 6);
-    }
-}

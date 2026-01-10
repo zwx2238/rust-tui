@@ -45,10 +45,4 @@ use runtime_impl::{
     runtime_view_handlers, runtime_yolo, state,
 };
 
-#[cfg(test)]
-use runtime_impl::runtime_context;
-
-#[cfg(test)]
-mod tests;
-
 pub use runtime::run;

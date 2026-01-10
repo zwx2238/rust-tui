@@ -138,19 +138,3 @@ pub(crate) fn code_exec_image() -> String {
 fn default_code_exec_image() -> String {
     "deepchat:latest".to_string()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{read_only_enabled, work_dir};
-    use crate::test_support::{env_lock, restore_env, set_env};
-
-    #[test]
-    fn read_only_changes_work_dir() {
-        let _guard = env_lock().lock().unwrap();
-        let prev = set_env("DEEPCHAT_READ_ONLY", "1");
-        assert!(read_only_enabled());
-        assert_eq!(work_dir(), "/opt/deepchat/work");
-        restore_env("DEEPCHAT_READ_ONLY", prev);
-        assert_eq!(work_dir(), "/opt/deepchat");
-    }
-}

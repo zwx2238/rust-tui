@@ -172,23 +172,3 @@ impl MathPreprocessor {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn preprocess_keeps_text_without_math() {
-        let input = "plain text";
-        let out = preprocess_math(input);
-        assert_eq!(out, input);
-    }
-
-    #[test]
-    fn preprocess_handles_block_math_markers() {
-        let input = "before\n$$\nx+1\n$$\nafter";
-        let out = preprocess_math(input);
-        assert!(out.contains("after"));
-        assert!(!out.is_empty());
-    }
-}

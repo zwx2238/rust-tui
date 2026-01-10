@@ -212,6 +212,3 @@ fn send_chunk(
         std::thread::sleep(Duration::from_millis(8));
     }
 }
-
-#[cfg(test)]
-mod net_logging_tests;

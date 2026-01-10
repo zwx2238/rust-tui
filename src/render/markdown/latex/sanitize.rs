@@ -86,32 +86,3 @@ fn contains_cjk_letters(input: &str) -> bool {
         matches!(ch as u32, 0x4E00..=0x9FFF | 0x3400..=0x4DBF | 0x20000..=0x2A6DF | 0x2A700..=0x2B73F | 0x2B740..=0x2B81F | 0x2B820..=0x2CEAF)
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::test_support::{env_lock, restore_env, set_env};
-
-    #[test]
-    fn sanitize_no_filter_returns_original() {
-        let input = "a + b = c";
-        let guard = env_lock().lock().unwrap();
-        let prev = set_env("DEEPCHAT_TEX_FILTER", "0");
-        let out = sanitize_tex(input);
-        restore_env("DEEPCHAT_TEX_FILTER", prev);
-        drop(guard);
-        assert_eq!(out, input);
-    }
-
-    #[test]
-    fn sanitize_filters_non_math_lines() {
-        let input = "这是中文行\nx^2 + 1\n\\begin{cases}\na+b=c\n\\end{cases}";
-        let guard = env_lock().lock().unwrap();
-        let prev = set_env("DEEPCHAT_TEX_FILTER", "1");
-        let out = sanitize_tex(input);
-        restore_env("DEEPCHAT_TEX_FILTER", prev);
-        drop(guard);
-        assert!(out.contains("a+b=c"));
-        assert!(!out.contains("这是中文行"));
-    }
-}

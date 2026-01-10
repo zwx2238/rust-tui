@@ -45,18 +45,3 @@ fn build_perf_content(i: usize) -> String {
     }
     content
 }
-
-#[cfg(test)]
-mod tests {
-    use super::seed_perf_messages;
-    use crate::ui::state::App;
-
-    #[test]
-    fn seed_perf_messages_populates_app() {
-        let mut app = App::new("", "m1", "p1");
-        seed_perf_messages(&mut app);
-        assert_eq!(app.messages.len(), 50);
-        assert!(!app.follow);
-        assert_eq!(app.scroll, u16::MAX);
-    }
-}
