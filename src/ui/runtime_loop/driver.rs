@@ -142,7 +142,6 @@ fn dispatch_one_input(
         ctx,
         &snapshot.layout,
         &snapshot.update,
-        &snapshot.jump_rows,
         ev,
     )
 }

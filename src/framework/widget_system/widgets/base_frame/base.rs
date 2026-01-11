@@ -7,7 +7,6 @@ use crate::framework::widget_system::context::{
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use crate::framework::widget_system::widget_pod::WidgetPod;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use ratatui::layout::Size;
 use std::error::Error;
 
@@ -109,16 +108,15 @@ impl Widget for BaseFrameWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {
             crossterm::event::Event::Key(key) => {
-                self.handle_key(ctx, layout, update, jump_rows, *key)
+                self.handle_key(ctx, layout, update, *key)
             }
             crossterm::event::Event::Paste(paste) => self.handle_paste(ctx, paste),
             crossterm::event::Event::Mouse(m) => {
-                self.handle_mouse(ctx, layout, update, jump_rows, *m)
+                self.handle_mouse(ctx, layout, update, *m)
             }
             _ => Ok(EventResult::ignored()),
         }

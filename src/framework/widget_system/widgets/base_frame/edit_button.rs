@@ -78,7 +78,6 @@ impl Widget for EditButtonWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {
@@ -90,7 +89,7 @@ impl Widget for EditButtonWidget {
         for entry in &mut self.buttons {
             if entry
                 .button
-                .event(ctx, event, layout, update, &[], layout.layout.msg_area)?
+                .event(ctx, event, layout, update, layout.layout.msg_area)?
                 .handled
             {
                 fork_message(ctx, layout, update, entry.msg_index);

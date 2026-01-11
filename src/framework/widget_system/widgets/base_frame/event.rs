@@ -3,7 +3,6 @@ use crate::framework::widget_system::bindings::bind_active_tab;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use std::error::Error;
 
 use super::base::BaseFrameWidget;
@@ -15,10 +14,9 @@ impl BaseFrameWidget {
         ctx: &mut EventCtx<'_>,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         key: crossterm::event::KeyEvent,
     ) -> Result<EventResult, Box<dyn Error>> {
-        if let Some(result) = self.handle_global_key(ctx, layout, update, jump_rows, key)? {
+        if let Some(result) = self.handle_global_key(ctx, layout, update, key)? {
             return Ok(result);
         }
         self.handle_active_tab_key(ctx, layout, key)
@@ -29,7 +27,6 @@ impl BaseFrameWidget {
         ctx: &mut EventCtx<'_>,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         key: crossterm::event::KeyEvent,
     ) -> Result<Option<EventResult>, Box<dyn Error>> {
         let result = self.global_keys.event(
@@ -37,7 +34,6 @@ impl BaseFrameWidget {
             &crossterm::event::Event::Key(key),
             layout,
             update,
-            jump_rows,
         )?;
         Ok(if result.handled || result.quit {
             Some(result)
@@ -87,7 +83,6 @@ impl BaseFrameWidget {
         ctx: &mut EventCtx<'_>,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         m: crossterm::event::MouseEvent,
     ) -> Result<EventResult, Box<dyn Error>> {
         if pod_event_handled(
@@ -96,7 +91,6 @@ impl BaseFrameWidget {
             &crossterm::event::Event::Mouse(m),
             layout,
             update,
-            jump_rows,
         )? {
             return Ok(EventResult::handled());
         }
@@ -105,7 +99,6 @@ impl BaseFrameWidget {
             &crossterm::event::Event::Mouse(m),
             layout,
             update,
-            jump_rows,
         )
     }
 }

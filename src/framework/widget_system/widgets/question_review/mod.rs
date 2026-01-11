@@ -4,7 +4,6 @@ pub(crate) use popup::{question_review_list_area, question_review_popup_area};
 
 use crate::render::RenderTheme;
 use crate::framework::widget_system::draw::style::base_style;
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::widgets::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::runtime::state::{PendingQuestionItem, PendingQuestionReview, QuestionDecision};
@@ -47,7 +46,6 @@ impl Widget for QuestionReviewWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let binding = bind_event(ctx, layout, update);
@@ -55,7 +53,6 @@ impl Widget for QuestionReviewWidget {
             dispatch: binding.dispatch,
             layout: binding.layout,
             view: binding.view,
-            jump_rows,
         };
         controller.handle_event(event)
     }
@@ -67,7 +64,7 @@ impl Widget for QuestionReviewWidget {
         _update: &UpdateOutput,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
+        clamp_overlay_tables(frame.view, frame.state);
         let Some(app) = frame.state.active_app() else {
             return Ok(());
         };

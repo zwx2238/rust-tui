@@ -1,4 +1,3 @@
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime::runtime_loop_steps::{FrameLayout, note_elapsed};
 use std::error::Error;
 
@@ -11,13 +10,12 @@ pub(crate) fn render_root(
     layout: &FrameLayout,
     update: &UpdateOutput,
     root: &mut RootWidget,
-) -> Result<Vec<JumpRow>, Box<dyn Error>> {
-    let mut jump_rows = Vec::new();
-    let result = draw_root(ctx, layout, update, root, &mut jump_rows);
+) -> Result<(), Box<dyn Error>> {
+    let result = draw_root(ctx, layout, update, root);
     note_elapsed(ctx.start_time, &mut *ctx.startup_elapsed);
     ctx.terminal.hide_cursor()?;
     result?;
-    Ok(jump_rows)
+    Ok(())
 }
 
 fn draw_root(
@@ -25,7 +23,6 @@ fn draw_root(
     layout: &FrameLayout,
     update: &UpdateOutput,
     root: &mut RootWidget,
-    jump_rows: &mut Vec<JumpRow>,
 ) -> Result<(), Box<dyn Error>> {
     let terminal = &mut *ctx.terminal;
     let tabs = &mut *ctx.tabs;
@@ -64,7 +61,6 @@ fn draw_root(
             frame: f,
             state: &mut render_state,
             view,
-            jump_rows,
         };
         if let Err(err) = root.render(&mut frame, layout, update, layout.size) {
             render_result = Err(err.to_string().into());

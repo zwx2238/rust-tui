@@ -71,7 +71,7 @@ impl WidgetSystem {
         ctx: &'a mut RenderCtx<'a>,
         layout: &'a crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &'a UpdateOutput,
-    ) -> Result<Vec<crate::framework::widget_system::widgets::jump::JumpRow>, Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         render_root(ctx, layout, update, &mut self.root)
     }
 
@@ -80,12 +80,11 @@ impl WidgetSystem {
         ctx: &mut EventCtx<'_>,
         layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         event: &crossterm::event::Event,
     ) -> Result<bool, Box<dyn Error>> {
         let result = self
             .root
-            .event(ctx, event, layout, update, jump_rows, layout.size)?;
+            .event(ctx, event, layout, update, layout.size)?;
         Ok(result.quit)
     }
 

@@ -140,7 +140,6 @@ impl<A: Widget, B: Widget> Widget for Flex2<A, B> {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         dispatch_mouse_pair(
@@ -151,7 +150,6 @@ impl<A: Widget, B: Widget> Widget for Flex2<A, B> {
                 event,
                 layout,
                 update,
-                jump_rows,
                 rect,
             },
         )
@@ -213,7 +211,6 @@ impl<A: Widget, B: Widget, C: Widget> Widget for Flex3<A, B, C> {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         dispatch_mouse_triple(
@@ -225,7 +222,6 @@ impl<A: Widget, B: Widget, C: Widget> Widget for Flex3<A, B, C> {
                 event,
                 layout,
                 update,
-                jump_rows,
                 rect,
             },
         )

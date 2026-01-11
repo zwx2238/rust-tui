@@ -22,7 +22,6 @@ impl Widget for CommandSuggestionsWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         _update: &UpdateOutput,
-        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {

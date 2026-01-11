@@ -1,6 +1,5 @@
 use crate::render::label_for_role;
 use crate::framework::widget_system::draw::style::{base_fg, base_style, selection_bg};
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::interaction::scroll::{SCROLL_STEP_I32, max_scroll};
 use crate::framework::widget_system::interaction::text_utils::{collapse_text, truncate_to_width};
@@ -48,7 +47,6 @@ impl Widget for MessageHistoryWidget {
         event: &Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[JumpRow],
         rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let Event::Mouse(m) = event else {

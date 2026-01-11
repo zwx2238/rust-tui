@@ -62,10 +62,8 @@ impl<W: Widget> WidgetPod<W> {
         event: &Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     ) -> Result<EventResult, Box<dyn Error>> {
-        self.widget
-            .event(ctx, event, layout, update, jump_rows, self.rect)
+        self.widget.event(ctx, event, layout, update, self.rect)
     }
 
     pub(crate) fn render(

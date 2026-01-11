@@ -32,7 +32,6 @@ pub(crate) struct RunLoopParams<'a> {
 pub(crate) struct RenderSnapshot {
     pub(crate) layout: FrameLayout,
     pub(crate) update: UpdateOutput,
-    pub(crate) jump_rows: Vec<crate::ui::jump::JumpRow>,
 }
 
 pub(crate) fn run_loop(mut params: RunLoopParams<'_>) -> Result<(), Box<dyn std::error::Error>> {

@@ -1,6 +1,8 @@
 mod data;
 
-pub(crate) use data::{JumpRow, build_jump_rows, max_preview_width};
+pub(crate) use data::{
+    JumpRow, build_jump_rows, jump_len, jump_message_index, max_preview_width,
+};
 
 use crate::render::RenderTheme;
 use crate::framework::widget_system::draw::style::base_fg;
@@ -8,6 +10,7 @@ use crate::framework::widget_system::widgets::overlay_table::{OverlayTable, draw
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::widgets::tab_bar::build_tab_bar_view;
 use crate::framework::widget_system::interaction::text_utils::truncate_to_width;
+use crate::framework::widget_system::overlay::OverlayKind;
 use std::error::Error;
 use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::{Color, Style};
@@ -46,7 +49,6 @@ impl Widget for JumpWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let binding = bind_event(ctx, layout, update);
@@ -54,7 +56,6 @@ impl Widget for JumpWidget {
             dispatch: binding.dispatch,
             layout: binding.layout,
             view: binding.view,
-            jump_rows,
         };
         controller.handle_event(event)
     }
@@ -66,29 +67,30 @@ impl Widget for JumpWidget {
         _update: &UpdateOutput,
         _rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        refresh_jump_rows(frame);
-        clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
+        if !frame.view.overlay.is(OverlayKind::Jump) {
+            return Ok(());
+        }
+        let rows = frame
+            .state
+            .with_active_tab(|tab| {
+                build_jump_rows(
+                    &tab.app.messages,
+                    max_preview_width(frame.state.msg_area),
+                )
+            })
+            .unwrap_or_default();
+        clamp_overlay_tables(frame.view, frame.state);
         draw_jump_layout(frame);
-        draw_jump_table(frame);
+        draw_jump_table_base(
+            frame.frame,
+            frame.state.msg_area,
+            &rows,
+            frame.view.jump.selected,
+            frame.state.theme,
+            frame.view.jump.scroll,
+        );
         Ok(())
     }
-}
-
-fn refresh_jump_rows(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
-    frame.jump_rows.clear();
-    if !frame.view.overlay.is(crate::framework::widget_system::overlay::OverlayKind::Jump) {
-        return;
-    }
-    let rows = frame
-        .state
-        .with_active_tab(|tab| {
-            build_jump_rows(
-                &tab.app.messages,
-                max_preview_width(frame.state.msg_area),
-            )
-        })
-        .unwrap_or_default();
-    frame.jump_rows.extend(rows);
 }
 
 fn draw_jump_layout(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
@@ -106,17 +108,6 @@ fn draw_jump_layout(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
         footer_area: frame.state.footer_area,
     };
     draw_jump_layout_base(frame.frame, params);
-}
-
-fn draw_jump_table(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
-    draw_jump_table_base(
-        frame.frame,
-        frame.state.msg_area,
-        frame.jump_rows,
-        frame.view.jump.selected,
-        frame.state.theme,
-        frame.view.jump.scroll,
-    );
 }
 
 struct JumpLayoutParams<'a> {
