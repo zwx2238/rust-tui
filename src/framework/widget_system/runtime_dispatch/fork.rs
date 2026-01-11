@@ -12,7 +12,11 @@ pub(crate) fn fork_message_into_new_tab(
     let msg_idx = ctx
         .tabs
         .get(*ctx.active_tab)
-        .and_then(|tab| jump_message_index(&tab.app.messages, row_idx));
+        .and_then(|tab| jump_message_index(
+            &tab.app.messages,
+            row_idx,
+            ctx.args.show_system_prompt,
+        ));
     let Some(msg_idx) = msg_idx else {
         return false;
     };

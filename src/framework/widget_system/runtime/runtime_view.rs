@@ -36,6 +36,7 @@ pub(crate) enum ViewAction {
 }
 pub(crate) fn apply_view_action(
     action: ViewAction,
+    show_system_prompt: bool,
     tabs: &mut [crate::framework::widget_system::runtime::runtime_helpers::TabState],
     active_tab: &mut usize,
     categories: &mut Vec<String>,
@@ -45,7 +46,7 @@ pub(crate) fn apply_view_action(
         ViewAction::SwitchTab(idx) => {
             apply_switch_tab(idx, tabs, active_tab, categories, active_category)
         }
-        ViewAction::JumpTo(idx) => apply_jump_to(idx, tabs, *active_tab),
+        ViewAction::JumpTo(idx) => apply_jump_to(idx, show_system_prompt, tabs, *active_tab),
         ViewAction::ForkMessage(_) => false,
         ViewAction::SelectModel(_) | ViewAction::CycleModel | ViewAction::CycleModelPrev
         | ViewAction::SelectPrompt(_) => false,
@@ -226,11 +227,12 @@ fn apply_switch_tab(
 }
 fn apply_jump_to(
     idx: usize,
+    show_system_prompt: bool,
     tabs: &mut [crate::framework::widget_system::runtime::runtime_helpers::TabState],
     active_tab: usize,
 ) -> bool {
     if let Some(tab_state) = tabs.get_mut(active_tab) {
-        let msg_idx = jump_message_index(&tab_state.app.messages, idx);
+        let msg_idx = jump_message_index(&tab_state.app.messages, idx, show_system_prompt);
         if let Some(msg_idx) = msg_idx {
             let app = &mut tab_state.app;
             app.message_history.selected = msg_idx;

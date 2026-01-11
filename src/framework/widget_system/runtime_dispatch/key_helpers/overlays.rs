@@ -102,7 +102,7 @@ fn sync_overlay_state(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
 fn jump_len_for_ctx(ctx: &DispatchContext<'_>) -> usize {
     ctx.tabs
         .get(*ctx.active_tab)
-        .map(|tab| jump_len(&tab.app.messages))
+        .map(|tab| jump_len(&tab.app.messages, ctx.args.show_system_prompt))
         .unwrap_or(0)
 }
 

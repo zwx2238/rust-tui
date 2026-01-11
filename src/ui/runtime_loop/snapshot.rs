@@ -93,6 +93,7 @@ fn run_render(
         theme: params.theme,
         registry: params.registry,
         prompt_registry: params.prompt_registry,
+        args: params.args,
         view,
         start_time: params.start_time,
         startup_elapsed,

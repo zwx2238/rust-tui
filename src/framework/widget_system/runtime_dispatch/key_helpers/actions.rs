@@ -148,6 +148,7 @@ fn handle_apply_view_action(
 ) -> bool {
     if apply_view_action(
         action,
+        ctx.args.show_system_prompt,
         ctx.tabs,
         ctx.active_tab,
         ctx.categories,
