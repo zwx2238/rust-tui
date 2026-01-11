@@ -13,6 +13,8 @@ pub struct Config {
     pub theme: String,
     pub models: Vec<ModelItem>,
     pub default_model: String,
+    #[serde(default = "default_prompt_key")]
+    pub default_prompt: String,
     pub prompts_dir: String,
     pub tavily_api_key: String,
 }
@@ -52,6 +54,16 @@ pub fn save_config(path: &PathBuf, cfg: &Config) -> Result<(), Box<dyn std::erro
 }
 
 fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    validate_required_fields(cfg)?;
+    validate_models(cfg)?;
+    Ok(())
+}
+
+fn default_prompt_key() -> String {
+    "default".to_string()
+}
+
+fn validate_required_fields(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.theme.trim().is_empty() {
         return Err("配置文件错误：theme 不能为空".into());
     }
@@ -64,6 +76,13 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.default_model.trim().is_empty() {
         return Err("配置文件错误：default_model 不能为空".into());
     }
+    if cfg.default_prompt.trim().is_empty() {
+        return Err("配置文件错误：default_prompt 不能为空".into());
+    }
+    Ok(())
+}
+
+fn validate_models(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.models.iter().any(|m| {
         m.key.trim().is_empty()
             || m.base_url.trim().is_empty()
