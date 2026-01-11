@@ -1,6 +1,6 @@
-use crate::ui::draw::inner_area;
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::draw::inner_area;
+use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
@@ -78,7 +78,7 @@ impl Widget for EditButtonWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {
@@ -166,7 +166,7 @@ fn fork_message(
 ) {
     let mut binding = bind_event(ctx, layout, update);
     let _ =
-        crate::ui::runtime_dispatch::fork::fork_message_by_index(&mut binding.dispatch, msg_index);
+        crate::framework::widget_system::runtime_dispatch::fork::fork_message_by_index(&mut binding.dispatch, msg_index);
 }
 
 fn edit_button_style() -> Style {

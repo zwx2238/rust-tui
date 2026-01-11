@@ -1,6 +1,8 @@
 mod buttons;
 mod event;
 mod helpers;
+mod popup_layout;
+mod popup_text;
 mod render;
 mod scroll;
 mod selection;

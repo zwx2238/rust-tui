@@ -39,7 +39,7 @@ impl Widget for RootWidget {
     fn place(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
-        layout: &mut crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &mut crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
         self.base.place(ctx, layout, rect)?;
@@ -51,7 +51,7 @@ impl Widget for RootWidget {
     fn update(
         &mut self,
         ctx: &mut UpdateCtx<'_>,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
     ) -> Result<(), Box<dyn Error>> {
         self.base.update(ctx, layout, update)?;
@@ -64,9 +64,9 @@ impl Widget for RootWidget {
         &mut self,
         ctx: &mut EventCtx<'_>,
         event: &crossterm::event::Event,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::ui::jump::JumpRow],
+        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         if ctx.view.overlay.active.is_some() {
@@ -78,7 +78,7 @@ impl Widget for RootWidget {
     fn render(
         &mut self,
         frame: &mut WidgetFrame<'_, '_, '_, '_>,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
         _rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {

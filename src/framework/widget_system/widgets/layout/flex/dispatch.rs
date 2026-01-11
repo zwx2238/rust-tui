@@ -1,4 +1,4 @@
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;
 use crate::framework::widget_system::widget_pod::WidgetPod;
@@ -10,7 +10,7 @@ pub(super) struct MouseDispatch<'a, 'ctx> {
     pub(super) event: &'a crossterm::event::Event,
     pub(super) layout: &'a FrameLayout,
     pub(super) update: &'a UpdateOutput,
-    pub(super) jump_rows: &'a [crate::ui::jump::JumpRow],
+    pub(super) jump_rows: &'a [crate::framework::widget_system::widgets::jump::JumpRow],
     pub(super) rect: Rect,
 }
 

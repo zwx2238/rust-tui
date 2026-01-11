@@ -1,6 +1,6 @@
 use crate::render::RenderTheme;
-use crate::ui::draw::style::base_fg;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::draw::style::base_fg;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
@@ -27,7 +27,7 @@ impl Widget for FooterWidget {
         _event: &crossterm::event::Event,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         Ok(EventResult::ignored())

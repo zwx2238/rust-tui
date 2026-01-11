@@ -1,4 +1,4 @@
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use ratatui::layout::Rect;
 use ratatui::style::Style;
@@ -81,7 +81,7 @@ impl Widget for ButtonWidget {
         event: &crossterm::event::Event,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         if !self.visible {

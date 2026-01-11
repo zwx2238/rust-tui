@@ -2,7 +2,8 @@ use crate::framework::widget_system::events::{handle_key_event, handle_paste_eve
 use crate::framework::widget_system::bindings::bind_active_tab;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
 use crate::framework::widget_system::lifecycle::EventResult;
-use crate::ui::{jump::JumpRow, runtime_loop_steps::FrameLayout};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::widgets::jump::JumpRow;
 use std::error::Error;
 
 use super::base::BaseFrameWidget;

@@ -23,8 +23,8 @@ pub(super) fn is_mouse_drag(kind: crossterm::event::MouseEventKind) -> bool {
 
 pub(super) fn scroll_delta(kind: crossterm::event::MouseEventKind) -> Option<i32> {
     match kind {
-        crossterm::event::MouseEventKind::ScrollUp => Some(-crate::ui::scroll::SCROLL_STEP_I32),
-        crossterm::event::MouseEventKind::ScrollDown => Some(crate::ui::scroll::SCROLL_STEP_I32),
+        crossterm::event::MouseEventKind::ScrollUp => Some(-crate::framework::widget_system::interaction::scroll::SCROLL_STEP_I32),
+        crossterm::event::MouseEventKind::ScrollDown => Some(crate::framework::widget_system::interaction::scroll::SCROLL_STEP_I32),
         _ => None,
     }
 }
@@ -41,7 +41,7 @@ pub(super) fn is_ctrl_c(key: crossterm::event::KeyEvent) -> bool {
 }
 
 pub(super) fn code_exec_output(
-    tab_state: &crate::ui::runtime_helpers::TabState,
+    tab_state: &crate::framework::widget_system::runtime::runtime_helpers::TabState,
 ) -> (String, String) {
     tab_state
         .app
@@ -56,8 +56,8 @@ pub(super) fn code_exec_output(
 }
 
 pub(super) fn snapshot_live(
-    tab_state: &crate::ui::runtime_helpers::TabState,
-) -> (String, String, Option<crate::ui::state::CodeExecLive>) {
+    tab_state: &crate::framework::widget_system::runtime::runtime_helpers::TabState,
+) -> (String, String, Option<crate::framework::widget_system::runtime::state::CodeExecLive>) {
     tab_state
         .app
         .code_exec_live

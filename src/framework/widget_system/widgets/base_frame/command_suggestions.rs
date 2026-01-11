@@ -1,5 +1,5 @@
-use crate::ui::command_suggestions::{draw_command_suggestions, handle_command_suggestion_click};
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::commands::command_suggestions::{draw_command_suggestions, handle_command_suggestion_click};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
@@ -22,7 +22,7 @@ impl Widget for CommandSuggestionsWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         _update: &UpdateOutput,
-        _jump_rows: &[crate::ui::jump::JumpRow],
+        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Mouse(m) = event else {

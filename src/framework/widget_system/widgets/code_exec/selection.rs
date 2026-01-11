@@ -1,16 +1,16 @@
-use crate::ui::code_exec_popup_layout::CodeExecPopupLayout;
-use crate::ui::code_exec_popup_text::{
+use super::popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
+use super::popup_text::{
     build_code_text, build_stderr_text, build_stdout_text, code_plain_lines, stderr_plain_lines,
     stdout_plain_lines,
 };
-use crate::ui::selection::{Selection, chat_position_from_mouse, extract_selection};
-use crate::ui::state::CodeExecSelectionTarget;
+use crate::framework::widget_system::interaction::selection::{Selection, chat_position_from_mouse, extract_selection};
+use crate::framework::widget_system::runtime::state::CodeExecSelectionTarget;
 
 use super::helpers::{code_exec_output, point_in_rect};
 
 pub(super) fn handle_code_exec_selection_start(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
     m: crossterm::event::MouseEvent,
@@ -29,8 +29,8 @@ pub(super) fn handle_code_exec_selection_start(
 }
 
 pub(super) fn handle_code_exec_selection_drag(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
     m: crossterm::event::MouseEvent,
@@ -54,7 +54,7 @@ pub(super) fn handle_code_exec_selection_drag(
 }
 
 pub(super) fn clear_code_exec_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
 ) -> bool {
     if tab_state.app.code_exec_selecting.is_none() {
         return false;
@@ -64,12 +64,12 @@ pub(super) fn clear_code_exec_selection(
 }
 
 pub(super) fn copy_code_exec_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
-    layout: &crate::ui::runtime_loop_steps::FrameLayout,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
+    layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
     theme: &crate::render::RenderTheme,
 ) -> bool {
-    let popup = crate::ui::code_exec_popup_layout::code_exec_popup_layout(
+    let popup = code_exec_popup_layout(
         layout.size,
         tab_state.app.code_exec_reason_target.is_some(),
     );
@@ -90,8 +90,8 @@ pub(super) fn copy_code_exec_selection(
 }
 
 fn start_code_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
     m: crossterm::event::MouseEvent,
@@ -114,7 +114,7 @@ fn start_code_selection(
 }
 
 fn start_stdout_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stdout: &str,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
@@ -138,7 +138,7 @@ fn start_stdout_selection(
 }
 
 fn start_stderr_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stderr: &str,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
@@ -162,8 +162,8 @@ fn start_stderr_selection(
 }
 
 fn update_code_drag(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingCodeExec,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingCodeExec,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
     m: crossterm::event::MouseEvent,
@@ -185,7 +185,7 @@ fn update_code_drag(
 }
 
 fn update_stdout_drag(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stdout: &str,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
@@ -208,7 +208,7 @@ fn update_stdout_drag(
 }
 
 fn update_stderr_drag(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     stderr: &str,
     popup: CodeExecPopupLayout,
     theme: &crate::render::RenderTheme,
@@ -245,7 +245,7 @@ fn update_selection(target: &mut Option<Selection>, pos: (usize, usize)) {
 }
 
 fn start_code_exec_selection(
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
     target: CodeExecSelectionTarget,
     pos: (usize, usize),
 ) {
@@ -286,7 +286,7 @@ fn selection_position_for_panel(
 fn copy_selection_text(lines: Vec<String>, selection: Selection) -> bool {
     let text = extract_selection(&lines, selection);
     if !text.is_empty() {
-        crate::ui::clipboard::set(&text);
+        crate::framework::widget_system::interaction::clipboard::set(&text);
     }
     true
 }

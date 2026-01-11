@@ -1,5 +1,5 @@
-use crate::ui::overlay::OverlayKind;
-use crate::ui::runtime_view::ViewState;
+use crate::framework::widget_system::overlay::OverlayKind;
+use crate::framework::widget_system::runtime::runtime_view::ViewState;
 use crate::framework::widget_system::BoxConstraints;
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use crate::framework::widget_system::widget_pod::WidgetPod;
@@ -10,7 +10,7 @@ use crate::framework::widget_system::events::handle_tab_category_click;
 use crate::framework::widget_system::bindings::bind_event;
 
 use super::super::context::{EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame};
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 
 use super::code_exec::CodeExecWidget;
 use super::file_patch::FilePatchWidget;
@@ -117,7 +117,7 @@ impl Widget for OverlayRootWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::ui::jump::JumpRow],
+        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         if try_tab_category_click(ctx, event, layout, update)? {
@@ -181,7 +181,7 @@ fn dispatch_overlay_event(
     event: &crossterm::event::Event,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
 ) -> Result<EventResult, Box<dyn Error>> {
     match OverlayRootWidget::active_kind(ctx.view) {
         Some(OverlayKind::Summary) => widget.summary.event(ctx, event, layout, update, jump_rows),

@@ -1,9 +1,9 @@
 use crate::render::{RenderTheme, messages_to_viewport_text_cached};
-use crate::ui::draw::inner_area;
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
-use crate::ui::logic::{build_label_suffixes, timer_text};
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::selection::chat_position_from_mouse;
+use crate::framework::widget_system::draw::inner_area;
+use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
+use crate::framework::widget_system::runtime::logic::{build_label_suffixes, timer_text};
+use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::interaction::selection::chat_position_from_mouse;
 use ratatui::layout::Rect;
 
 pub(crate) fn selection_view_text(
@@ -58,7 +58,7 @@ fn mouse_in_rect(mouse_x: u16, mouse_y: u16, rect: Rect) -> bool {
         && mouse_y < rect.y + rect.height
 }
 
-fn find_edit_button_at(app: &crate::ui::state::App, row: usize, col: usize) -> Option<usize> {
+fn find_edit_button_at(app: &crate::framework::widget_system::runtime::state::App, row: usize, col: usize) -> Option<usize> {
     for layout in &app.message_layouts {
         if layout.label_line == row {
             return hit_test_layout_button(layout, col);

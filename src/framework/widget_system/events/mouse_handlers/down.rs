@@ -3,14 +3,14 @@ use crate::framework::widget_system::events::{
     selection_view_text,
 };
 use crate::render::RenderTheme;
-use crate::ui::command_suggestions::{clear_command_suggestions, refresh_command_suggestions};
-use crate::ui::draw::inner_area;
-use crate::ui::draw::layout::{PADDING_X, PADDING_Y};
-use crate::ui::draw::scrollbar_area;
-use crate::ui::input_click::click_to_cursor;
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::selection::{Selection, chat_position_from_mouse};
-use crate::ui::state::Focus;
+use crate::framework::widget_system::commands::command_suggestions::{clear_command_suggestions, refresh_command_suggestions};
+use crate::framework::widget_system::draw::inner_area;
+use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
+use crate::framework::widget_system::draw::scrollbar_area;
+use crate::framework::widget_system::interaction::input_click::click_to_cursor;
+use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::interaction::selection::{Selection, chat_position_from_mouse};
+use crate::framework::widget_system::runtime::state::Focus;
 use crossterm::event::MouseEvent;
 use ratatui::layout::Rect;
 use tui_textarea::CursorMove;

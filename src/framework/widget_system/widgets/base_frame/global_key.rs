@@ -1,8 +1,8 @@
-use crate::ui::jump::JumpRow;
-use crate::ui::runtime_dispatch::key_helpers::{
+use crate::framework::widget_system::widgets::jump::JumpRow;
+use crate::framework::widget_system::runtime_dispatch::key_helpers::{
     handle_pre_key_actions, handle_view_action_flow, is_quit_key, resolve_view_action,
 };
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
@@ -50,11 +50,11 @@ fn handle_global_key(
     ctx: &mut EventCtx<'_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::ui::jump::JumpRow],
+    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     key: crossterm::event::KeyEvent,
 ) -> EventResult {
     if key_debug_enabled() && let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-        crate::ui::notice::push_notice(&mut tab_state.app, format_key_event(key));
+        crate::framework::widget_system::notice::push_notice(&mut tab_state.app, format_key_event(key));
     }
     if is_quit_key(key) {
         return EventResult::quit();

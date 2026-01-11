@@ -1,4 +1,4 @@
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::box_constraints::BoxConstraints;
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use crossterm::event::Event;
@@ -62,7 +62,7 @@ impl<W: Widget> WidgetPod<W> {
         event: &Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::ui::jump::JumpRow],
+        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     ) -> Result<EventResult, Box<dyn Error>> {
         self.widget
             .event(ctx, event, layout, update, jump_rows, self.rect)

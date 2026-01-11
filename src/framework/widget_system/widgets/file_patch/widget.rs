@@ -1,10 +1,10 @@
-use crate::ui::file_patch_popup_layout::file_patch_popup_layout;
+use super::popup_layout::file_patch_popup_layout;
 use crate::render::RenderTheme;
-use crate::ui::draw::style::{base_fg, base_style};
-use crate::ui::file_patch_popup_text::{build_patch_text, patch_max_scroll};
-use crate::ui::jump::JumpRow;
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::selection::{Selection, apply_selection_to_text};
+use crate::framework::widget_system::draw::style::{base_fg, base_style};
+use super::popup_text::{build_patch_text, patch_max_scroll};
+use crate::framework::widget_system::widgets::jump::JumpRow;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::interaction::selection::{Selection, apply_selection_to_text};
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;
@@ -77,7 +77,7 @@ impl Widget for FilePatchWidget {
 fn render_popup(
     frame: &mut WidgetFrame<'_, '_, '_, '_>,
     rect: ratatui::layout::Rect,
-) -> Result<Option<crate::ui::state::FilePatchHover>, Box<dyn Error>> {
+) -> Result<Option<crate::framework::widget_system::runtime::state::FilePatchHover>, Box<dyn Error>> {
     let active_tab = frame.state.active_tab;
     let Some(tab_state) = frame.state.tabs.get_mut(active_tab) else {
         return Ok(None);
@@ -101,7 +101,7 @@ fn render_popup(
 fn draw_file_patch_popup_base(
     f: &mut ratatui::Frame<'_>,
     area: Rect,
-    pending: &crate::ui::state::PendingFilePatch,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
     scroll: usize,
     selection: Option<Selection>,
     theme: &RenderTheme,
@@ -124,15 +124,15 @@ fn draw_file_patch_popup_base(
 fn popup_mask(area: Rect, popup: Rect) -> Rect {
     let max_x = area.x.saturating_add(area.width);
     let max_y = area.y.saturating_add(area.height);
-    let mask_x = popup.x.saturating_sub(crate::ui::file_patch_popup_layout::OUTER_MARGIN).max(area.x);
-    let mask_y = popup.y.saturating_sub(crate::ui::file_patch_popup_layout::OUTER_MARGIN).max(area.y);
+    let mask_x = popup.x.saturating_sub(super::popup_layout::OUTER_MARGIN).max(area.x);
+    let mask_y = popup.y.saturating_sub(super::popup_layout::OUTER_MARGIN).max(area.y);
     let mask_w = popup
         .width
-        .saturating_add(crate::ui::file_patch_popup_layout::OUTER_MARGIN.saturating_mul(2))
+        .saturating_add(super::popup_layout::OUTER_MARGIN.saturating_mul(2))
         .min(max_x.saturating_sub(mask_x));
     let mask_h = popup
         .height
-        .saturating_add(crate::ui::file_patch_popup_layout::OUTER_MARGIN.saturating_mul(2))
+        .saturating_add(super::popup_layout::OUTER_MARGIN.saturating_mul(2))
         .min(max_y.saturating_sub(mask_y));
     Rect {
         x: mask_x,
@@ -167,7 +167,7 @@ fn render_popup_base(f: &mut ratatui::Frame<'_>, theme: &RenderTheme, popup: Rec
 fn render_preview_panel(
     f: &mut ratatui::Frame<'_>,
     theme: &RenderTheme,
-    layout: crate::ui::file_patch_popup_layout::FilePatchPopupLayout,
+    layout: super::popup_layout::FilePatchPopupLayout,
     preview_text: Text<'static>,
     selection: Option<Selection>,
     scroll: usize,
@@ -182,8 +182,8 @@ fn render_preview_panel(
 fn render_preview_scrollbar(
     f: &mut ratatui::Frame<'_>,
     theme: &RenderTheme,
-    pending: &crate::ui::state::PendingFilePatch,
-    layout: crate::ui::file_patch_popup_layout::FilePatchPopupLayout,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
+    layout: super::popup_layout::FilePatchPopupLayout,
     total_lines: usize,
     scroll: usize,
 ) {

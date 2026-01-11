@@ -1,8 +1,8 @@
-use crate::ui::runtime_dispatch::{DispatchContext, LayoutContext};
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::runtime_view::ViewState;
-use crate::ui::state::App;
+use crate::framework::widget_system::runtime_dispatch::{DispatchContext, LayoutContext};
+use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_view::ViewState;
+use crate::framework::widget_system::runtime::state::App;
 
 use super::context::{EventCtx, UpdateOutput};
 

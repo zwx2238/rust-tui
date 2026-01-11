@@ -1,5 +1,5 @@
-use crate::ui::jump::JumpRow;
-use crate::ui::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::widgets::jump::JumpRow;
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
 use std::error::Error;

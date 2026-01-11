@@ -1,5 +1,5 @@
-use crate::ui::runtime_helpers::TabState;
-use crate::ui::runtime_view::ViewState;
+use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::runtime::runtime_view::ViewState;
 use ratatui::layout::Rect;
 use unicode_width::UnicodeWidthStr;
 

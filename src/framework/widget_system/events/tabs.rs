@@ -1,9 +1,9 @@
 use crate::framework::widget_system::events::point_in_rect;
-use crate::ui::runtime_helpers::{
+use crate::framework::widget_system::runtime::runtime_helpers::{
     TabState, active_tab_position, tab_labels_for_category, visible_tab_indices,
 };
-use crate::ui::state::PendingCommand;
-use crate::ui::tab_bar::{TabBarItemKind, build_tab_bar_view, hit_test_tab_bar};
+use crate::framework::widget_system::runtime::state::PendingCommand;
+use crate::framework::widget_system::widgets::tab_bar::{TabBarItemKind, build_tab_bar_view, hit_test_tab_bar};
 use ratatui::layout::Rect;
 
 pub(crate) struct TabCategoryClickParams<'a> {

@@ -1,4 +1,4 @@
-use crate::ui::state::CodeExecReasonTarget;
+use crate::framework::widget_system::runtime::state::CodeExecReasonTarget;
 
 #[derive(Copy, Clone)]
 pub(super) struct CodeExecButtonsMode {
@@ -9,7 +9,7 @@ pub(super) struct CodeExecButtonsMode {
 
 pub(super) fn resolve_code_exec_mode(
     reason_target: Option<CodeExecReasonTarget>,
-    live: Option<&crate::ui::state::CodeExecLive>,
+    live: Option<&crate::framework::widget_system::runtime::state::CodeExecLive>,
 ) -> CodeExecButtonsMode {
     let finished = live
         .map(|l| l.done || l.exit_code.is_some())

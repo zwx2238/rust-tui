@@ -1,11 +1,20 @@
 mod box_constraints;
+pub(crate) mod commands;
+pub(crate) mod draw;
 mod events;
+pub(crate) mod interaction;
 pub(crate) mod layout;
+pub(crate) mod notice;
+pub(crate) mod overlay;
+pub(crate) mod runtime;
+pub(crate) mod runtime_dispatch;
+pub(crate) mod runtime_loop_helpers;
+pub(crate) mod runtime_tick;
 mod context;
 mod lifecycle;
 mod render;
 mod widget_pod;
-mod widgets;
+pub(crate) mod widgets;
 
 use std::error::Error;
 
@@ -31,7 +40,7 @@ impl WidgetSystem {
     pub(crate) fn layout(
         &mut self,
         ctx: &mut LayoutCtx<'_>,
-    ) -> Result<crate::ui::runtime_loop_steps::FrameLayout, Box<dyn Error>> {
+    ) -> Result<crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout, Box<dyn Error>> {
         let size = ctx.terminal.size()?;
         let size = ratatui::layout::Rect::new(0, 0, size.width, size.height);
         let bc = BoxConstraints::tight(ratatui::layout::Size {
@@ -39,7 +48,7 @@ impl WidgetSystem {
             height: size.height,
         });
         let _ = self.root.measure(ctx, bc)?;
-        let mut layout = crate::ui::runtime_loop_steps::FrameLayout {
+        let mut layout = crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout {
             size,
             layout: crate::framework::widget_system::layout::empty_layout_info(),
         };
@@ -50,7 +59,7 @@ impl WidgetSystem {
     pub(crate) fn update(
         &mut self,
         ctx: &mut UpdateCtx<'_>,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
     ) -> Result<UpdateOutput, Box<dyn Error>> {
         let update = self.frame.update(ctx, layout)?;
         self.root.update(ctx, layout, &update)?;
@@ -60,18 +69,18 @@ impl WidgetSystem {
     pub(crate) fn render<'a>(
         &mut self,
         ctx: &'a mut RenderCtx<'a>,
-        layout: &'a crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &'a crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &'a UpdateOutput,
-    ) -> Result<Vec<crate::ui::jump::JumpRow>, Box<dyn Error>> {
+    ) -> Result<Vec<crate::framework::widget_system::widgets::jump::JumpRow>, Box<dyn Error>> {
         render_root(ctx, layout, update, &mut self.root)
     }
 
     pub(crate) fn event(
         &mut self,
         ctx: &mut EventCtx<'_>,
-        layout: &crate::ui::runtime_loop_steps::FrameLayout,
+        layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::ui::jump::JumpRow],
+        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         event: &crossterm::event::Event,
     ) -> Result<bool, Box<dyn Error>> {
         let result = self

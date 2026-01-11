@@ -1,13 +1,13 @@
-use crate::ui::file_patch_popup_layout::FilePatchPopupLayout;
-use crate::ui::file_patch_popup_text::patch_max_scroll;
+use super::popup_layout::FilePatchPopupLayout;
+use super::popup_text::patch_max_scroll;
 
 use super::helpers::{apply_scroll, point_in_rect};
 
 pub(super) fn handle_file_patch_scroll(
     m: crossterm::event::MouseEvent,
     theme: &crate::render::RenderTheme,
-    tab_state: &mut crate::ui::runtime_helpers::TabState,
-    pending: &crate::ui::state::PendingFilePatch,
+    tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    pending: &crate::framework::widget_system::runtime::state::PendingFilePatch,
     popup: FilePatchPopupLayout,
     delta: i32,
 ) -> bool {

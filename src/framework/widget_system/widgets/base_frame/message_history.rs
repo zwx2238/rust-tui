@@ -1,10 +1,10 @@
 use crate::render::label_for_role;
-use crate::ui::draw::style::{base_fg, base_style, selection_bg};
-use crate::ui::jump::{JumpRow, build_jump_rows_from_layouts};
-use crate::ui::runtime_loop_steps::FrameLayout;
-use crate::ui::runtime_view::{ViewAction, apply_view_action};
-use crate::ui::scroll::{SCROLL_STEP_I32, max_scroll};
-use crate::ui::text_utils::{collapse_text, truncate_to_width};
+use crate::framework::widget_system::draw::style::{base_fg, base_style, selection_bg};
+use crate::framework::widget_system::widgets::jump::{JumpRow, build_jump_rows_from_layouts};
+use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
+use crate::framework::widget_system::runtime::runtime_view::{ViewAction, apply_view_action};
+use crate::framework::widget_system::interaction::scroll::{SCROLL_STEP_I32, max_scroll};
+use crate::framework::widget_system::interaction::text_utils::{collapse_text, truncate_to_width};
 use crate::framework::widget_system::BoxConstraints;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{
@@ -242,7 +242,7 @@ fn history_lines(
 }
 
 fn format_line(
-    tab: &crate::ui::runtime_helpers::TabState,
+    tab: &crate::framework::widget_system::runtime::runtime_helpers::TabState,
     row: usize,
     preview_width: usize,
     selected: bool,
@@ -265,7 +265,7 @@ fn format_line(
     }
 }
 
-fn preview_for(tab: &crate::ui::runtime_helpers::TabState, idx: usize, width: usize) -> String {
+fn preview_for(tab: &crate::framework::widget_system::runtime::runtime_helpers::TabState, idx: usize, width: usize) -> String {
     let Some(msg) = tab.app.messages.get(idx) else {
         return String::new();
     };
@@ -278,7 +278,7 @@ fn role_label(role: &str) -> String {
 
 fn build_jump_rows_for_active_tab(ctx: &EventCtx<'_>) -> Vec<JumpRow> {
     let active = *ctx.active_tab;
-    let tabs: &Vec<crate::ui::runtime_helpers::TabState> = &*ctx.tabs;
+    let tabs: &Vec<crate::framework::widget_system::runtime::runtime_helpers::TabState> = &*ctx.tabs;
     let Some(tab) = tabs.get(active) else {
         return Vec::new();
     };
