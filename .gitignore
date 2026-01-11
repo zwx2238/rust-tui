@@ -4,3 +4,4 @@ log/
 tex/
 .cargo_home/
 nope
+config/.env

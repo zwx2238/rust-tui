@@ -1,7 +1,7 @@
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
-use crate::ui::state::{App, RequestHandle};
+use crate::ui::state::{App, Focus, RequestHandle};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc;
@@ -104,15 +104,17 @@ fn cancel_active_request(app: &mut App) {
 }
 
 fn push_user_message(app: &mut App, question: &str) -> bool {
-    if !question.is_empty() {
-        app.messages.push(user_message(question.to_string()));
-        return true;
-    }
-    if let Some(line) = app.pending_send.take() {
-        app.messages.push(user_message(line));
-        return true;
-    }
-    false
+    let content = if !question.is_empty() {
+        Some(question.to_string())
+    } else {
+        app.pending_send.take()
+    };
+    let Some(content) = content else {
+        return false;
+    };
+    app.messages.push(user_message(content));
+    select_latest_message(app);
+    true
 }
 
 fn user_message(content: String) -> Message {
@@ -122,6 +124,22 @@ fn user_message(content: String) -> Message {
         tool_call_id: None,
         tool_calls: None,
     }
+}
+
+fn select_latest_message(app: &mut App) {
+    if app.messages.is_empty() {
+        return;
+    }
+    app.message_history.selected = app.messages.len().saturating_sub(1);
+    reset_detail_state(app);
+}
+
+fn reset_detail_state(app: &mut App) {
+    app.scroll = 0;
+    app.follow = false;
+    app.focus = Focus::Chat;
+    app.chat_selection = None;
+    app.chat_selecting = false;
 }
 
 struct StartRequestCommonParams<'a> {

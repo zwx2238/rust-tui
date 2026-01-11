@@ -1,0 +1,96 @@
+{
+  "theme": "light",
+  "models": [
+    {
+      "key": "claude_sonnet-4-5",
+      "base_url": "https://api.aicodemirror.com/api/claudecode",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_CLAUDE_SONNET_4_5",
+      "model": "claude-sonnet-4-5-20250929",
+      "max_tokens": 10240
+    },
+    {
+      "key": "claude-haiku-4-5",
+      "base_url": "https://api.aicodemirror.com/api/claudecode",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_CLAUDE_HAIKU_4_5",
+      "model": "claude-haiku-4-5-20251001",
+      "max_tokens": 10240
+    },
+    {
+      "key": "claude-opus-4-5",
+      "base_url": "https://api.aicodemirror.com/api/claudecode",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_CLAUDE_OPUS_4_5",
+      "model": "anthropic.claude-opus-4-5-20251101-v1:0",
+      "max_tokens": 10240
+    },
+    {
+      "key": "gemini-vertex",
+      "base_url": "https://hiapi.online/v1",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_GEMINI_VERTEX",
+      "model": "gemini-2.5-pro-vertex",
+      "max_tokens": null
+    },
+    {
+      "key": "gemini",
+      "base_url": "https://hiapi.online/v1",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_GEMINI",
+      "model": "gemini-3-pro-preview",
+      "max_tokens": null
+    },
+    {
+      "key": "deepseek",
+      "base_url": "https://api.deepseek.com",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_DEEPSEEK",
+      "model": "deepseek-chat",
+      "max_tokens": null
+    },
+    {
+      "key": "kimi",
+      "base_url": "https://api.moonshot.cn/v1",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_KIMI",
+      "model": "kimi-k2-turbo-preview",
+      "max_tokens": null
+    },
+    {
+      "key": "novai",
+      "base_url": "https://once.novai.su",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_NOVAI",
+      "model": "[次]gemini-3-pro-preview",
+      "max_tokens": null
+    },
+    {
+      "key": "gemini-3-pro-preview-h",
+      "base_url": "https://api2.qiandao.mom/v1",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_GEMINI_3_PRO_PREVIEW_H",
+      "model": "gemini-3-pro-preview-h",
+      "max_tokens": null
+    },
+    {
+      "key": "gemini-3-pro-preview-u",
+      "base_url": "https://api2.qiandao.mom/v1",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_GEMINI_3_PRO_PREVIEW_U",
+      "model": "gemini-3-pro-preview-u",
+      "max_tokens": null
+    },
+    {
+      "key": "gemini-2.5-pro-preview-p",
+      "base_url": "https://api2.qiandao.mom/v1",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_GEMINI_2_5_PRO_PREVIEW_P",
+      "model": "gemini-2.5-pro-preview-p",
+      "max_tokens": null
+    }
+  ],
+  "default_model": "gemini",
+  "default_prompt": "default",
+  "hooks": [
+    {
+      "event": "llm.done",
+      "cmd": "python3 scripts/notify_bark.py"
+    },
+    {
+      "event": "llm.error",
+      "cmd": "python3 scripts/notify_bark.py"
+    }
+  ],
+  "prompts_dir": "config/prompts",
+  "tavily_api_key": "$ENV:DEEPCHAT_TAVILY_API_KEY"
+}

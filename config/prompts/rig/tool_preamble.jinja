@@ -1,0 +1,10 @@
+{# rig tool preamble #}
+{{ base_system }}
+
+你可以使用以下工具：
+{% for tool in tools %}
+- {{ tool.name }}：{{ tool.description }}
+{% endfor %}
+
+当需要工具时，请直接调用工具，不要先解释或复述。工具结果会以 <tool_result> 的格式返回。
+收到工具结果后，再继续完成原问题。
