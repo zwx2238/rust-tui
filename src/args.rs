@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(author, version, about, subcommand_negates_reqs = true)]
 pub struct Cli {
-    /// 配置文件路径（JSON），默认：~/.config/deepseek/config.json
+    /// 配置文件路径（JSON），默认：项目根目录的 config/config.json
     #[arg(long, global = true)]
     pub config: Option<String>,
 

@@ -46,6 +46,7 @@ impl Widget for FooterWidget {
                 frame.state.theme,
                 app.nav_mode,
                 app.follow,
+                frame.view.fps,
             );
         }
         Ok(())
@@ -58,6 +59,7 @@ fn draw_footer(
     theme: &RenderTheme,
     nav_mode: bool,
     follow: bool,
+    fps: u32,
 ) {
     let time = chrono::Local::now().format("%H:%M:%S").to_string();
     let mut parts = vec![time];
@@ -66,9 +68,24 @@ fn draw_footer(
     }
     let follow_text = if follow { "追底:开" } else { "追底:关" };
     parts.push(follow_text.to_string());
-    let text = parts.join("  ");
+    let left = parts.join("  ");
+    let right = format!("FPS {fps}");
+    let text = align_footer_text(&left, &right, area.width as usize);
     let style = Style::default().bg(theme.bg).fg(base_fg(theme));
     let line = Line::from(Span::styled(text, style));
     let paragraph = Paragraph::new(line);
     f.render_widget(paragraph, area);
+}
+
+fn align_footer_text(left: &str, right: &str, width: usize) -> String {
+    let left_len = left.chars().count();
+    let right_len = right.chars().count();
+    if width == 0 {
+        return String::new();
+    }
+    if left_len + right_len + 1 > width {
+        return format!("{left} {right}");
+    }
+    let padding = width.saturating_sub(left_len + right_len);
+    format!("{left}{:padding$}{right}", "")
 }

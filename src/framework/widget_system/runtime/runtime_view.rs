@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
+use std::time::{Duration, Instant};
 use crate::framework::widget_system::overlay::{OverlayKind, OverlayState};
 use crate::framework::widget_system::runtime::runtime_view_handlers::{
     handle_help_key, handle_jump_key, handle_model_key, handle_prompt_key,
@@ -18,6 +19,9 @@ pub(crate) struct ViewState {
     pub(crate) question_review: SelectionState,
     pub(crate) question_review_detail_scroll: usize,
     pub(crate) help: SelectionState,
+    pub(crate) fps: u32,
+    fps_frames: u32,
+    fps_window_start: Instant,
 }
 #[derive(Copy, Clone)]
 pub(crate) enum ViewAction {
@@ -72,11 +76,25 @@ impl ViewState {
             question_review: SelectionState::default(),
             question_review_detail_scroll: 0,
             help: SelectionState::default(),
+            fps: 0,
+            fps_frames: 0,
+            fps_window_start: Instant::now(),
         }
     }
 
     pub(crate) fn is_chat(&self) -> bool {
         self.overlay.is_chat()
+    }
+
+    pub(crate) fn tick_fps(&mut self) {
+        self.fps_frames = self.fps_frames.saturating_add(1);
+        let elapsed = self.fps_window_start.elapsed();
+        if elapsed >= Duration::from_secs(1) {
+            let secs = elapsed.as_secs_f64().max(0.001);
+            self.fps = ((self.fps_frames as f64) / secs).round() as u32;
+            self.fps_frames = 0;
+            self.fps_window_start = Instant::now();
+        }
     }
 
     fn open_summary(&mut self, active_tab: usize, tabs_len: usize) {

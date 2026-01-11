@@ -63,6 +63,7 @@ impl LoopState {
             self.events.clear();
             return Ok(false);
         }
+        self.view.tick_fps();
         self.events.input.clear();
         self.snapshot = snapshot::build_snapshot(
             params,

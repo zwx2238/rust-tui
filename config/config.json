@@ -1,0 +1,26 @@
+{
+  "theme": "light",
+  "models": [
+    {
+      "key": "default",
+      "base_url": "https://api.example.com",
+      "api_key": "$ENV:DEEPCHAT_API_KEY_DEFAULT",
+      "model": "model-name",
+      "max_tokens": null
+    }
+  ],
+  "default_model": "default",
+  "default_prompt": "default",
+  "hooks": [
+    {
+      "event": "llm.done",
+      "cmd": "python3 scripts/notify_bark.py"
+    },
+    {
+      "event": "llm.error",
+      "cmd": "python3 scripts/notify_bark.py"
+    }
+  ],
+  "prompts_dir": "config/prompts",
+  "tavily_api_key": "$ENV:DEEPCHAT_TAVILY_API_KEY"
+}

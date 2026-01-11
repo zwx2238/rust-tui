@@ -42,7 +42,11 @@ pub(super) fn compute_timeout(tabs: &[TabState], active_tab: usize) -> Option<Du
     if tab.app.busy {
         return Some(Duration::from_millis(100));
     }
-    notice_timeout(&tab.app.notice)
+    let idle = Duration::from_secs(1);
+    match notice_timeout(&tab.app.notice) {
+        Some(notice) => Some(notice.min(idle)),
+        None => Some(idle),
+    }
 }
 
 pub(super) fn input_batch_dirty(events: &[CrosstermEvent]) -> bool {
