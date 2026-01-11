@@ -91,10 +91,9 @@ fn validate_models(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.models.iter().any(|m| {
         m.key.trim().is_empty()
             || m.base_url.trim().is_empty()
-            || m.api_key.trim().is_empty()
             || m.model.trim().is_empty()
     }) {
-        return Err("配置文件错误：models 中每个条目必须包含 key/base_url/api_key/model".into());
+        return Err("配置文件错误：models 中每个条目必须包含 key/base_url/model".into());
     }
     if cfg
         .models
