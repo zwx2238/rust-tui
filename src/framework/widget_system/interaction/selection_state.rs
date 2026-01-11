@@ -76,10 +76,6 @@ impl SelectionState {
         }
     }
 
-    pub(crate) fn scroll_by(&mut self, delta: i32, max_scroll: usize, viewport_rows: usize) {
-        self.scroll_offset_by(delta, max_scroll);
-        self.ensure_visible(viewport_rows);
-    }
 }
 
 fn offset_scroll(scroll: usize, delta: i32) -> usize {

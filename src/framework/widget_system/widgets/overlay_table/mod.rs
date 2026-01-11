@@ -85,6 +85,7 @@ impl<'a> OverlayTableController<'a> {
         }
         let _ = apply_view_action(
             action,
+            self.dispatch.args.show_system_prompt,
             self.dispatch.tabs,
             self.dispatch.active_tab,
             self.dispatch.categories,
@@ -147,7 +148,7 @@ impl<'a> OverlayTableController<'a> {
         self.dispatch
             .tabs
             .get(*self.dispatch.active_tab)
-            .map(|tab| jump_len(&tab.app.messages))
+            .map(|tab| jump_len(&tab.app.messages, self.dispatch.args.show_system_prompt))
             .unwrap_or(0)
     }
 }
@@ -177,6 +178,6 @@ fn jump_len_from_state(state: &RenderState<'_>) -> usize {
     state
         .tabs
         .get(state.active_tab)
-        .map(|tab| jump_len(&tab.app.messages))
+        .map(|tab| jump_len(&tab.app.messages, state.args.show_system_prompt))
         .unwrap_or(0)
 }

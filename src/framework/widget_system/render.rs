@@ -43,6 +43,7 @@ fn draw_root(
             categories,
             active_category,
             theme,
+            args: ctx.args,
             startup_text: update.active_data.startup_text.as_deref(),
             full_area: layout.size,
             msg_area: layout.layout.msg_area,

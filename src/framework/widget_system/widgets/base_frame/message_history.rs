@@ -8,6 +8,9 @@ use crate::framework::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
 use crate::framework::widget_system::lifecycle::{EventResult, Widget};
+use crate::framework::widget_system::runtime_tick::{
+    DisplayMessage, build_display_messages, select_visible_message,
+};
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Rect, Size};
 use ratatui::style::Style;
@@ -72,9 +75,9 @@ impl Widget for MessageHistoryWidget {
             return Ok(());
         }
         let preview_width = preview_width(rect);
-        let len = history_len(frame);
-        clamp_history_state_with_len(frame, rect, len);
-        draw_history(frame, rect, preview_width, len);
+        let messages = display_messages_for_frame(frame);
+        update_history_scroll(frame, rect, &messages);
+        draw_history(frame, rect, preview_width, &messages);
         Ok(())
     }
 }
@@ -87,7 +90,8 @@ fn handle_history_mouse(
     m: MouseEvent,
 ) -> Result<EventResult, Box<dyn Error>> {
     let viewport = viewport_rows(rect);
-    let len = history_len_event(ctx);
+    let messages = display_messages_for_event(ctx);
+    let len = messages.len();
     match m.kind {
         MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
             let Some(app) = ctx.tabs.get_mut(*ctx.active_tab).map(|tab| &mut tab.app) else {
@@ -102,11 +106,14 @@ fn handle_history_mouse(
                 SCROLL_STEP_I32
             };
             let max = max_scroll(len, viewport);
-            app.message_history.scroll_by(delta, max, viewport);
+            app.message_history.scroll = offset_scroll(app.message_history.scroll, delta);
+            if app.message_history.scroll > max {
+                app.message_history.scroll = max;
+            }
             Ok(EventResult::handled())
         }
         MouseEventKind::Down(MouseButton::Left) => {
-            handle_history_click(ctx, layout, update, rect, m.row, len)
+            handle_history_click(ctx, layout, update, rect, m.row, &messages)
         }
         _ => Ok(EventResult::ignored()),
     }
@@ -118,9 +125,9 @@ fn handle_history_click(
     _update: &UpdateOutput,
     rect: Rect,
     mouse_y: u16,
-    len: usize,
+    messages: &[DisplayMessage],
 ) -> Result<EventResult, Box<dyn Error>> {
-    if len == 0 {
+    if messages.is_empty() {
         return Ok(EventResult::ignored());
     }
     let Some(app) = ctx.tabs.get_mut(*ctx.active_tab).map(|tab| &mut tab.app) else {
@@ -129,18 +136,23 @@ fn handle_history_click(
     let Some(row) = row_at(app, rect, mouse_y) else {
         return Ok(EventResult::ignored());
     };
-    if row >= len {
+    let Some(index) = messages.get(row).map(|msg| msg.index) else {
         return Ok(EventResult::ignored());
-    }
-    select_row(app, rect, row);
+    };
+    select_row(app, rect, row, index);
     reset_detail_scroll(app);
     Ok(EventResult::handled())
 }
 
-fn select_row(app: &mut crate::framework::widget_system::runtime::state::App, rect: Rect, row: usize) {
+fn select_row(
+    app: &mut crate::framework::widget_system::runtime::state::App,
+    rect: Rect,
+    row: usize,
+    index: usize,
+) {
     let viewport = viewport_rows(rect);
-    app.message_history.select(row);
-    app.message_history.ensure_visible(viewport);
+    app.message_history.selected = index;
+    ensure_row_visible(&mut app.message_history.scroll, row, viewport);
 }
 
 fn reset_detail_scroll(app: &mut crate::framework::widget_system::runtime::state::App) {
@@ -177,32 +189,11 @@ fn preview_prefix_width() -> usize {
     8
 }
 
-fn history_len(frame: &WidgetFrame<'_, '_, '_, '_>) -> usize {
-    frame
-        .state
-        .with_active_tab(|tab| tab.app.messages.len())
-        .unwrap_or(0)
-}
-
-fn history_len_event(ctx: &EventCtx<'_>) -> usize {
-    ctx.tabs
-        .get(*ctx.active_tab)
-        .map(|tab| tab.app.messages.len())
-        .unwrap_or(0)
-}
-
-fn clamp_history_state_with_len(frame: &mut WidgetFrame<'_, '_, '_, '_>, rect: Rect, len: usize) {
-    let viewport = viewport_rows(rect);
-    if let Some(app) = frame.state.active_app_mut() {
-        app.message_history.clamp_with_viewport(len, viewport);
-    }
-}
-
 fn draw_history(
     frame: &mut WidgetFrame<'_, '_, '_, '_>,
     rect: Rect,
     preview_width: usize,
-    len: usize,
+    messages: &[DisplayMessage],
 ) {
     let theme = frame.state.theme;
     let block = Block::default()
@@ -210,7 +201,7 @@ fn draw_history(
         .title("历史")
         .style(base_style(theme))
         .border_style(Style::default().fg(base_fg(theme)));
-    let lines = history_lines(frame, rect, preview_width, len);
+    let lines = history_lines(frame, rect, preview_width, messages);
     let p = Paragraph::new(lines).block(block).style(base_style(theme));
     frame.frame.render_widget(p, rect);
 }
@@ -219,41 +210,35 @@ fn history_lines(
     frame: &WidgetFrame<'_, '_, '_, '_>,
     rect: Rect,
     preview_width: usize,
-    len: usize,
+    messages: &[DisplayMessage],
 ) -> Vec<Line<'static>> {
     let viewport = viewport_rows(rect);
     let Some(app) = frame.state.active_app() else {
         return Vec::new();
     };
     let start = app.message_history.scroll;
-    let end = start.saturating_add(viewport).min(len);
+    let end = start.saturating_add(viewport).min(messages.len());
     let selected = app.message_history.selected;
-    let Some(lines) = frame.state.with_active_tab(|tab| {
-        (start..end)
-            .map(|i| format_line(tab, i, preview_width, i == selected, frame.state.theme))
-            .collect()
-    }) else {
-        return Vec::new();
-    };
-    lines
+    (start..end)
+        .filter_map(|row| {
+            messages.get(row).map(|msg| {
+                let selected_row = msg.index == selected;
+                format_line(msg, row, preview_width, selected_row, frame.state.theme)
+            })
+        })
+        .collect()
 }
 
 fn format_line(
-    tab: &crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    msg: &DisplayMessage,
     row: usize,
     preview_width: usize,
     selected: bool,
     theme: &crate::render::RenderTheme,
 ) -> Line<'static> {
-    let idx = row;
-    let role = tab
-        .app
-        .messages
-        .get(idx)
-        .map(|m| role_label(&m.role))
-        .unwrap_or_default();
-    let preview = preview_for(tab, idx, preview_width);
-    let s = format!("{:>3} {} {}", idx + 1, role, preview);
+    let role = role_label(&msg.message.role);
+    let preview = preview_for(msg, preview_width);
+    let s = format!("{:>3} {} {}", row + 1, role, preview);
     if selected {
         Line::from(s).style(Style::default().bg(selection_bg(theme.bg)))
     } else {
@@ -261,13 +246,82 @@ fn format_line(
     }
 }
 
-fn preview_for(tab: &crate::framework::widget_system::runtime::runtime_helpers::TabState, idx: usize, width: usize) -> String {
-    let Some(msg) = tab.app.messages.get(idx) else {
-        return String::new();
-    };
-    truncate_to_width(&collapse_text(&msg.content), width)
+fn preview_for(msg: &DisplayMessage, width: usize) -> String {
+    truncate_to_width(&collapse_text(&msg.message.content), width)
 }
 
 fn role_label(role: &str) -> String {
     label_for_role(role, None).unwrap_or_else(|| role.to_string())
+}
+
+fn display_messages_for_frame(frame: &WidgetFrame<'_, '_, '_, '_>) -> Vec<DisplayMessage> {
+    frame
+        .state
+        .with_active_tab(|tab| build_display_messages(&tab.app, frame.state.args))
+        .unwrap_or_default()
+}
+
+fn display_messages_for_event(ctx: &EventCtx<'_>) -> Vec<DisplayMessage> {
+    ctx.tabs
+        .get(*ctx.active_tab)
+        .map(|tab| build_display_messages(&tab.app, ctx.args))
+        .unwrap_or_default()
+}
+
+fn update_history_scroll(
+    frame: &mut WidgetFrame<'_, '_, '_, '_>,
+    rect: Rect,
+    messages: &[DisplayMessage],
+) {
+    let viewport = viewport_rows(rect);
+    let Some(app) = frame.state.active_app_mut() else {
+        return;
+    };
+    let selected = select_visible_message(app, messages);
+    let selected_row = selected.and_then(|idx| selected_row(messages, idx));
+    clamp_history_scroll(app, messages.len(), viewport, selected_row);
+}
+
+fn clamp_history_scroll(
+    app: &mut crate::framework::widget_system::runtime::state::App,
+    len: usize,
+    viewport: usize,
+    selected_row: Option<usize>,
+) {
+    if len == 0 {
+        app.message_history.scroll = 0;
+        return;
+    }
+    let max = max_scroll(len, viewport);
+    if app.message_history.scroll > max {
+        app.message_history.scroll = max;
+    }
+    if let Some(row) = selected_row {
+        ensure_row_visible(&mut app.message_history.scroll, row, viewport);
+    }
+}
+
+fn selected_row(messages: &[DisplayMessage], index: usize) -> Option<usize> {
+    messages.iter().position(|msg| msg.index == index)
+}
+
+fn ensure_row_visible(scroll: &mut usize, row: usize, viewport: usize) {
+    if viewport == 0 {
+        return;
+    }
+    if row < *scroll {
+        *scroll = row;
+    } else if row >= *scroll + viewport {
+        *scroll = row.saturating_sub(viewport.saturating_sub(1));
+    }
+}
+
+fn offset_scroll(scroll: usize, delta: i32) -> usize {
+    if delta.is_negative() {
+        let step = delta.unsigned_abs() as usize;
+        scroll.saturating_sub(step)
+    } else {
+        let step = delta as usize;
+        scroll.saturating_add(step)
+    }
 }

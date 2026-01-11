@@ -10,7 +10,7 @@ use crate::framework::widget_system::interaction::input_click::update_input_view
 use crate::framework::widget_system::runtime::logic::{build_label_suffixes, timer_text};
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
 use crate::framework::widget_system::interaction::scroll::max_scroll_u16;
-use crate::framework::widget_system::runtime::state::PendingCommand;
+use crate::framework::widget_system::runtime::state::{App, PendingCommand};
 use ratatui::layout::Rect;
 use ratatui::text::Text;
 use std::time::Duration;
@@ -21,6 +21,12 @@ pub struct ActiveFrameData {
     pub startup_text: Option<String>,
     pub pending_line: Option<String>,
     pub pending_command: Option<PendingCommand>,
+}
+
+#[derive(Clone)]
+pub struct DisplayMessage {
+    pub index: usize,
+    pub message: Message,
 }
 
 #[derive(Copy, Clone)]
@@ -121,26 +127,17 @@ fn build_active_label_suffixes(app: &crate::framework::widget_system::runtime::s
 }
 
 fn resolve_detail_message<'a>(
-    app: &mut crate::framework::widget_system::runtime::state::App,
-    messages: &'a [Message],
+    app: &mut App,
+    messages: &'a [DisplayMessage],
 ) -> Option<DetailMessage<'a>> {
-    if messages.is_empty() {
-        app.message_history.selected = 0;
-        return None;
-    }
     let prev_selected = app.message_history.selected;
-    if app.follow {
-        app.message_history.selected = messages.len().saturating_sub(1);
-    }
-    if app.message_history.selected >= messages.len() {
-        app.message_history.selected = messages.len().saturating_sub(1);
-    }
+    let index = select_visible_message(app, messages)?;
     if app.message_history.selected != prev_selected {
         app.chat_selection = None;
         app.chat_selecting = false;
     }
-    let index = app.message_history.selected;
-    messages.get(index).map(|message| DetailMessage { index, message })
+    find_display_message(messages, index)
+        .map(|message| DetailMessage { index, message })
 }
 
 fn render_detail_text(
@@ -215,19 +212,60 @@ fn reset_active_cache(app: &mut crate::framework::widget_system::runtime::state:
     app.cache_shift = None;
 }
 
-pub fn build_display_messages(app: &crate::framework::widget_system::runtime::state::App, args: &Args) -> Vec<Message> {
+pub fn build_display_messages(app: &App, args: &Args) -> Vec<DisplayMessage> {
     if app.messages.is_empty() {
         return Vec::new();
     }
-    let mut messages = app.messages.clone();
-    if let Some(msg) = messages.first_mut()
-        && msg.role == ROLE_SYSTEM
-        && let Some(full) = build_full_prompt_for_display(&app.messages, &app.prompts_dir, args)
-        && !full.trim().is_empty()
-    {
-        msg.content = full;
+    let mut out = Vec::new();
+    for (idx, msg) in app.messages.iter().enumerate() {
+        if !args.show_system_prompt && msg.role == ROLE_SYSTEM {
+            continue;
+        }
+        let mut message = msg.clone();
+        if idx == 0
+            && msg.role == ROLE_SYSTEM
+            && let Some(full) = build_full_prompt_for_display(&app.messages, &app.prompts_dir, args)
+            && !full.trim().is_empty()
+        {
+            message.content = full;
+        }
+        out.push(DisplayMessage { index: idx, message });
     }
+    out
+}
+
+pub fn select_visible_message(app: &mut App, messages: &[DisplayMessage]) -> Option<usize> {
+    if messages.is_empty() {
+        app.message_history.selected = 0;
+        return None;
+    }
+    let last = messages.last().map(|m| m.index).unwrap_or(0);
+    let mut selected = app.message_history.selected;
+    if app.follow {
+        selected = last;
+    } else if !has_display_index(messages, selected) {
+        selected = next_display_index(messages, selected).unwrap_or(last);
+    }
+    app.message_history.selected = selected;
+    Some(selected)
+}
+
+fn has_display_index(messages: &[DisplayMessage], index: usize) -> bool {
+    messages.iter().any(|msg| msg.index == index)
+}
+
+fn next_display_index(messages: &[DisplayMessage], index: usize) -> Option<usize> {
+    messages.iter().map(|msg| msg.index).find(|idx| *idx > index)
+}
+
+fn find_display_message(
+    messages: &[DisplayMessage],
+    index: usize,
+) -> Option<&Message> {
     messages
+        .iter()
+        .find(|msg| msg.index == index)
+        .map(|msg| &msg.message)
 }
 
 fn build_full_prompt_for_display(

@@ -4,7 +4,9 @@ use crate::framework::widget_system::draw::inner_area;
 use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
 use crate::framework::widget_system::runtime::logic::{build_label_suffixes, timer_text};
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
-use crate::framework::widget_system::runtime_tick::build_display_messages;
+use crate::framework::widget_system::runtime_tick::{
+    DisplayMessage, build_display_messages, select_visible_message,
+};
 use crate::framework::widget_system::interaction::selection::chat_position_from_mouse;
 use ratatui::layout::Rect;
 
@@ -83,17 +85,13 @@ fn mouse_in_rect(mouse_x: u16, mouse_y: u16, rect: Rect) -> bool {
 
 fn active_message<'a>(
     app: &mut crate::framework::widget_system::runtime::state::App,
-    messages: &'a [crate::types::Message],
+    messages: &'a [DisplayMessage],
 ) -> Option<(usize, &'a crate::types::Message)> {
-    if messages.is_empty() {
-        app.message_history.selected = 0;
-        return None;
-    }
-    if app.message_history.selected >= messages.len() {
-        app.message_history.selected = messages.len().saturating_sub(1);
-    }
-    let idx = app.message_history.selected;
-    messages.get(idx).map(|msg| (idx, msg))
+    let idx = select_visible_message(app, messages)?;
+    messages
+        .iter()
+        .find(|msg| msg.index == idx)
+        .map(|msg| (idx, &msg.message))
 }
 
 fn find_edit_button_at(app: &crate::framework::widget_system::runtime::state::App, row: usize, col: usize) -> Option<usize> {

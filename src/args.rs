@@ -52,6 +52,10 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub show_reasoning: bool,
 
+    /// 显示系统提示词消息
+    #[arg(long, default_value_t = false)]
+    pub show_system_prompt: bool,
+
     /// 恢复会话 ID/路径（恢复后可继续对话）
     #[arg(long, alias = "replay")]
     pub resume: Option<String>,

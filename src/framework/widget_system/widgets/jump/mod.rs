@@ -73,11 +73,12 @@ impl Widget for JumpWidget {
         let rows = frame
             .state
             .with_active_tab(|tab| {
-                build_jump_rows(
-                    &tab.app.messages,
-                    max_preview_width(frame.state.msg_area),
-                )
-            })
+            build_jump_rows(
+                &tab.app.messages,
+                max_preview_width(frame.state.msg_area),
+                frame.state.args.show_system_prompt,
+            )
+        })
             .unwrap_or_default();
         clamp_overlay_tables(frame.view, frame.state);
         draw_jump_layout(frame);
