@@ -129,11 +129,12 @@ fn home_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 }
 
 fn normalize_config_paths(path: &Path, cfg: &mut Config) {
-    let Some(parent) = path.parent() else {
-        return;
-    };
     if Path::new(&cfg.prompts_dir).is_relative() {
-        cfg.prompts_dir = parent
+        let base = find_project_root().or_else(|| path.parent().map(PathBuf::from));
+        let Some(base) = base else {
+            return;
+        };
+        cfg.prompts_dir = base
             .join(&cfg.prompts_dir)
             .to_string_lossy()
             .to_string();
