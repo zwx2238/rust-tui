@@ -1,7 +1,7 @@
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Text};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear};
+use tui_term::widget::{Cursor, PseudoTerminal};
 
 use crate::framework::widget_system::context::WidgetFrame;
 
@@ -29,42 +29,19 @@ fn render_border(frame: &mut WidgetFrame<'_, '_, '_, '_>, popup: Rect) {
 
 fn render_terminal_contents(frame: &mut WidgetFrame<'_, '_, '_, '_>, terminal_area: Rect) {
     let theme = frame.state.theme;
-    let Some(app) = frame.state.active_app() else {
+    let Some(app) = frame.state.active_app_mut() else {
         return;
     };
-    let Some(terminal) = app.terminal.as_ref() else {
+    let Some(terminal) = app.terminal.as_mut() else {
         return;
     };
-    let text = screen_to_text(
-        terminal.screen(),
-        terminal_area.height as usize,
-        terminal.scroll_offset,
-    );
-    let para = Paragraph::new(text)
+    let cursor = Cursor::default().visibility(false);
+    let widget = PseudoTerminal::new(terminal.screen_for_render())
         .style(
             Style::default()
                 .bg(theme.bg)
                 .fg(theme.fg.unwrap_or(Color::White)),
         )
-        .wrap(Wrap { trim: false });
-    frame.frame.render_widget(para, terminal_area);
-}
-
-fn screen_to_text(screen: &vt100::Screen, height: usize, scroll_offset: u16) -> Text<'static> {
-    let all = split_lines(screen.contents());
-    let end = all.len().saturating_sub(scroll_offset as usize);
-    let start = end.saturating_sub(height);
-    let mut lines = Vec::new();
-    for s in &all[start..end] {
-        lines.push(Line::from((*s).to_string()));
-    }
-    Text::from(lines)
-}
-
-fn split_lines(s: String) -> Vec<String> {
-    let mut out = Vec::new();
-    for line in s.split('\n') {
-        out.push(line.to_string());
-    }
-    out
+        .cursor(cursor);
+    frame.frame.render_widget(widget, terminal_area);
 }
