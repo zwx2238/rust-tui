@@ -27,9 +27,10 @@ pub fn run(
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut registry = build_model_registry(&cfg);
-    let prompt_registry = load_prompts(&cfg.prompts_dir, "default", &args.system)?;
+    let mut prompt_registry = load_prompts(&cfg.prompts_dir, "default", &args.system)?;
     validate_args(&args)?;
     apply_model_override(&args, &mut registry)?;
+    apply_prompt_override(&args, &cfg, &mut prompt_registry)?;
     let question_set = load_question_set_option(&args)?;
     let tavily_api_key = cfg.tavily_api_key.clone();
     run_with_context(
@@ -54,6 +55,28 @@ fn apply_model_override(
         .resolve_key_from_spec(spec)
         .map_err(|e| format!("--model 无效：{e}"))?;
     registry.default_key = key;
+    Ok(())
+}
+
+fn apply_prompt_override(
+    args: &Args,
+    cfg: &crate::config::Config,
+    prompt_registry: &mut crate::llm::prompts::PromptRegistry,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let desired = match args.prompt.as_deref() {
+        Some(key) => {
+            let trimmed = key.trim();
+            if trimmed.is_empty() {
+                return Err("--prompt 不能为空".into());
+            }
+            trimmed
+        }
+        None => cfg.default_prompt.trim(),
+    };
+    if prompt_registry.get(desired).is_none() {
+        return Err(format!("prompt key 不存在：{desired}").into());
+    }
+    prompt_registry.default_key = desired.to_string();
     Ok(())
 }
 

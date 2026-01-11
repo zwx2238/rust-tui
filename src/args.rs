@@ -40,6 +40,12 @@ pub struct Args {
     #[arg(long)]
     pub model: Option<String>,
 
+    /// 系统提示词 key（来自 prompts 目录）
+    ///
+    /// 不传则使用配置中的 default_prompt。
+    #[arg(long)]
+    pub prompt: Option<String>,
+
     /// 系统提示词
     #[arg(long, default_value = "你是一个有帮助的助手。")]
     pub system: String,
