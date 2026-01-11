@@ -9,6 +9,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::Sender,
 };
+use tui_term::vt100;
 
 use super::events::TerminalEvent;
 use super::keys::key_event_to_bytes;
@@ -111,7 +112,8 @@ impl TerminalSession {
         let _ = self.writer.flush();
     }
 
-    pub(crate) fn screen(&self) -> &vt100::Screen {
+    pub(crate) fn screen_for_render(&mut self) -> &vt100::Screen {
+        self.parser.set_scrollback(self.scroll_offset as usize);
         self.parser.screen()
     }
 }

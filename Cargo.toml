@@ -31,7 +31,7 @@ minijinja = { version = "1", features = ["loader"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
 portable-pty = "0.9.0"
-vt100 = "0.15.2"
+tui-term = "0.2.0"
 
 [profile.dev]
 debug = 0
