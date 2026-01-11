@@ -8,8 +8,8 @@ pub(crate) fn handle_nav_key(ctx: &mut DispatchContext<'_>, key: KeyEvent) -> bo
         return try_enter_nav_mode(ctx, key);
     }
     match key.code {
-        KeyCode::Left => nav_prev_tab(ctx),
-        KeyCode::Right => nav_next_tab(ctx),
+        KeyCode::Left | KeyCode::Char('h') => nav_prev_tab(ctx),
+        KeyCode::Right | KeyCode::Char('l') => nav_next_tab(ctx),
         _ => handle_nav_key_in_mode(ctx, key),
     }
 }
