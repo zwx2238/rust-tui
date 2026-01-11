@@ -117,13 +117,12 @@ impl Widget for OverlayRootWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         if try_tab_category_click(ctx, event, layout, update)? {
             return Ok(EventResult::handled());
         }
-        dispatch_overlay_event(self, ctx, event, layout, update, jump_rows)
+        dispatch_overlay_event(self, ctx, event, layout, update)
     }
 
     fn render(
@@ -181,24 +180,23 @@ fn dispatch_overlay_event(
     event: &crossterm::event::Event,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
 ) -> Result<EventResult, Box<dyn Error>> {
     match OverlayRootWidget::active_kind(ctx.view) {
-        Some(OverlayKind::Summary) => widget.summary.event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::Jump) => widget.jump.event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::Model) => widget.model.event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::Prompt) => widget.prompt.event(ctx, event, layout, update, jump_rows),
+        Some(OverlayKind::Summary) => widget.summary.event(ctx, event, layout, update),
+        Some(OverlayKind::Jump) => widget.jump.event(ctx, event, layout, update),
+        Some(OverlayKind::Model) => widget.model.event(ctx, event, layout, update),
+        Some(OverlayKind::Prompt) => widget.prompt.event(ctx, event, layout, update),
         Some(OverlayKind::QuestionReview) => widget
             .question_review
-            .event(ctx, event, layout, update, jump_rows),
+            .event(ctx, event, layout, update),
         Some(OverlayKind::CodeExec) => widget
             .code_exec
-            .event(ctx, event, layout, update, jump_rows),
+            .event(ctx, event, layout, update),
         Some(OverlayKind::FilePatch) => widget
             .file_patch
-            .event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::Terminal) => widget.terminal.event(ctx, event, layout, update, jump_rows),
-        Some(OverlayKind::Help) => widget.help.event(ctx, event, layout, update, jump_rows),
+            .event(ctx, event, layout, update),
+        Some(OverlayKind::Terminal) => widget.terminal.event(ctx, event, layout, update),
+        Some(OverlayKind::Help) => widget.help.event(ctx, event, layout, update),
         None => Ok(EventResult::ignored()),
     }
 }

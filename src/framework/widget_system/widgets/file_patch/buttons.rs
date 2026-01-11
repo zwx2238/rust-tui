@@ -104,7 +104,7 @@ fn button_clicked(
     event: &crossterm::event::Event,
 ) -> bool {
     button
-        .event(ctx, event, layout, update, &[], rect)
+        .event(ctx, event, layout, update, rect)
         .map(|r| r.handled)
         .unwrap_or(false)
 }

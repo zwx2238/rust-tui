@@ -10,7 +10,6 @@ pub(super) struct MouseDispatch<'a, 'ctx> {
     pub(super) event: &'a crossterm::event::Event,
     pub(super) layout: &'a FrameLayout,
     pub(super) update: &'a UpdateOutput,
-    pub(super) jump_rows: &'a [crate::framework::widget_system::widgets::jump::JumpRow],
     pub(super) rect: Rect,
 }
 
@@ -29,22 +28,10 @@ pub(super) fn dispatch_mouse_pair<
         return Ok(EventResult::ignored());
     }
     if b.contains(x, y) {
-        return b.event(
-            params.ctx,
-            params.event,
-            params.layout,
-            params.update,
-            params.jump_rows,
-        );
+        return b.event(params.ctx, params.event, params.layout, params.update);
     }
     if a.contains(x, y) {
-        return a.event(
-            params.ctx,
-            params.event,
-            params.layout,
-            params.update,
-            params.jump_rows,
-        );
+        return a.event(params.ctx, params.event, params.layout, params.update);
     }
     Ok(EventResult::ignored())
 }
@@ -66,31 +53,13 @@ pub(super) fn dispatch_mouse_triple<
         return Ok(EventResult::ignored());
     }
     if c.contains(x, y) {
-        return c.event(
-            params.ctx,
-            params.event,
-            params.layout,
-            params.update,
-            params.jump_rows,
-        );
+        return c.event(params.ctx, params.event, params.layout, params.update);
     }
     if b.contains(x, y) {
-        return b.event(
-            params.ctx,
-            params.event,
-            params.layout,
-            params.update,
-            params.jump_rows,
-        );
+        return b.event(params.ctx, params.event, params.layout, params.update);
     }
     if a.contains(x, y) {
-        return a.event(
-            params.ctx,
-            params.event,
-            params.layout,
-            params.update,
-            params.jump_rows,
-        );
+        return a.event(params.ctx, params.event, params.layout, params.update);
     }
     Ok(EventResult::ignored())
 }

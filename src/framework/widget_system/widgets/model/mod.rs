@@ -4,7 +4,6 @@ pub(crate) use popup::model_popup_area;
 
 use crate::model_registry::ModelProfile;
 use crate::render::RenderTheme;
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::widgets::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use std::error::Error;
@@ -43,7 +42,6 @@ impl Widget for ModelWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let binding = bind_event(ctx, layout, update);
@@ -51,7 +49,6 @@ impl Widget for ModelWidget {
             dispatch: binding.dispatch,
             layout: binding.layout,
             view: binding.view,
-            jump_rows,
         };
         controller.handle_event(event)
     }
@@ -63,7 +60,7 @@ impl Widget for ModelWidget {
         _update: &UpdateOutput,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
+        clamp_overlay_tables(frame.view, frame.state);
         draw_model_popup(
             frame.frame,
             rect,

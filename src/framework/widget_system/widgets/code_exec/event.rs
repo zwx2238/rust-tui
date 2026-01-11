@@ -1,5 +1,4 @@
 use super::popup_layout::{CodeExecPopupLayout, code_exec_popup_layout};
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{EventCtx, UpdateOutput};
@@ -39,7 +38,6 @@ pub(super) fn handle_key_event(
     ctx: &mut EventCtx<'_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[JumpRow],
     event: &crossterm::event::Event,
 ) -> Result<EventResult, Box<dyn Error>> {
     if let crossterm::event::Event::Key(key) = event
@@ -53,7 +51,6 @@ pub(super) fn handle_key_event(
         dispatch: binding.dispatch,
         layout: binding.layout,
         view: binding.view,
-        jump_rows,
     };
     controller.handle_event(event)
 }

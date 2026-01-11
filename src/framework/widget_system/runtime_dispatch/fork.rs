@@ -3,16 +3,19 @@ use crate::framework::widget_system::notice::push_notice;
 use crate::framework::widget_system::runtime_dispatch::DispatchContext;
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
 use crate::framework::widget_system::runtime::state::Focus;
+use crate::framework::widget_system::widgets::jump::jump_message_index;
 
 pub(crate) fn fork_message_into_new_tab(
     ctx: &mut DispatchContext<'_>,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     row_idx: usize,
 ) -> bool {
-    let Some(row) = jump_rows.get(row_idx) else {
+    let msg_idx = ctx
+        .tabs
+        .get(*ctx.active_tab)
+        .and_then(|tab| jump_message_index(&tab.app.messages, row_idx));
+    let Some(msg_idx) = msg_idx else {
         return false;
     };
-    let msg_idx = row.index.saturating_sub(1);
     fork_message_by_index(ctx, msg_idx)
 }
 

@@ -29,7 +29,9 @@ fn build_jump_row(
     msg: &Message,
     max_preview_width: usize,
 ) -> Option<JumpRow> {
-    label_for_role(&msg.role, None)?;
+    if !is_jump_candidate(msg) {
+        return None;
+    }
     let preview = truncate_to_width(&collapse_text(&msg.content), max_preview_width);
     Some(JumpRow {
         index: idx + 1,
@@ -38,7 +40,29 @@ fn build_jump_row(
     })
 }
 
+pub fn jump_len(messages: &[Message]) -> usize {
+    messages.iter().filter(|msg| is_jump_candidate(msg)).count()
+}
+
+pub fn jump_message_index(messages: &[Message], row: usize) -> Option<usize> {
+    let mut seen = 0;
+    for (idx, msg) in messages.iter().enumerate() {
+        if !is_jump_candidate(msg) {
+            continue;
+        }
+        if seen == row {
+            return Some(idx);
+        }
+        seen += 1;
+    }
+    None
+}
+
 pub fn max_preview_width(area: Rect) -> usize {
     let inner_width = area.width.saturating_sub(2) as usize;
     inner_width.saturating_sub(PREVIEW_GUTTER).max(10)
+}
+
+fn is_jump_candidate(msg: &Message) -> bool {
+    label_for_role(&msg.role, None).is_some()
 }

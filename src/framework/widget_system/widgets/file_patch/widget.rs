@@ -2,7 +2,6 @@ use super::popup_layout::file_patch_popup_layout;
 use crate::render::RenderTheme;
 use crate::framework::widget_system::draw::style::{base_fg, base_style};
 use super::popup_text::{build_patch_text, patch_max_scroll};
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::interaction::selection::{Selection, apply_selection_to_text};
 use crate::framework::widget_system::context::{EventCtx, UpdateCtx, UpdateOutput, WidgetFrame};
@@ -49,13 +48,12 @@ impl Widget for FilePatchWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {
             crossterm::event::Event::Mouse(m) => handle_mouse_event(self, ctx, layout, update, *m),
             crossterm::event::Event::Key(_) => {
-                handle_key_event(ctx, layout, update, jump_rows, event)
+                handle_key_event(ctx, layout, update, event)
             }
             _ => Ok(EventResult::ignored()),
         }

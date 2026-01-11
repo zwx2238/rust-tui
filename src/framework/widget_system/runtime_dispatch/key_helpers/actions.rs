@@ -13,14 +13,13 @@ pub(crate) fn handle_view_action_flow(
     ctx: &mut DispatchContext<'_>,
     layout: LayoutContext,
     view: &mut ViewState,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     action: ViewAction,
     key: KeyEvent,
 ) -> bool {
     if handle_model_cycle(ctx, action) {
         return true;
     }
-    if handle_fork_message(ctx, view, jump_rows, action) {
+    if handle_fork_message(ctx, view, action) {
         return true;
     }
     if handle_prompt_sync(ctx, layout, view, key) {
@@ -32,7 +31,7 @@ pub(crate) fn handle_view_action_flow(
     if handle_question_review_actions(ctx, action) {
         return true;
     }
-    if handle_apply_view_action(ctx, view, jump_rows, action) {
+    if handle_apply_view_action(ctx, view, action) {
         return true;
     }
     handle_model_sync(ctx, layout, view, key)
@@ -57,11 +56,10 @@ fn handle_model_cycle(ctx: &mut DispatchContext<'_>, action: ViewAction) -> bool
 fn handle_fork_message(
     ctx: &mut DispatchContext<'_>,
     view: &mut ViewState,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     action: ViewAction,
 ) -> bool {
     if let ViewAction::ForkMessage(idx) = action {
-        if super::super::fork::fork_message_into_new_tab(ctx, jump_rows, idx) {
+        if super::super::fork::fork_message_into_new_tab(ctx, idx) {
             view.overlay.close();
         }
         return true;
@@ -146,12 +144,10 @@ fn handle_question_review_submit(tab_state: &mut crate::framework::widget_system
 fn handle_apply_view_action(
     ctx: &mut DispatchContext<'_>,
     view: &mut ViewState,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     action: ViewAction,
 ) -> bool {
     if apply_view_action(
         action,
-        jump_rows,
         ctx.tabs,
         ctx.active_tab,
         ctx.categories,

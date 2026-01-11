@@ -2,6 +2,7 @@ use super::super::nav::handle_nav_key;
 use crate::framework::widget_system::overlay::OverlayKind;
 use crate::framework::widget_system::runtime_dispatch::DispatchContext;
 use crate::framework::widget_system::runtime::runtime_view::{ViewAction, ViewState, handle_view_key};
+use crate::framework::widget_system::widgets::jump::jump_len;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::shortcuts::handle_global_shortcuts;
@@ -30,10 +31,9 @@ pub(crate) fn resolve_view_action(
     ctx: &mut DispatchContext<'_>,
     view: &mut ViewState,
     key: KeyEvent,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
 ) -> ViewAction {
     sync_overlay_state(ctx, view);
-    handle_view_key(view, key, ctx.tabs.len(), jump_rows.len(), *ctx.active_tab)
+    handle_view_key(view, key, ctx.tabs.len(), jump_len_for_ctx(ctx), *ctx.active_tab)
 }
 
 fn handle_code_exec_reason_input(
@@ -100,6 +100,13 @@ fn sync_overlay_state(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {
     if view.overlay.is(OverlayKind::QuestionReview) {
         handle_question_review_overlay_key(ctx, view);
     }
+}
+
+fn jump_len_for_ctx(ctx: &DispatchContext<'_>) -> usize {
+    ctx.tabs
+        .get(*ctx.active_tab)
+        .map(|tab| jump_len(&tab.app.messages))
+        .unwrap_or(0)
 }
 
 fn handle_code_exec_overlay_key(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {

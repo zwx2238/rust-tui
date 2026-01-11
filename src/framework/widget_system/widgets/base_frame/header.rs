@@ -26,7 +26,6 @@ impl Widget for HeaderWidget {
         _event: &crossterm::event::Event,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         Ok(EventResult::ignored())

@@ -80,7 +80,6 @@ pub(super) fn pod_event_handled<T: crate::framework::widget_system::lifecycle::W
     event: &crossterm::event::Event,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
 ) -> Result<bool, Box<dyn Error>> {
-    Ok(pod.event(ctx, event, layout, update, jump_rows)?.handled)
+    Ok(pod.event(ctx, event, layout, update)?.handled)
 }

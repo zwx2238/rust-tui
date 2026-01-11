@@ -55,7 +55,6 @@ pub(crate) struct WidgetFrame<'frame, 'state, 'data, 'buf> {
     pub(crate) frame: &'frame mut ratatui::Frame<'buf>,
     pub(crate) state: &'state mut RenderState<'data>,
     pub(crate) view: &'state mut ViewState,
-    pub(crate) jump_rows: &'state mut Vec<crate::framework::widget_system::widgets::jump::JumpRow>,
 }
 
 pub(crate) struct LayoutCtx<'a> {

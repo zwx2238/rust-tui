@@ -1,4 +1,3 @@
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
 use crate::framework::widget_system::box_constraints::BoxConstraints;
 use crossterm::event::Event;
@@ -66,7 +65,6 @@ pub(crate) trait Widget {
         _event: &Event,
         _layout: &FrameLayout,
         _update: &UpdateOutput,
-        _jump_rows: &[JumpRow],
         _rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>>;
     fn render(
@@ -111,10 +109,9 @@ impl Widget for Box<dyn Widget> {
         event: &Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
-        (**self).event(ctx, event, layout, update, jump_rows, rect)
+        (**self).event(ctx, event, layout, update, rect)
     }
 
     fn render(

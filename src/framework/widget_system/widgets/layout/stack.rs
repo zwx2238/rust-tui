@@ -64,7 +64,6 @@ impl<A: Widget, B: Widget> Widget for Stack2<A, B> {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         rect: Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let Some((x, y)) = mouse_pos(event) else {
@@ -73,11 +72,11 @@ impl<A: Widget, B: Widget> Widget for Stack2<A, B> {
         if !point_in_rect(x, y, rect) {
             return Ok(EventResult::ignored());
         }
-        let r2 = self.b.event(ctx, event, layout, update, jump_rows)?;
+        let r2 = self.b.event(ctx, event, layout, update)?;
         if r2.handled || r2.quit {
             return Ok(r2);
         }
-        self.a.event(ctx, event, layout, update, jump_rows)
+        self.a.event(ctx, event, layout, update)
     }
 
     fn render(

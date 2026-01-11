@@ -10,9 +10,12 @@ use crate::framework::widget_system::runtime_dispatch::key_helpers::{
 use crate::framework::widget_system::runtime_dispatch::{
     DispatchContext, LayoutContext, apply_model_selection, apply_prompt_selection,
 };
-use crate::framework::widget_system::runtime::runtime_view::{ViewAction, ViewState, apply_view_action, handle_view_mouse};
+use crate::framework::widget_system::runtime::runtime_view::{
+    ViewAction, ViewState, apply_view_action, handle_view_mouse,
+};
 use crate::framework::widget_system::interaction::scroll::SCROLL_STEP_I32;
 use crate::framework::widget_system::widgets::help::help_rows_len;
+use crate::framework::widget_system::widgets::jump::jump_len;
 use crate::framework::widget_system::context::RenderState;
 use crate::framework::widget_system::lifecycle::EventResult;
 
@@ -20,7 +23,6 @@ pub(crate) struct OverlayTableController<'a> {
     pub(crate) dispatch: DispatchContext<'a>,
     pub(crate) layout: LayoutContext,
     pub(crate) view: &'a mut ViewState,
-    pub(crate) jump_rows: &'a [crate::framework::widget_system::widgets::jump::JumpRow],
 }
 
 impl<'a> OverlayTableController<'a> {
@@ -48,12 +50,11 @@ impl<'a> OverlayTableController<'a> {
         if handle_pre_key_actions(&mut self.dispatch, self.view, key) {
             return Ok(EventResult::handled());
         }
-        let action = resolve_view_action(&mut self.dispatch, self.view, key, self.jump_rows);
+        let action = resolve_view_action(&mut self.dispatch, self.view, key);
         if handle_view_action_flow(
             &mut self.dispatch,
             self.layout,
             self.view,
-            self.jump_rows,
             action,
             key,
         ) {
@@ -71,7 +72,7 @@ impl<'a> OverlayTableController<'a> {
             self.view,
             row,
             self.dispatch.tabs.len(),
-            self.jump_rows.len(),
+            self.jump_len(),
             m.kind,
         );
         if let ViewAction::SelectModel(idx) = action {
@@ -84,7 +85,6 @@ impl<'a> OverlayTableController<'a> {
         }
         let _ = apply_view_action(
             action,
-            self.jump_rows,
             self.dispatch.tabs,
             self.dispatch.active_tab,
             self.dispatch.categories,
@@ -135,23 +135,31 @@ impl<'a> OverlayTableController<'a> {
             .unwrap_or(0);
         OverlayRowCounts {
             tabs: self.dispatch.tabs.len(),
-            jump: self.jump_rows.len(),
+            jump: self.jump_len(),
             models: self.dispatch.registry.models.len(),
             prompts: self.dispatch.prompt_registry.prompts.len(),
             question_reviews,
             help: help_rows_len(),
         }
     }
+
+    fn jump_len(&self) -> usize {
+        self.dispatch
+            .tabs
+            .get(*self.dispatch.active_tab)
+            .map(|tab| jump_len(&tab.app.messages))
+            .unwrap_or(0)
+    }
 }
 
-pub(crate) fn clamp_overlay_tables(view: &mut ViewState, state: &RenderState<'_>, jump_len: usize) {
+pub(crate) fn clamp_overlay_tables(view: &mut ViewState, state: &RenderState<'_>) {
     let areas = OverlayAreas {
         full: state.full_area,
         msg: state.msg_area,
     };
     let counts = OverlayRowCounts {
         tabs: state.tabs.len(),
-        jump: jump_len,
+        jump: jump_len_from_state(state),
         models: state.models.len(),
         prompts: state.prompts.len(),
         question_reviews: state
@@ -163,4 +171,12 @@ pub(crate) fn clamp_overlay_tables(view: &mut ViewState, state: &RenderState<'_>
         help: help_rows_len(),
     };
     let _ = with_active_table_handle(view, areas, counts, |mut handle| handle.clamp());
+}
+
+fn jump_len_from_state(state: &RenderState<'_>) -> usize {
+    state
+        .tabs
+        .get(state.active_tab)
+        .map(|tab| jump_len(&tab.app.messages))
+        .unwrap_or(0)
 }

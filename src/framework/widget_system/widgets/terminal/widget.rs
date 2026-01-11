@@ -49,11 +49,10 @@ impl Widget for TerminalWidget {
         event: &Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         match event {
-            Event::Key(key) => Ok(handle_key(ctx, layout, update, jump_rows, *key)),
+            Event::Key(key) => Ok(handle_key(ctx, layout, update, *key)),
             Event::Paste(s) => Ok(handle_paste(ctx, s)),
             Event::Mouse(m) => Ok(handle_mouse(ctx, m.kind)),
             _ => Ok(EventResult::ignored()),
@@ -80,7 +79,6 @@ fn handle_key(
     ctx: &mut EventCtx<'_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     key: crossterm::event::KeyEvent,
 ) -> EventResult {
     if is_quit_key(key) {
@@ -90,12 +88,11 @@ fn handle_key(
     if handle_pre_key_actions(&mut binding.dispatch, binding.view, key) {
         return EventResult::handled();
     }
-    let action = resolve_view_action(&mut binding.dispatch, binding.view, key, jump_rows);
+    let action = resolve_view_action(&mut binding.dispatch, binding.view, key);
     if handle_view_action_flow(
         &mut binding.dispatch,
         binding.layout,
         binding.view,
-        jump_rows,
         action,
         key,
     ) {

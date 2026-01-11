@@ -4,7 +4,6 @@ pub(crate) use popup::prompt_popup_area;
 
 use crate::llm::prompts::SystemPrompt;
 use crate::render::RenderTheme;
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::widgets::overlay_table::{OverlayTable, draw_overlay_table, header_style};
 use crate::framework::widget_system::interaction::text_utils::{collapse_text, truncate_to_width};
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
@@ -45,7 +44,6 @@ impl Widget for PromptWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let binding = bind_event(ctx, layout, update);
@@ -53,7 +51,6 @@ impl Widget for PromptWidget {
             dispatch: binding.dispatch,
             layout: binding.layout,
             view: binding.view,
-            jump_rows,
         };
         controller.handle_event(event)
     }
@@ -65,7 +62,7 @@ impl Widget for PromptWidget {
         _update: &UpdateOutput,
         rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        clamp_overlay_tables(frame.view, frame.state, frame.jump_rows.len());
+        clamp_overlay_tables(frame.view, frame.state);
         draw_prompt_popup(
             frame.frame,
             rect,

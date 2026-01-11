@@ -1,4 +1,3 @@
-use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime_dispatch::key_helpers::{
     handle_pre_key_actions, handle_view_action_flow, is_quit_key, resolve_view_action,
 };
@@ -26,13 +25,12 @@ impl Widget for GlobalKeyWidget {
         event: &crossterm::event::Event,
         layout: &FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         let crossterm::event::Event::Key(key) = event else {
             return Ok(EventResult::ignored());
         };
-        Ok(handle_global_key(ctx, layout, update, jump_rows, *key))
+        Ok(handle_global_key(ctx, layout, update, *key))
     }
 
     fn render(
@@ -50,7 +48,6 @@ fn handle_global_key(
     ctx: &mut EventCtx<'_>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-    jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
     key: crossterm::event::KeyEvent,
 ) -> EventResult {
     if key_debug_enabled() && let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
@@ -63,12 +60,11 @@ fn handle_global_key(
     if handle_pre_key_actions(&mut binding.dispatch, binding.view, key) {
         return EventResult::handled();
     }
-    let action = resolve_view_action(&mut binding.dispatch, binding.view, key, jump_rows);
+    let action = resolve_view_action(&mut binding.dispatch, binding.view, key);
     if handle_view_action_flow(
         &mut binding.dispatch,
         binding.layout,
         binding.view,
-        jump_rows,
         action,
         key,
     ) {

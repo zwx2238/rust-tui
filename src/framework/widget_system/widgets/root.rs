@@ -66,13 +66,12 @@ impl Widget for RootWidget {
         event: &crossterm::event::Event,
         layout: &crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout,
         update: &UpdateOutput,
-        jump_rows: &[crate::framework::widget_system::widgets::jump::JumpRow],
         _rect: ratatui::layout::Rect,
     ) -> Result<EventResult, Box<dyn Error>> {
         if ctx.view.overlay.active.is_some() {
-            return self.overlay.event(ctx, event, layout, update, jump_rows);
+            return self.overlay.event(ctx, event, layout, update);
         }
-        self.base.event(ctx, event, layout, update, jump_rows)
+        self.base.event(ctx, event, layout, update)
     }
 
     fn render(
@@ -82,7 +81,6 @@ impl Widget for RootWidget {
         update: &UpdateOutput,
         _rect: ratatui::layout::Rect,
     ) -> Result<(), Box<dyn Error>> {
-        frame.jump_rows.clear();
         self.base.render(frame, layout, update)?;
         self.overlay.render(frame, layout, update)?;
         self.notice.render(frame, layout, update)?;

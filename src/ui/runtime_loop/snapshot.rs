@@ -20,7 +20,7 @@ pub(super) fn build_snapshot(
         events,
         &layout,
     )?;
-    let jump_rows = run_render(
+    run_render(
         params,
         view,
         widget_system,
@@ -31,7 +31,6 @@ pub(super) fn build_snapshot(
     Ok(RenderSnapshot {
         layout,
         update,
-        jump_rows,
     })
 }
 
@@ -84,7 +83,7 @@ fn run_render(
     startup_elapsed: &mut Option<std::time::Duration>,
     layout: &FrameLayout,
     update: &UpdateOutput,
-) -> Result<Vec<crate::ui::jump::JumpRow>, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut ctx = RenderCtx {
         terminal: params.terminal,
         tabs: params.tabs,
