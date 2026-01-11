@@ -58,6 +58,7 @@ fn build_new_tab_for_category(
         &prompt_key,
     );
     tab.app.prompts_dir = active.app.prompts_dir.clone();
+    tab.app.hooks = active.app.hooks.clone();
     tab.app.tavily_api_key = active.app.tavily_api_key.clone();
     tab.app.set_log_session_id(&active.app.log_session_id);
     tab.app.model_key = model_key;

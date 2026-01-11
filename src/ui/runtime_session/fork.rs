@@ -38,6 +38,7 @@ fn create_retry_tab(source: &TabState, model_key: &str, prompt_key: &str) -> Opt
         prompt_key,
     );
     tab.app.set_log_session_id(&source.app.log_session_id);
+    tab.app.hooks = source.app.hooks.clone();
     Some(tab)
 }
 

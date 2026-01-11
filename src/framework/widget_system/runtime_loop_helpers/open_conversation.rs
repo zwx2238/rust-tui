@@ -189,6 +189,7 @@ fn ensure_system_prompt(
 fn inherit_tab_settings(tabs: &[TabState], active_tab: usize, tab: &mut TabState) {
     if let Some(active) = tabs.get(active_tab) {
         tab.app.prompts_dir = active.app.prompts_dir.clone();
+        tab.app.hooks = active.app.hooks.clone();
         tab.app.tavily_api_key = active.app.tavily_api_key.clone();
         tab.app.set_log_session_id(&active.app.log_session_id);
     }

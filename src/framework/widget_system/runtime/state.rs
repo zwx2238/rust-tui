@@ -92,6 +92,7 @@ pub struct App {
     pub nav_mode: bool,
     pub tavily_api_key: String,
     pub prompts_dir: String,
+    pub hooks: Vec<crate::hooks::HookSpec>,
     pub log_session_id: String,
     pub pending_code_exec: Option<PendingCodeExec>,
     pub code_exec_scroll: usize,

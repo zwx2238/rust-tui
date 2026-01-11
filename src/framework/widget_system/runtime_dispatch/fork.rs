@@ -50,6 +50,7 @@ struct ForkSeed {
     log_session_id: String,
     prompts_dir: String,
     tavily_api_key: String,
+    hooks: Vec<crate::hooks::HookSpec>,
 }
 
 enum ForkError {
@@ -83,6 +84,7 @@ fn build_fork_seed(ctx: &DispatchContext<'_>, msg_idx: usize) -> Result<ForkSeed
         log_session_id: tab_state.app.log_session_id.clone(),
         prompts_dir: tab_state.app.prompts_dir.clone(),
         tavily_api_key: tab_state.app.tavily_api_key.clone(),
+        hooks: tab_state.app.hooks.clone(),
     })
 }
 
@@ -135,6 +137,7 @@ fn build_fork_tab(ctx: &mut DispatchContext<'_>, seed: &ForkSeed) -> TabState {
     new_tab.app.prompt_key = seed.prompt_key.clone();
     new_tab.app.prompts_dir = seed.prompts_dir.clone();
     new_tab.app.tavily_api_key = seed.tavily_api_key.clone();
+    new_tab.app.hooks = seed.hooks.clone();
     new_tab
 }
 

@@ -21,6 +21,7 @@ pub(crate) fn new_tab(ctx: &mut DispatchContext<'_>) {
     );
     if let Some(active) = ctx.tabs.get(*ctx.active_tab) {
         tab.app.prompts_dir = active.app.prompts_dir.clone();
+        tab.app.hooks = active.app.hooks.clone();
         tab.app.tavily_api_key = active.app.tavily_api_key.clone();
         tab.app.set_log_session_id(&active.app.log_session_id);
     }
@@ -85,6 +86,7 @@ struct KeepConfig {
     tavily_api_key: String,
     log_session_id: String,
     category: String,
+    hooks: Vec<crate::hooks::HookSpec>,
 }
 
 fn active_tab_keep_config(ctx: &DispatchContext<'_>) -> KeepConfig {
@@ -93,6 +95,7 @@ fn active_tab_keep_config(ctx: &DispatchContext<'_>) -> KeepConfig {
         tavily_api_key: String::new(),
         log_session_id: String::new(),
         category: "默认".to_string(),
+        hooks: Vec::new(),
     };
     ctx.tabs
         .get(*ctx.active_tab)
@@ -101,6 +104,7 @@ fn active_tab_keep_config(ctx: &DispatchContext<'_>) -> KeepConfig {
             tavily_api_key: tab.app.tavily_api_key.clone(),
             log_session_id: tab.app.log_session_id.clone(),
             category: tab.category.clone(),
+            hooks: tab.app.hooks.clone(),
         })
 }
 
@@ -135,6 +139,7 @@ fn build_default_tab(ctx: &mut DispatchContext<'_>) -> TabState {
 fn apply_keep_config(tab: &mut TabState, keep: KeepConfig) {
     tab.app.prompts_dir = keep.prompts_dir;
     tab.app.tavily_api_key = keep.tavily_api_key;
+    tab.app.hooks = keep.hooks;
     if !keep.log_session_id.is_empty() {
         tab.app.set_log_session_id(&keep.log_session_id);
     }
