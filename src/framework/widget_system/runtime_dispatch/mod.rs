@@ -1,6 +1,5 @@
 use crate::args::Args;
 use crate::render::RenderTheme;
-use crate::types::ROLE_USER;
 use crate::framework::widget_system::runtime::events::RuntimeEvent;
 use crate::framework::widget_system::notice::push_notice;
 use crate::framework::widget_system::overlay::OverlayKind;
@@ -70,7 +69,10 @@ pub(crate) fn start_pending_request(
 }
 
 pub(crate) fn can_change_prompt(app: &crate::framework::widget_system::runtime::state::App) -> bool {
-    !app.messages.iter().any(|m| m.role == ROLE_USER)
+    !app
+        .messages
+        .iter()
+        .any(|m| m.role == app.default_role || m.role == crate::types::ROLE_USER)
 }
 
 fn with_active_tab<F: FnOnce(&mut TabState)>(ctx: &mut DispatchContext<'_>, f: F) {

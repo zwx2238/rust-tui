@@ -62,6 +62,7 @@ fn seed_from_active(
         log_session_id: tab_state.app.log_session_id.clone(),
         prompts_dir: tab_state.app.prompts_dir.clone(),
         tavily_api_key: tab_state.app.tavily_api_key.clone(),
+        default_role: tab_state.app.default_role.clone(),
     })
 }
 
@@ -124,6 +125,7 @@ fn create_question_tab(
     tab.app.set_log_session_id(&seed.log_session_id);
     tab.app.prompts_dir = seed.prompts_dir.clone();
     tab.app.tavily_api_key = seed.tavily_api_key.clone();
+    tab.app.default_role = seed.default_role.clone();
     tab.app.model_key = model_key.to_string();
     tab.app.prompt_key = seed.prompt_key.clone();
     tabs.push(tab);
@@ -245,4 +247,5 @@ struct QuestionTabSeed {
     log_session_id: String,
     prompts_dir: String,
     tavily_api_key: String,
+    default_role: String,
 }

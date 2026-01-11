@@ -18,6 +18,7 @@ pub struct LlmStreamRequestParams {
     pub enable_ask_questions: bool,
     pub log_dir: Option<String>,
     pub log_session_id: String,
+    pub default_role: String,
     pub message_index: usize,
     pub cancel: Arc<AtomicBool>,
     pub tx: Sender<crate::ui::events::RuntimeEvent>,

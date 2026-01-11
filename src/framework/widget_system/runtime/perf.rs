@@ -1,12 +1,13 @@
-use crate::types::{ROLE_ASSISTANT, ROLE_USER};
+use crate::types::ROLE_ASSISTANT;
 use crate::framework::widget_system::runtime::state::App;
 
 const PERF_MESSAGES: usize = 50;
 const PERF_LINES_PER_MESSAGE: usize = 100;
 
 pub fn seed_perf_messages(app: &mut App) {
+    let user_role = app.default_role.clone();
     for i in 0..PERF_MESSAGES {
-        let role = role_for_index(i);
+        let role = role_for_index(i, &user_role);
         let content = build_perf_content(i);
         app.messages.push(crate::types::Message {
             role: role.to_string(),
@@ -20,9 +21,9 @@ pub fn seed_perf_messages(app: &mut App) {
     app.message_history.selected = app.messages.len().saturating_sub(1);
 }
 
-fn role_for_index(i: usize) -> &'static str {
+fn role_for_index(i: usize, user_role: &str) -> &str {
     if i.is_multiple_of(2) {
-        ROLE_USER
+        user_role
     } else {
         ROLE_ASSISTANT
     }

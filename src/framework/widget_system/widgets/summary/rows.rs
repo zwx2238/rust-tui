@@ -1,4 +1,3 @@
-use crate::types::ROLE_USER;
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
 use crate::framework::widget_system::interaction::text_utils::truncate_to_width;
 
@@ -8,7 +7,7 @@ pub(crate) fn build_summary_row(idx: usize, tab: &TabState, max_latest_width: us
     let status = if tab.app.busy { "generating" } else { "done" };
     let exec_pending = tab.app.pending_code_exec.is_some() || tab.app.code_exec_live.is_some();
     let exec_since = tab.app.pending_code_exec.as_ref().map(|p| p.requested_at);
-    let latest_user = latest_user_question(&tab.app.messages)
+    let latest_user = latest_user_question(&tab.app.messages, &tab.app.default_role)
         .map(|s| truncate_to_width(s, max_latest_width))
         .unwrap_or_else(|| "-".to_string());
     SummaryRow {
@@ -32,10 +31,13 @@ pub(crate) fn exec_time_sort_key(row: &SummaryRow) -> (u8, u64, u64) {
     (pending_rank, since, row.tab_index as u64)
 }
 
-fn latest_user_question(messages: &[crate::types::Message]) -> Option<&str> {
+fn latest_user_question<'a>(
+    messages: &'a [crate::types::Message],
+    role: &str,
+) -> Option<&'a str> {
     messages
         .iter()
         .rev()
-        .find(|m| m.role == ROLE_USER)
+        .find(|m| m.role == role || m.role == crate::types::ROLE_USER)
         .map(|m| m.content.as_str())
 }

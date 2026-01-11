@@ -59,6 +59,7 @@ fn build_new_tab_for_category(
     );
     tab.app.prompts_dir = active.app.prompts_dir.clone();
     tab.app.tavily_api_key = active.app.tavily_api_key.clone();
+    tab.app.default_role = active.app.default_role.clone();
     tab.app.set_log_session_id(&active.app.log_session_id);
     tab.app.model_key = model_key;
     tab.app.prompt_key = prompt_key;

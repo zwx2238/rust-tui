@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::types::{ROLE_SYSTEM, ROLE_USER};
+use crate::types::ROLE_SYSTEM;
 use crate::ui::runtime_helpers::TabState;
 
 pub(crate) fn init_categories(session: &crate::session::SessionData) -> (Vec<String>, String) {
@@ -106,7 +106,7 @@ pub(crate) fn resolve_active_category(
 pub(crate) fn last_user_message(source: &TabState) -> Option<(usize, String)> {
     let mut last_user_idx = None;
     for (idx, msg) in source.app.messages.iter().enumerate().rev() {
-        if msg.role == ROLE_USER {
+        if msg.role == source.app.default_role || msg.role == crate::types::ROLE_USER {
             last_user_idx = Some(idx);
             break;
         }

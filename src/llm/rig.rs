@@ -24,12 +24,13 @@ pub fn prepare_rig_context(
     messages: &[UiMessage],
     prompts_dir: &str,
     enabled_tools: &[&str],
+    default_role: &str,
 ) -> Result<(RigRequestContext, RigTemplates), String> {
     let templates = RigTemplates::load(prompts_dir)?;
     let tools = filter_tools(templates.tool_defs()?, enabled_tools);
     let base_system = augment_system(&extract_system(messages));
     let preamble = build_preamble(&templates, &base_system, &tools)?;
-    let (history, prompt) = build_history_and_prompt(messages, &templates)?;
+    let (history, prompt) = build_history_and_prompt(messages, &templates, default_role)?;
     let tool_defs = build_tool_defs(&tools);
     Ok((
         RigRequestContext {

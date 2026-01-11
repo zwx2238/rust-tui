@@ -1,5 +1,5 @@
 use crate::render::{RenderCacheEntry, RenderTheme, insert_empty_cache_entry};
-use crate::types::{Message, ROLE_USER};
+use crate::types::Message;
 use crate::framework::widget_system::runtime::perf::seed_perf_messages;
 use crate::framework::widget_system::runtime::state::{App, Focus};
 use std::collections::BTreeMap;
@@ -184,7 +184,7 @@ fn find_last_user_idx(app: &App, assistant_idx: Option<usize>) -> Option<usize> 
     let search_end = assistant_idx.unwrap_or(app.messages.len());
     app.messages[..search_end]
         .iter()
-        .rposition(|m| m.role == ROLE_USER)
+        .rposition(|m| m.role == app.default_role || m.role == crate::types::ROLE_USER)
 }
 
 fn collect_remove_indices(

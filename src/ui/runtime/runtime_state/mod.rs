@@ -32,6 +32,10 @@ pub(crate) fn validate_args(args: &Args) -> Result<(), Box<dyn std::error::Error
     if args.resume.is_some() && args.question_set.is_some() {
         return Err("resume 与 question-set 不能同时使用".into());
     }
+    if let Some(role) = args.role.as_deref() {
+        crate::config::normalize_role(role)
+            .map_err(|e| format!("--role 无效：{e}"))?;
+    }
     Ok(())
 }
 
@@ -192,6 +196,7 @@ fn apply_tab_config(
     for tab in tabs {
         tab.app.tavily_api_key = tavily_api_key.to_string();
         tab.app.prompts_dir = cfg.prompts_dir.clone();
+        tab.app.default_role = cfg.default_role.clone();
         tab.app.set_log_session_id(log_session_id);
     }
 }

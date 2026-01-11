@@ -3,6 +3,7 @@
 //! 提供应用程序配置的加载、解析和管理功能。
 
 use serde::{Deserialize, Serialize};
+use crate::types::{ROLE_ASSISTANT, ROLE_REASONING, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -13,6 +14,8 @@ pub struct Config {
     pub theme: String,
     pub models: Vec<ModelItem>,
     pub default_model: String,
+    #[serde(default = "default_role")]
+    pub default_role: String,
     pub prompts_dir: String,
     pub tavily_api_key: String,
 }
@@ -52,6 +55,13 @@ pub fn save_config(path: &PathBuf, cfg: &Config) -> Result<(), Box<dyn std::erro
 }
 
 fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    validate_required_fields(cfg)?;
+    validate_models(cfg)?;
+    validate_default_role(cfg)?;
+    Ok(())
+}
+
+fn validate_required_fields(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.theme.trim().is_empty() {
         return Err("配置文件错误：theme 不能为空".into());
     }
@@ -64,6 +74,10 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.default_model.trim().is_empty() {
         return Err("配置文件错误：default_model 不能为空".into());
     }
+    Ok(())
+}
+
+fn validate_models(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if cfg.models.iter().any(|m| {
         m.key.trim().is_empty()
             || m.base_url.trim().is_empty()
@@ -83,4 +97,25 @@ fn validate_config(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
         return Err("配置文件错误：default_model 必须在 models 中存在".into());
     }
     Ok(())
+}
+
+fn validate_default_role(cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    normalize_role(&cfg.default_role)
+        .map(|_| ())
+        .map_err(|e| format!("配置文件错误：default_role {e}").into())
+}
+
+fn default_role() -> String {
+    ROLE_USER.to_string()
+}
+
+pub fn normalize_role(raw: &str) -> Result<String, String> {
+    let role = raw.trim().to_ascii_lowercase();
+    if role.is_empty() {
+        return Err("不能为空".to_string());
+    }
+    match role.as_str() {
+        ROLE_USER | ROLE_ASSISTANT | ROLE_REASONING | ROLE_SYSTEM | ROLE_TOOL => Ok(role),
+        _ => Err("必须为 user/assistant/reasoning/system/tool".to_string()),
+    }
 }

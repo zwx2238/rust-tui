@@ -17,28 +17,29 @@ pub fn augment_system(base: &str) -> String {
 pub fn build_history_and_prompt(
     messages: &[UiMessage],
     templates: &RigTemplates,
+    default_role: &str,
 ) -> Result<(Vec<Message>, String), String> {
-    let last_user_idx = find_last_user_index(messages);
+    let last_user_idx = find_last_user_index(messages, default_role);
     if let Some(idx) = last_user_idx {
         if has_tool_after(messages, idx) {
-            let history = build_history(messages, templates, None)?;
+            let history = build_history(messages, templates, None, default_role)?;
             let prompt = templates.render_followup()?;
             return Ok((history, prompt));
         }
-        let history = build_history(messages, templates, Some(idx))?;
+        let history = build_history(messages, templates, Some(idx), default_role)?;
         return Ok((history, messages[idx].content.clone()));
     }
-    let history = build_history(messages, templates, None)?;
+    let history = build_history(messages, templates, None, default_role)?;
     let prompt = templates.render_followup()?;
     Ok((history, prompt))
 }
 
-fn find_last_user_index(messages: &[UiMessage]) -> Option<usize> {
+fn find_last_user_index(messages: &[UiMessage], default_role: &str) -> Option<usize> {
     messages
         .iter()
         .enumerate()
         .rev()
-        .find(|(_, m)| m.role == crate::types::ROLE_USER)
+        .find(|(_, m)| is_input_role(&m.role, default_role))
         .map(|(idx, _)| idx)
 }
 
@@ -53,14 +54,19 @@ fn build_history(
     messages: &[UiMessage],
     templates: &RigTemplates,
     end: Option<usize>,
+    default_role: &str,
 ) -> Result<Vec<Message>, String> {
     let slice = match end {
         Some(end) => &messages[..end],
         None => messages,
     };
     let mut history = Vec::new();
+    let mut system_seen = false;
     for msg in slice {
-        if let Some(entry) = map_history_message(msg, templates)? {
+        if should_skip_system(&msg.role, default_role, &mut system_seen) {
+            continue;
+        }
+        if let Some(entry) = map_history_message(msg, templates, default_role)? {
             history.push(entry);
         }
     }
@@ -70,9 +76,10 @@ fn build_history(
 fn map_history_message(
     msg: &UiMessage,
     templates: &RigTemplates,
+    default_role: &str,
 ) -> Result<Option<Message>, String> {
-    if msg.role == crate::types::ROLE_SYSTEM {
-        return Ok(None);
+    if is_input_role(&msg.role, default_role) {
+        return Ok(Some(Message::user(msg.content.clone())));
     }
     if msg.role == crate::types::ROLE_REASONING {
         return Ok(None);
@@ -82,8 +89,26 @@ fn map_history_message(
             templates.render_tool_result("tool", &serde_json::Value::Null, &msg.content)?;
         return Ok(Some(Message::user(wrapped)));
     }
+    if msg.role == crate::types::ROLE_SYSTEM {
+        return Ok(None);
+    }
     Ok(Some(match msg.role.as_str() {
         crate::types::ROLE_ASSISTANT => Message::assistant(msg.content.clone()),
         _ => Message::user(msg.content.clone()),
     }))
+}
+
+fn is_input_role(role: &str, default_role: &str) -> bool {
+    role == default_role || role == crate::types::ROLE_USER
+}
+
+fn should_skip_system(role: &str, default_role: &str, seen: &mut bool) -> bool {
+    if role != crate::types::ROLE_SYSTEM {
+        return false;
+    }
+    if !*seen {
+        *seen = true;
+        return true;
+    }
+    default_role != crate::types::ROLE_SYSTEM
 }

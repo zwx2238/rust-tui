@@ -40,6 +40,13 @@ pub struct Args {
     #[arg(long)]
     pub model: Option<String>,
 
+    /// 默认消息角色（来自 config.json 的 default_role）
+    ///
+    /// 不传则使用配置中的 default_role。
+    /// 可选：user/assistant/reasoning/system/tool。
+    #[arg(long)]
+    pub role: Option<String>,
+
     /// 系统提示词
     #[arg(long, default_value = "你是一个有帮助的助手。")]
     pub system: String,

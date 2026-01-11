@@ -1,4 +1,4 @@
-use crate::types::{Message, ROLE_ASSISTANT, ROLE_USER};
+use crate::types::{Message, ROLE_ASSISTANT};
 use crate::ui::events::RuntimeEvent;
 use crate::ui::runtime_helpers::TabState;
 use crate::ui::state::{App, RequestHandle};
@@ -34,6 +34,7 @@ pub(crate) fn start_tab_request(params: StartTabRequestParams<'_>) {
     if !push_user_message(app, params.question) {
         return;
     }
+    let default_role = app.default_role.clone();
     start_request_common(StartRequestCommonParams {
         app,
         base_url: params.base_url,
@@ -51,6 +52,7 @@ pub(crate) fn start_tab_request(params: StartTabRequestParams<'_>) {
         enable_ask_questions: params.enable_ask_questions,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
+        default_role,
     });
 }
 
@@ -76,6 +78,7 @@ pub(crate) fn start_followup_request(params: StartFollowupRequestParams<'_>) {
     let app = &mut params.tab_state.app;
     let tab_id = params.tab_state.conversation_id.clone();
     cancel_active_request(app);
+    let default_role = app.default_role.clone();
     start_request_common(StartRequestCommonParams {
         app,
         base_url: params.base_url,
@@ -93,6 +96,7 @@ pub(crate) fn start_followup_request(params: StartFollowupRequestParams<'_>) {
         enable_ask_questions: params.enable_ask_questions,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
+        default_role,
     });
 }
 
@@ -105,19 +109,20 @@ fn cancel_active_request(app: &mut App) {
 
 fn push_user_message(app: &mut App, question: &str) -> bool {
     if !question.is_empty() {
-        app.messages.push(user_message(question.to_string()));
+        app.messages
+            .push(user_message(&app.default_role, question.to_string()));
         return true;
     }
     if let Some(line) = app.pending_send.take() {
-        app.messages.push(user_message(line));
+        app.messages.push(user_message(&app.default_role, line));
         return true;
     }
     false
 }
 
-fn user_message(content: String) -> Message {
+fn user_message(role: &str, content: String) -> Message {
     Message {
-        role: ROLE_USER.to_string(),
+        role: role.to_string(),
         content,
         tool_call_id: None,
         tool_calls: None,
@@ -141,6 +146,7 @@ struct StartRequestCommonParams<'a> {
     enable_ask_questions: bool,
     log_requests: Option<String>,
     log_session_id: String,
+    default_role: String,
 }
 
 fn start_request_common(params: StartRequestCommonParams<'_>) {
@@ -190,6 +196,7 @@ fn build_spawn_params(
         enable_ask_questions: params.enable_ask_questions,
         log_requests: params.log_requests,
         log_session_id: params.log_session_id,
+        default_role: params.default_role,
         idx: state.idx,
         cancel: state.cancel,
         tx: params.tx.clone(),
@@ -214,6 +221,7 @@ struct SpawnLlmRequestParams {
     enable_ask_questions: bool,
     log_requests: Option<String>,
     log_session_id: String,
+    default_role: String,
     idx: usize,
     cancel: Arc<AtomicBool>,
     tx: mpsc::Sender<RuntimeEvent>,
@@ -239,6 +247,7 @@ fn spawn_llm_request(params: SpawnLlmRequestParams) {
             enable_ask_questions: params.enable_ask_questions,
             log_dir: params.log_requests,
             log_session_id: params.log_session_id,
+            default_role: params.default_role,
             message_index: params.idx,
             cancel: params.cancel,
             tx: params.tx,

@@ -23,7 +23,12 @@ pub(super) async fn stream_request(
     cancel: &Arc<AtomicBool>,
     tx: &Sender<RuntimeEvent>,
 ) -> Result<(), String> {
-    let (ctx, _templates) = prepare_rig_context(&input.messages, &input.prompts_dir, enabled)?;
+    let (ctx, _templates) = prepare_rig_context(
+        &input.messages,
+        &input.prompts_dir,
+        enabled,
+        &input.default_role,
+    )?;
     log_request(input, &ctx);
     let model = completion_model_for(&input.base_url, &input.api_key, &input.model)?;
     stream_with_model(model, &ctx, input, cancel, tx).await

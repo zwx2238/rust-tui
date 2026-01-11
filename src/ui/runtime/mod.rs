@@ -23,13 +23,14 @@ mod runtime_terminal;
 
 pub fn run(
     args: Args,
-    cfg: crate::config::Config,
+    mut cfg: crate::config::Config,
     theme: &RenderTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut registry = build_model_registry(&cfg);
     let prompt_registry = load_prompts(&cfg.prompts_dir, "default", &args.system)?;
     validate_args(&args)?;
     apply_model_override(&args, &mut registry)?;
+    apply_role_override(&args, &mut cfg)?;
     let question_set = load_question_set_option(&args)?;
     let tavily_api_key = cfg.tavily_api_key.clone();
     run_with_context(
@@ -54,6 +55,20 @@ fn apply_model_override(
         .resolve_key_from_spec(spec)
         .map_err(|e| format!("--model 无效：{e}"))?;
     registry.default_key = key;
+    Ok(())
+}
+
+fn apply_role_override(
+    args: &Args,
+    cfg: &mut crate::config::Config,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(role) = args.role.as_deref() {
+        cfg.default_role = crate::config::normalize_role(role)
+            .map_err(|e| format!("--role 无效：{e}"))?;
+        return Ok(());
+    }
+    cfg.default_role = crate::config::normalize_role(&cfg.default_role)
+        .map_err(|e| format!("default_role 无效：{e}"))?;
     Ok(())
 }
 

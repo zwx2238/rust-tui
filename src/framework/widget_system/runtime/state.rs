@@ -1,4 +1,4 @@
-use crate::types::{Message, ROLE_SYSTEM};
+use crate::types::{Message, ROLE_SYSTEM, ROLE_USER};
 use crate::framework::widget_system::commands::CommandSuggestion;
 use crate::framework::widget_system::interaction::selection_state::SelectionState;
 use std::collections::BTreeMap;
@@ -87,6 +87,7 @@ pub struct App {
     pub input_selecting: bool,
     pub model_key: String,
     pub prompt_key: String,
+    pub default_role: String,
     pub message_layouts: Vec<crate::render::MessageLayout>,
     pub message_history: SelectionState,
     pub nav_mode: bool,
@@ -251,6 +252,7 @@ fn base_app(messages: Vec<Message>, default_model: &str, default_prompt: &str) -
         messages,
         model_key: default_model.to_string(),
         prompt_key: default_prompt.to_string(),
+        default_role: ROLE_USER.to_string(),
         follow: false,
         next_request_id: 1,
         ..Default::default()

@@ -1,4 +1,4 @@
-use crate::types::{ROLE_SYSTEM, ROLE_USER};
+use crate::types::ROLE_SYSTEM;
 use crate::framework::widget_system::notice::push_notice;
 use crate::framework::widget_system::runtime_dispatch::DispatchContext;
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
@@ -50,6 +50,7 @@ struct ForkSeed {
     log_session_id: String,
     prompts_dir: String,
     tavily_api_key: String,
+    default_role: String,
 }
 
 enum ForkError {
@@ -65,7 +66,7 @@ fn build_fork_seed(ctx: &DispatchContext<'_>, msg_idx: usize) -> Result<ForkSeed
         .messages
         .get(msg_idx)
         .ok_or(ForkError::NoMessage)?;
-    if msg.role != ROLE_USER {
+    if msg.role != tab_state.app.default_role && msg.role != crate::types::ROLE_USER {
         return Err(ForkError::NonUser);
     }
     let content = msg.content.clone();
@@ -83,6 +84,7 @@ fn build_fork_seed(ctx: &DispatchContext<'_>, msg_idx: usize) -> Result<ForkSeed
         log_session_id: tab_state.app.log_session_id.clone(),
         prompts_dir: tab_state.app.prompts_dir.clone(),
         tavily_api_key: tab_state.app.tavily_api_key.clone(),
+        default_role: tab_state.app.default_role.clone(),
     })
 }
 
@@ -135,6 +137,7 @@ fn build_fork_tab(ctx: &mut DispatchContext<'_>, seed: &ForkSeed) -> TabState {
     new_tab.app.prompt_key = seed.prompt_key.clone();
     new_tab.app.prompts_dir = seed.prompts_dir.clone();
     new_tab.app.tavily_api_key = seed.tavily_api_key.clone();
+    new_tab.app.default_role = seed.default_role.clone();
     new_tab
 }
 
@@ -178,6 +181,6 @@ fn sync_active_category(ctx: &mut DispatchContext<'_>) {
 
 fn notify_fork_requires_user(ctx: &mut DispatchContext<'_>) {
     if let Some(active) = ctx.tabs.get_mut(*ctx.active_tab) {
-        push_notice(&mut active.app, "仅支持从用户消息分叉。");
+        push_notice(&mut active.app, "仅支持从输入消息分叉。");
     }
 }
