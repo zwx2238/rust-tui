@@ -121,6 +121,11 @@ const SHORTCUTS: &[Shortcut] = &[
         description: "切换对话",
     },
     Shortcut {
+        scope: ShortcutScope::Nav,
+        keys: "h / l",
+        description: "切换对话",
+    },
+    Shortcut {
         scope: ShortcutScope::Summary,
         keys: "↑/↓",
         description: "选择对话",
