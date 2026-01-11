@@ -91,7 +91,7 @@ fn ensure_cache_entry(
     theme_key: u64,
 ) -> &mut RenderCacheEntry {
     if cache.len() <= idx {
-        cache.push(empty_entry(theme_key));
+        cache.resize_with(idx + 1, || empty_entry(theme_key));
     }
     &mut cache[idx]
 }
