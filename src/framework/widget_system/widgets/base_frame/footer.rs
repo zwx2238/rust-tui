@@ -78,14 +78,21 @@ fn draw_footer(
 }
 
 fn align_footer_text(left: &str, right: &str, width: usize) -> String {
-    let left_len = left.chars().count();
-    let right_len = right.chars().count();
     if width == 0 {
         return String::new();
     }
-    if left_len + right_len + 1 > width {
-        return format!("{left} {right}");
+    let right_len = right.chars().count();
+    if width <= right_len {
+        return truncate_to_width(right, width);
     }
-    let padding = width.saturating_sub(left_len + right_len);
-    format!("{left}{:padding$}{right}", "")
+    let left_space = width.saturating_sub(right_len + 1);
+    let left_text = truncate_to_width(left, left_space);
+    if left_text.is_empty() {
+        return truncate_to_width(right, width);
+    }
+    format!("{left_text} {right}")
+}
+
+fn truncate_to_width(text: &str, width: usize) -> String {
+    text.chars().take(width).collect()
 }
