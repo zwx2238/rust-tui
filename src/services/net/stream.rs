@@ -127,8 +127,8 @@ where
 {
     match content {
         StreamedAssistantContent::Text(text) => {
-            state.text.push_str(&text.text);
-            send_chunk(tx, input, text.text);
+            let parsed = parse_think_chunk(&mut state.think, &text.text);
+            handle_think_result(state, input, tx, parsed);
             Ok(StreamStep::Continue)
         }
         StreamedAssistantContent::ReasoningDelta { reasoning, .. } => {
@@ -172,6 +172,7 @@ async fn run_non_stream_request(
         return Ok(());
     }
     let (text, calls, reasoning) = split_choice(&response.choice);
+    let (text, reasoning) = split_think_text(text, reasoning);
     let usage = Some(map_usage(response.usage));
     send_reasoning_from_choice(input, tx, &reasoning);
     if calls.is_empty() {
@@ -229,7 +230,9 @@ fn split_choice(
     (text, calls, reasoning)
 }
 
-fn finalize_stream(input: &RequestInput, tx: &Sender<RuntimeEvent>, state: StreamState) {
+fn finalize_stream(input: &RequestInput, tx: &Sender<RuntimeEvent>, mut state: StreamState) {
+    let tail = take_think_tail(&mut state.think);
+    handle_think_result(&mut state, input, tx, tail);
     log_response_text(input, &state.text);
     send_done(input, tx, state.usage);
 }
@@ -238,6 +241,7 @@ struct StreamState {
     text: String,
     usage: Option<crate::types::Usage>,
     seen_reasoning_delta: bool,
+    think: ThinkState,
 }
 
 impl StreamState {
@@ -246,6 +250,7 @@ impl StreamState {
             text: String::new(),
             usage: None,
             seen_reasoning_delta: false,
+            think: ThinkState::new(),
         }
     }
 }
@@ -281,4 +286,150 @@ fn send_reasoning_from_choice(
     if let Some(text) = reasoning {
         send_reasoning_if_enabled(input, tx, text.clone());
     }
+}
+
+const THINK_OPEN: &str = "<think>";
+const THINK_CLOSE: &str = "</think>";
+
+struct ThinkState {
+    in_think: bool,
+    tail: String,
+}
+
+impl ThinkState {
+    fn new() -> Self {
+        Self {
+            in_think: false,
+            tail: String::new(),
+        }
+    }
+}
+
+struct ThinkParseResult {
+    visible: String,
+    reasoning: String,
+}
+
+fn split_think_text(
+    text: String,
+    reasoning: Option<String>,
+) -> (String, Option<String>) {
+    let mut state = ThinkState::new();
+    let mut parsed = parse_think_chunk(&mut state, &text);
+    let tail = take_think_tail(&mut state);
+    parsed.visible.push_str(&tail.visible);
+    parsed.reasoning.push_str(&tail.reasoning);
+    (parsed.visible, merge_reasoning(reasoning, parsed.reasoning))
+}
+
+fn merge_reasoning(existing: Option<String>, extra: String) -> Option<String> {
+    if extra.is_empty() {
+        return existing;
+    }
+    if let Some(mut base) = existing {
+        if !base.is_empty() {
+            base.push('\n');
+        }
+        base.push_str(&extra);
+        return Some(base);
+    }
+    Some(extra)
+}
+
+fn handle_think_result(
+    state: &mut StreamState,
+    input: &RequestInput,
+    tx: &Sender<RuntimeEvent>,
+    parsed: ThinkParseResult,
+) {
+    if !parsed.visible.is_empty() {
+        state.text.push_str(&parsed.visible);
+        send_chunk(tx, input, parsed.visible);
+    }
+    if !parsed.reasoning.is_empty() {
+        send_reasoning_if_enabled(input, tx, parsed.reasoning);
+    }
+}
+
+fn parse_think_chunk(state: &mut ThinkState, chunk: &str) -> ThinkParseResult {
+    let mut input = std::mem::take(&mut state.tail);
+    input.push_str(chunk);
+    let mut remaining = input.as_str();
+    let mut out = ThinkParseResult {
+        visible: String::new(),
+        reasoning: String::new(),
+    };
+    while !remaining.is_empty() {
+        let (next, done) = if state.in_think {
+            parse_reasoning_section(state, remaining, &mut out)
+        } else {
+            parse_visible_section(state, remaining, &mut out)
+        };
+        remaining = next;
+        if done {
+            break;
+        }
+    }
+    out
+}
+
+fn take_think_tail(state: &mut ThinkState) -> ThinkParseResult {
+    let tail = std::mem::take(&mut state.tail);
+    if state.in_think {
+        return ThinkParseResult {
+            visible: String::new(),
+            reasoning: tail,
+        };
+    }
+    ThinkParseResult {
+        visible: tail,
+        reasoning: String::new(),
+    }
+}
+
+fn parse_visible_section<'a>(
+    state: &mut ThinkState,
+    input: &'a str,
+    out: &mut ThinkParseResult,
+) -> (&'a str, bool) {
+    if let Some(pos) = input.find(THINK_OPEN) {
+        out.visible.push_str(&input[..pos]);
+        state.in_think = true;
+        return (&input[pos + THINK_OPEN.len()..], false);
+    }
+    let (body, tail) = split_tail_partial(input);
+    out.visible.push_str(body);
+    state.tail = tail.to_string();
+    ("", true)
+}
+
+fn parse_reasoning_section<'a>(
+    state: &mut ThinkState,
+    input: &'a str,
+    out: &mut ThinkParseResult,
+) -> (&'a str, bool) {
+    if let Some(pos) = input.find(THINK_CLOSE) {
+        out.reasoning.push_str(&input[..pos]);
+        state.in_think = false;
+        return (&input[pos + THINK_CLOSE.len()..], false);
+    }
+    let (body, tail) = split_tail_partial(input);
+    out.reasoning.push_str(body);
+    state.tail = tail.to_string();
+    ("", true)
+}
+
+fn split_tail_partial(text: &str) -> (&str, &str) {
+    let Some(idx) = text.rfind('<') else {
+        return (text, "");
+    };
+    let tail = &text[idx..];
+    if is_think_prefix(tail) {
+        return (&text[..idx], tail);
+    }
+    (text, "")
+}
+
+fn is_think_prefix(tail: &str) -> bool {
+    THINK_OPEN.starts_with(tail) || THINK_CLOSE.starts_with(tail)
 }
