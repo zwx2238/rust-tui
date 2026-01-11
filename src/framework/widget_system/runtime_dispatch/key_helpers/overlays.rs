@@ -84,10 +84,7 @@ fn handle_nav_mode_key(ctx: &mut DispatchContext<'_>, view: &ViewState, key: Key
     if !view.is_chat() {
         return false;
     }
-    if let Some(tab_state) = ctx.tabs.get_mut(*ctx.active_tab) {
-        return handle_nav_key(&mut tab_state.app, key);
-    }
-    false
+    handle_nav_key(ctx, key)
 }
 
 fn sync_overlay_state(ctx: &mut DispatchContext<'_>, view: &mut ViewState) {

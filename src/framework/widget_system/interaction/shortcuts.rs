@@ -107,13 +107,18 @@ const SHORTCUTS: &[Shortcut] = &[
     },
     Shortcut {
         scope: ShortcutScope::Nav,
-        keys: "j / n",
+        keys: "j / n / ↓",
         description: "跳到下一条消息",
     },
     Shortcut {
         scope: ShortcutScope::Nav,
-        keys: "k / p",
+        keys: "k / p / ↑",
         description: "跳到上一条消息",
+    },
+    Shortcut {
+        scope: ShortcutScope::Nav,
+        keys: "← / →",
+        description: "切换对话",
     },
     Shortcut {
         scope: ShortcutScope::Summary,
