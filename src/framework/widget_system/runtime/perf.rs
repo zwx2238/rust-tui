@@ -17,6 +17,7 @@ pub fn seed_perf_messages(app: &mut App) {
     }
     app.follow = false;
     app.scroll = u16::MAX;
+    app.message_history.selected = app.messages.len().saturating_sub(1);
 }
 
 fn role_for_index(i: usize) -> &'static str {

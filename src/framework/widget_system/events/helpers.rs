@@ -1,53 +1,76 @@
-use crate::render::{RenderTheme, messages_to_viewport_text_cached};
+use crate::args::Args;
+use crate::render::{RenderTheme, SingleMessageRenderParams, message_to_viewport_text_cached};
 use crate::framework::widget_system::draw::inner_area;
 use crate::framework::widget_system::draw::layout::{PADDING_X, PADDING_Y};
 use crate::framework::widget_system::runtime::logic::{build_label_suffixes, timer_text};
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::runtime_tick::build_display_messages;
 use crate::framework::widget_system::interaction::selection::chat_position_from_mouse;
 use ratatui::layout::Rect;
 
 pub(crate) fn selection_view_text(
     tab_state: &mut TabState,
+    args: &Args,
     msg_width: usize,
     theme: &RenderTheme,
     view_height: u16,
 ) -> ratatui::text::Text<'static> {
-    let app = &tab_state.app;
+    let app = &mut tab_state.app;
+    let messages = build_display_messages(app, args);
+    let Some((idx, msg)) = active_message(app, &messages) else {
+        return ratatui::text::Text::default();
+    };
     let label_suffixes = build_label_suffixes(app, &timer_text(app));
-    let (text, _) = messages_to_viewport_text_cached(
-        crate::render::ViewportRenderParams {
-            messages: &app.messages,
-            width: msg_width,
-            theme,
-            label_suffixes: &label_suffixes,
-            streaming_idx: app.pending_assistant,
-            scroll: app.scroll,
-            height: view_height,
-        },
-        &mut tab_state.render_cache,
-    );
+    let params = SingleMessageRenderParams {
+        message: msg,
+        message_index: idx,
+        width: msg_width,
+        theme,
+        label_suffixes: &label_suffixes,
+        streaming: app.pending_assistant == Some(idx),
+        scroll: app.scroll,
+        height: view_height,
+    };
+    let (text, _) = message_to_viewport_text_cached(params, &mut tab_state.render_cache);
     text
 }
 
+pub(crate) struct HitTestEditButtonParams<'a> {
+    pub tab_state: &'a mut TabState,
+    pub args: &'a Args,
+    pub msg_area: Rect,
+    pub msg_width: usize,
+    pub theme: &'a RenderTheme,
+    pub view_height: u16,
+    pub mouse_x: u16,
+    pub mouse_y: u16,
+}
+
 pub(crate) fn hit_test_edit_button(
-    tab_state: &mut TabState,
-    msg_area: Rect,
-    msg_width: usize,
-    theme: &RenderTheme,
-    view_height: u16,
-    mouse_x: u16,
-    mouse_y: u16,
+    params: HitTestEditButtonParams<'_>,
 ) -> Option<usize> {
-    if tab_state.app.message_layouts.is_empty() {
+    if params.tab_state.app.message_layouts.is_empty() {
         return None;
     }
-    let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
-    if !mouse_in_rect(mouse_x, mouse_y, inner) {
+    let inner = inner_area(params.msg_area, PADDING_X, PADDING_Y);
+    if !mouse_in_rect(params.mouse_x, params.mouse_y, inner) {
         return None;
     }
-    let text = selection_view_text(tab_state, msg_width, theme, view_height);
-    let app = &tab_state.app;
-    let (row, col) = chat_position_from_mouse(&text, app.scroll, inner, mouse_x, mouse_y);
+    let text = selection_view_text(
+        params.tab_state,
+        params.args,
+        params.msg_width,
+        params.theme,
+        params.view_height,
+    );
+    let app = &params.tab_state.app;
+    let (row, col) = chat_position_from_mouse(
+        &text,
+        app.scroll,
+        inner,
+        params.mouse_x,
+        params.mouse_y,
+    );
     find_edit_button_at(app, row, col)
 }
 
@@ -56,6 +79,21 @@ fn mouse_in_rect(mouse_x: u16, mouse_y: u16, rect: Rect) -> bool {
         && mouse_x < rect.x + rect.width
         && mouse_y >= rect.y
         && mouse_y < rect.y + rect.height
+}
+
+fn active_message<'a>(
+    app: &mut crate::framework::widget_system::runtime::state::App,
+    messages: &'a [crate::types::Message],
+) -> Option<(usize, &'a crate::types::Message)> {
+    if messages.is_empty() {
+        app.message_history.selected = 0;
+        return None;
+    }
+    if app.message_history.selected >= messages.len() {
+        app.message_history.selected = messages.len().saturating_sub(1);
+    }
+    let idx = app.message_history.selected;
+    messages.get(idx).map(|msg| (idx, msg))
 }
 
 fn find_edit_button_at(app: &crate::framework::widget_system::runtime::state::App, row: usize, col: usize) -> Option<usize> {

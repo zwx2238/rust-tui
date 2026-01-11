@@ -174,8 +174,8 @@ fn handle_scroll_key(key: KeyEvent, app: &mut App) {
             app.scroll = u16::MAX;
             app.follow = true;
         }
-        KeyCode::Up => scroll_by(app, -1),
-        KeyCode::Down => scroll_by(app, 1),
+        KeyCode::Up => select_prev_message(app),
+        KeyCode::Down => select_next_message(app),
         KeyCode::PageUp => scroll_by(app, -10),
         KeyCode::PageDown => scroll_by(app, 10),
         _ => {}
@@ -202,5 +202,21 @@ fn scroll_by(app: &mut App, delta: i32) {
     } else {
         app.scroll = app.scroll.saturating_add(delta as u16);
     }
+    app.follow = false;
+}
+
+fn select_prev_message(app: &mut App) {
+    app.message_history.selected = app.message_history.selected.saturating_sub(1);
+    app.chat_selection = None;
+    app.chat_selecting = false;
+    app.scroll = 0;
+    app.follow = false;
+}
+
+fn select_next_message(app: &mut App) {
+    app.message_history.selected = app.message_history.selected.saturating_add(1);
+    app.chat_selection = None;
+    app.chat_selecting = false;
+    app.scroll = 0;
     app.follow = false;
 }

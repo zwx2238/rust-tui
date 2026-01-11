@@ -54,7 +54,6 @@ fn draw_root(
             header_area: layout.layout.header_area,
             footer_area: layout.layout.footer_area,
             input_area: layout.layout.input_area,
-            msg_width: layout.layout.msg_width,
             text: &update.active_data.text,
             total_lines: update.active_data.total_lines,
             header_note: update.header_note.as_deref(),

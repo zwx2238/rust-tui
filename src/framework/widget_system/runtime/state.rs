@@ -88,6 +88,7 @@ pub struct App {
     pub model_key: String,
     pub prompt_key: String,
     pub message_layouts: Vec<crate::render::MessageLayout>,
+    pub message_history: SelectionState,
     pub nav_mode: bool,
     pub tavily_api_key: String,
     pub prompts_dir: String,

@@ -33,7 +33,13 @@ pub(crate) fn handle_mouse_event(params: MouseEventParams<'_>) -> Option<usize> 
                 );
                 return None;
             }
-            scroll::handle_mouse_scroll(params.tabs, *params.active_tab, false);
+            scroll::handle_mouse_scroll(
+                params.tabs,
+                *params.active_tab,
+                false,
+                params.view_height,
+                params.total_lines,
+            );
             None
         }
         MouseEventKind::ScrollDown => {
@@ -47,7 +53,13 @@ pub(crate) fn handle_mouse_event(params: MouseEventParams<'_>) -> Option<usize> 
                 );
                 return None;
             }
-            scroll::handle_mouse_scroll(params.tabs, *params.active_tab, true);
+            scroll::handle_mouse_scroll(
+                params.tabs,
+                *params.active_tab,
+                true,
+                params.view_height,
+                params.total_lines,
+            );
             None
         }
         _ => None,
@@ -69,6 +81,7 @@ fn build_mouse_down_params(params: MouseEventParams<'_>) -> MouseDownParams<'_> 
         view_height: params.view_height,
         total_lines: params.total_lines,
         theme: params.theme,
+        args: params.args,
     }
 }
 
@@ -83,5 +96,6 @@ fn build_mouse_drag_params(params: MouseEventParams<'_>) -> MouseDragParams<'_> 
         view_height: params.view_height,
         total_lines: params.total_lines,
         theme: params.theme,
+        args: params.args,
     }
 }

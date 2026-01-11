@@ -2,8 +2,8 @@ use crate::args::Args;
 use crate::llm::prompt_manager::{augment_system, extract_system};
 use crate::llm::templates::RigTemplates;
 use crate::render::{
-    RenderTheme, ViewportRenderParams, messages_to_viewport_text_cached,
-    messages_to_viewport_text_cached_with_layout,
+    RenderTheme, SingleMessageRenderParams, message_to_viewport_text_cached,
+    message_to_viewport_text_cached_with_layout,
 };
 use crate::types::{Message, ROLE_SYSTEM};
 use crate::framework::widget_system::interaction::input_click::update_input_view_top;
@@ -23,6 +23,12 @@ pub struct ActiveFrameData {
     pub pending_command: Option<PendingCommand>,
 }
 
+#[derive(Copy, Clone)]
+struct DetailMessage<'a> {
+    index: usize,
+    message: &'a Message,
+}
+
 pub fn prepare_active_frame(
     tab_state: &mut TabState,
     args: &Args,
@@ -34,9 +40,10 @@ pub fn prepare_active_frame(
 ) -> ActiveFrameData {
     let label_suffixes = build_active_label_suffixes(&tab_state.app);
     let render_messages = build_display_messages(&tab_state.app, args);
-    let (text, computed_total_lines) = update_text_and_scroll(
+    let detail = resolve_detail_message(&mut tab_state.app, &render_messages);
+    let (text, computed_total_lines) = update_detail_text_and_scroll(
         tab_state,
-        &render_messages,
+        detail,
         theme,
         msg_width,
         view_height,
@@ -71,28 +78,28 @@ fn finalize_active_frame(
     }
 }
 
-fn update_text_and_scroll(
+fn update_detail_text_and_scroll(
     tab_state: &mut TabState,
-    messages: &[Message],
+    detail: Option<DetailMessage<'_>>,
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
     label_suffixes: &[(usize, String)],
 ) -> (Text<'static>, usize) {
     let prev_scroll = tab_state.app.scroll;
-    let (mut text, total) = render_active_text(
+    let (mut text, total) = render_detail_text(
         tab_state,
-        messages,
+        detail,
         theme,
         msg_width,
         view_height,
         label_suffixes,
     );
-    update_scroll(&mut tab_state.app, total, view_height);
+    update_detail_scroll(&mut tab_state.app, total, view_height);
     if tab_state.app.scroll != prev_scroll {
-        text = refresh_text_after_scroll(
+        text = refresh_detail_text_after_scroll(
             tab_state,
-            messages,
+            detail,
             theme,
             msg_width,
             view_height,
@@ -113,31 +120,59 @@ fn build_active_label_suffixes(app: &crate::framework::widget_system::runtime::s
     build_label_suffixes(app, &timer)
 }
 
-fn render_active_text(
+fn resolve_detail_message<'a>(
+    app: &mut crate::framework::widget_system::runtime::state::App,
+    messages: &'a [Message],
+) -> Option<DetailMessage<'a>> {
+    if messages.is_empty() {
+        app.message_history.selected = 0;
+        return None;
+    }
+    let prev_selected = app.message_history.selected;
+    if app.follow {
+        app.message_history.selected = messages.len().saturating_sub(1);
+    }
+    if app.message_history.selected >= messages.len() {
+        app.message_history.selected = messages.len().saturating_sub(1);
+    }
+    if app.message_history.selected != prev_selected {
+        app.chat_selection = None;
+        app.chat_selecting = false;
+    }
+    let index = app.message_history.selected;
+    messages.get(index).map(|message| DetailMessage { index, message })
+}
+
+fn render_detail_text(
     tab_state: &mut TabState,
-    messages: &[Message],
+    detail: Option<DetailMessage<'_>>,
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
     label_suffixes: &[(usize, String)],
 ) -> (Text<'static>, usize) {
+    let Some(detail) = detail else {
+        tab_state.app.message_layouts.clear();
+        return (Text::default(), 0);
+    };
     let app = &mut tab_state.app;
-    let params = ViewportRenderParams {
-        messages,
+    let params = SingleMessageRenderParams {
+        message: detail.message,
+        message_index: detail.index,
         width: msg_width,
         theme,
         label_suffixes,
-        streaming_idx: app.pending_assistant,
+        streaming: app.pending_assistant == Some(detail.index),
         scroll: app.scroll,
         height: view_height,
     };
     let (text, total, layouts) =
-        messages_to_viewport_text_cached_with_layout(params, &mut tab_state.render_cache);
+        message_to_viewport_text_cached_with_layout(params, &mut tab_state.render_cache);
     app.message_layouts = layouts;
     (text, total)
 }
 
-fn update_scroll(app: &mut crate::framework::widget_system::runtime::state::App, total_lines: usize, view_height: u16) -> u16 {
+fn update_detail_scroll(app: &mut crate::framework::widget_system::runtime::state::App, total_lines: usize, view_height: u16) -> u16 {
     let max_scroll = max_scroll_u16(total_lines, view_height);
     if app.follow || app.scroll > max_scroll {
         app.scroll = max_scroll;
@@ -145,27 +180,29 @@ fn update_scroll(app: &mut crate::framework::widget_system::runtime::state::App,
     max_scroll
 }
 
-fn refresh_text_after_scroll(
+fn refresh_detail_text_after_scroll(
     tab_state: &mut TabState,
-    messages: &[Message],
+    detail: Option<DetailMessage<'_>>,
     theme: &RenderTheme,
     msg_width: usize,
     view_height: u16,
     label_suffixes: &[(usize, String)],
 ) -> Text<'static> {
+    let Some(detail) = detail else {
+        return Text::default();
+    };
     let app = &mut tab_state.app;
-    let (text, _) = messages_to_viewport_text_cached(
-        crate::render::ViewportRenderParams {
-            messages,
-            width: msg_width,
-            theme,
-            label_suffixes,
-            streaming_idx: app.pending_assistant,
-            scroll: app.scroll,
-            height: view_height,
-        },
-        &mut tab_state.render_cache,
-    );
+    let params = SingleMessageRenderParams {
+        message: detail.message,
+        message_index: detail.index,
+        width: msg_width,
+        theme,
+        label_suffixes,
+        streaming: app.pending_assistant == Some(detail.index),
+        scroll: app.scroll,
+        height: view_height,
+    };
+    let (text, _) = message_to_viewport_text_cached(params, &mut tab_state.render_cache);
     text
 }
 

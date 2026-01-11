@@ -1,6 +1,6 @@
 mod data;
 
-pub(crate) use data::{JumpRow, build_jump_rows, build_jump_rows_from_layouts, max_preview_width};
+pub(crate) use data::{JumpRow, build_jump_rows, max_preview_width};
 
 use crate::render::RenderTheme;
 use crate::framework::widget_system::draw::style::base_fg;
@@ -84,9 +84,7 @@ fn refresh_jump_rows(frame: &mut WidgetFrame<'_, '_, '_, '_>) {
         .with_active_tab(|tab| {
             build_jump_rows(
                 &tab.app.messages,
-                frame.state.msg_width,
                 max_preview_width(frame.state.msg_area),
-                tab.app.pending_assistant,
             )
         })
         .unwrap_or_default();

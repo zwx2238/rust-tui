@@ -1,3 +1,4 @@
+use crate::args::Args;
 use crate::render::RenderTheme;
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
 use crossterm::event::MouseEvent;
@@ -17,6 +18,7 @@ pub(crate) struct MouseEventParams<'a> {
     pub view_height: u16,
     pub total_lines: usize,
     pub theme: &'a RenderTheme,
+    pub args: &'a Args,
 }
 
 pub(crate) struct MouseDownParams<'a> {
@@ -33,6 +35,7 @@ pub(crate) struct MouseDownParams<'a> {
     pub view_height: u16,
     pub total_lines: usize,
     pub theme: &'a RenderTheme,
+    pub args: &'a Args,
 }
 
 pub(crate) struct MouseDragParams<'a> {
@@ -45,4 +48,5 @@ pub(crate) struct MouseDragParams<'a> {
     pub view_height: u16,
     pub total_lines: usize,
     pub theme: &'a RenderTheme,
+    pub args: &'a Args,
 }

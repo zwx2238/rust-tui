@@ -222,5 +222,6 @@ fn handle_messages_mouse(
         view_height: binding.layout.view_height,
         total_lines: update.active_data.total_lines,
         theme: binding.dispatch.theme,
+        args: binding.dispatch.args,
     });
 }
