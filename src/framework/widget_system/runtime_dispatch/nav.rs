@@ -32,37 +32,32 @@ pub(crate) fn handle_nav_key(app: &mut App, key: KeyEvent) -> bool {
 }
 
 fn nav_next(app: &mut App) {
-    if app.message_layouts.is_empty() {
+    if app.messages.is_empty() {
         return;
     }
-    let current = app.scroll as usize;
-    let mut target = None;
-    for layout in &app.message_layouts {
-        if layout.label_line > current {
-            target = Some(layout.label_line);
-            break;
-        }
+    let next = app.message_history.selected.saturating_add(1);
+    if next >= app.messages.len() {
+        return;
     }
-    if let Some(line) = target {
-        app.scroll = line.min(u16::MAX as usize) as u16;
-        app.follow = false;
-    }
+    app.message_history.selected = next;
+    app.scroll = 0;
+    app.follow = false;
+    app.focus = Focus::Chat;
+    app.chat_selection = None;
+    app.chat_selecting = false;
 }
 
 fn nav_prev(app: &mut App) {
-    if app.message_layouts.is_empty() {
+    if app.messages.is_empty() {
         return;
     }
-    let current = app.scroll as usize;
-    let mut target = None;
-    for layout in app.message_layouts.iter().rev() {
-        if layout.label_line < current {
-            target = Some(layout.label_line);
-            break;
-        }
+    if app.message_history.selected == 0 {
+        return;
     }
-    if let Some(line) = target {
-        app.scroll = line.min(u16::MAX as usize) as u16;
-        app.follow = false;
-    }
+    app.message_history.selected = app.message_history.selected.saturating_sub(1);
+    app.scroll = 0;
+    app.follow = false;
+    app.focus = Focus::Chat;
+    app.chat_selection = None;
+    app.chat_selecting = false;
 }

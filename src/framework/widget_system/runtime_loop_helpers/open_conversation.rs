@@ -159,6 +159,7 @@ fn apply_conversation_state(
     tab.app.prompt_key = prompt_key.to_string();
     tab.app.follow = false;
     tab.app.scroll = u16::MAX;
+    tab.app.message_history.selected = tab.app.messages.len().saturating_sub(1);
     tab.app.dirty_indices = (0..tab.app.messages.len()).collect();
 }
 

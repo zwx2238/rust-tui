@@ -234,9 +234,13 @@ fn apply_jump_to(
         && let Some(tab_state) = tabs.get_mut(active_tab)
     {
         let app = &mut tab_state.app;
-        app.scroll = row.scroll;
+        let msg_idx = row.index.saturating_sub(1);
+        app.message_history.selected = msg_idx;
+        app.scroll = 0;
         app.follow = false;
         app.focus = crate::framework::widget_system::runtime::state::Focus::Chat;
+        app.chat_selection = None;
+        app.chat_selecting = false;
     }
     true
 }

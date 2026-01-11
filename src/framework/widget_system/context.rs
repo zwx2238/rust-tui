@@ -26,7 +26,6 @@ pub(crate) struct RenderState<'a> {
     pub(crate) header_area: Rect,
     pub(crate) footer_area: Rect,
     pub(crate) input_area: Rect,
-    pub(crate) msg_width: usize,
     pub(crate) text: &'a ratatui::text::Text<'a>,
     pub(crate) total_lines: usize,
     pub(crate) header_note: Option<&'a str>,

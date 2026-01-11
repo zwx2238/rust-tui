@@ -1,12 +1,10 @@
 use crate::render::label_for_role;
 use crate::framework::widget_system::draw::style::{base_fg, base_style, selection_bg};
-use crate::framework::widget_system::widgets::jump::{JumpRow, build_jump_rows_from_layouts};
+use crate::framework::widget_system::widgets::jump::JumpRow;
 use crate::framework::widget_system::runtime::runtime_loop_steps::FrameLayout;
-use crate::framework::widget_system::runtime::runtime_view::{ViewAction, apply_view_action};
 use crate::framework::widget_system::interaction::scroll::{SCROLL_STEP_I32, max_scroll};
 use crate::framework::widget_system::interaction::text_utils::{collapse_text, truncate_to_width};
 use crate::framework::widget_system::BoxConstraints;
-use crate::framework::widget_system::bindings::bind_event;
 use crate::framework::widget_system::context::{
     EventCtx, LayoutCtx, UpdateCtx, UpdateOutput, WidgetFrame,
 };
@@ -77,7 +75,7 @@ impl Widget for MessageHistoryWidget {
         }
         let preview_width = preview_width(rect);
         let len = history_len(frame);
-        clamp_jump_state_with_len(frame, rect, len);
+        clamp_history_state_with_len(frame, rect, len);
         draw_history(frame, rect, preview_width, len);
         Ok(())
     }
@@ -94,6 +92,9 @@ fn handle_history_mouse(
     let len = history_len_event(ctx);
     match m.kind {
         MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
+            let Some(app) = ctx.tabs.get_mut(*ctx.active_tab).map(|tab| &mut tab.app) else {
+                return Ok(EventResult::ignored());
+            };
             if viewport == 0 || len == 0 {
                 return Ok(EventResult::handled());
             }
@@ -103,7 +104,7 @@ fn handle_history_mouse(
                 SCROLL_STEP_I32
             };
             let max = max_scroll(len, viewport);
-            ctx.view.jump.scroll_by(delta, max, viewport);
+            app.message_history.scroll_by(delta, max, viewport);
             Ok(EventResult::handled())
         }
         MouseEventKind::Down(MouseButton::Left) => {
@@ -115,8 +116,8 @@ fn handle_history_mouse(
 
 fn handle_history_click(
     ctx: &mut EventCtx<'_>,
-    layout: &FrameLayout,
-    update: &UpdateOutput,
+    _layout: &FrameLayout,
+    _update: &UpdateOutput,
     rect: Rect,
     mouse_y: u16,
     len: usize,
@@ -124,47 +125,40 @@ fn handle_history_click(
     if len == 0 {
         return Ok(EventResult::ignored());
     }
-    let Some(row) = row_at(ctx, rect, mouse_y) else {
+    let Some(app) = ctx.tabs.get_mut(*ctx.active_tab).map(|tab| &mut tab.app) else {
+        return Ok(EventResult::ignored());
+    };
+    let Some(row) = row_at(app, rect, mouse_y) else {
         return Ok(EventResult::ignored());
     };
     if row >= len {
         return Ok(EventResult::ignored());
     }
-    select_row(ctx, rect, row);
-    apply_jump_to_row(ctx, layout, update, row);
+    select_row(app, rect, row);
+    reset_detail_scroll(app);
     Ok(EventResult::handled())
 }
 
-fn select_row(ctx: &mut EventCtx<'_>, rect: Rect, row: usize) {
+fn select_row(app: &mut crate::framework::widget_system::runtime::state::App, rect: Rect, row: usize) {
     let viewport = viewport_rows(rect);
-    ctx.view.jump.select(row);
-    ctx.view.jump.ensure_visible(viewport);
+    app.message_history.select(row);
+    app.message_history.ensure_visible(viewport);
 }
 
-fn apply_jump_to_row(
-    ctx: &mut EventCtx<'_>,
-    layout: &FrameLayout,
-    update: &UpdateOutput,
-    row: usize,
-) {
-    let jump_rows = build_jump_rows_for_active_tab(ctx);
-    let binding = bind_event(ctx, layout, update);
-    let _ = apply_view_action(
-        ViewAction::JumpTo(row),
-        &jump_rows,
-        binding.dispatch.tabs,
-        binding.dispatch.active_tab,
-        binding.dispatch.categories,
-        binding.dispatch.active_category,
-    );
+fn reset_detail_scroll(app: &mut crate::framework::widget_system::runtime::state::App) {
+    app.scroll = 0;
+    app.follow = false;
+    app.focus = crate::framework::widget_system::runtime::state::Focus::Chat;
+    app.chat_selection = None;
+    app.chat_selecting = false;
 }
 
-fn row_at(ctx: &EventCtx<'_>, rect: Rect, mouse_y: u16) -> Option<usize> {
+fn row_at(app: &crate::framework::widget_system::runtime::state::App, rect: Rect, mouse_y: u16) -> Option<usize> {
     if mouse_y <= rect.y || mouse_y >= rect.y + rect.height.saturating_sub(1) {
         return None;
     }
     let inner_y = mouse_y.saturating_sub(rect.y + 1) as usize;
-    Some(ctx.view.jump.scroll.saturating_add(inner_y))
+    Some(app.message_history.scroll.saturating_add(inner_y))
 }
 
 fn should_skip_render(rect: Rect) -> bool {
@@ -188,20 +182,22 @@ fn preview_prefix_width() -> usize {
 fn history_len(frame: &WidgetFrame<'_, '_, '_, '_>) -> usize {
     frame
         .state
-        .with_active_tab(|tab| tab.app.message_layouts.len())
+        .with_active_tab(|tab| tab.app.messages.len())
         .unwrap_or(0)
 }
 
 fn history_len_event(ctx: &EventCtx<'_>) -> usize {
     ctx.tabs
         .get(*ctx.active_tab)
-        .map(|tab| tab.app.message_layouts.len())
+        .map(|tab| tab.app.messages.len())
         .unwrap_or(0)
 }
 
-fn clamp_jump_state_with_len(frame: &mut WidgetFrame<'_, '_, '_, '_>, rect: Rect, len: usize) {
+fn clamp_history_state_with_len(frame: &mut WidgetFrame<'_, '_, '_, '_>, rect: Rect, len: usize) {
     let viewport = viewport_rows(rect);
-    frame.view.jump.clamp_with_viewport(len, viewport);
+    if let Some(app) = frame.state.active_app_mut() {
+        app.message_history.clamp_with_viewport(len, viewport);
+    }
 }
 
 fn draw_history(
@@ -228,9 +224,12 @@ fn history_lines(
     len: usize,
 ) -> Vec<Line<'static>> {
     let viewport = viewport_rows(rect);
-    let start = frame.view.jump.scroll;
+    let Some(app) = frame.state.active_app() else {
+        return Vec::new();
+    };
+    let start = app.message_history.scroll;
     let end = start.saturating_add(viewport).min(len);
-    let selected = frame.view.jump.selected;
+    let selected = app.message_history.selected;
     let Some(lines) = frame.state.with_active_tab(|tab| {
         (start..end)
             .map(|i| format_line(tab, i, preview_width, i == selected, frame.state.theme))
@@ -248,8 +247,7 @@ fn format_line(
     selected: bool,
     theme: &crate::render::RenderTheme,
 ) -> Line<'static> {
-    let layout = tab.app.message_layouts.get(row);
-    let idx = layout.map(|l| l.index).unwrap_or(0);
+    let idx = row;
     let role = tab
         .app
         .messages
@@ -274,16 +272,4 @@ fn preview_for(tab: &crate::framework::widget_system::runtime::runtime_helpers::
 
 fn role_label(role: &str) -> String {
     label_for_role(role, None).unwrap_or_else(|| role.to_string())
-}
-
-fn build_jump_rows_for_active_tab(ctx: &EventCtx<'_>) -> Vec<JumpRow> {
-    let active = *ctx.active_tab;
-    let tabs: &Vec<crate::framework::widget_system::runtime::runtime_helpers::TabState> = &*ctx.tabs;
-    let Some(tab) = tabs.get(active) else {
-        return Vec::new();
-    };
-    if tab.app.message_layouts.is_empty() {
-        return Vec::new();
-    }
-    build_jump_rows_from_layouts(&tab.app.messages, &tab.app.message_layouts)
 }

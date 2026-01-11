@@ -1,8 +1,9 @@
 use crate::args::Args;
-use crate::render::{RenderTheme, messages_to_plain_lines};
+use crate::render::{RenderTheme, SingleMessageRenderParams, message_to_plain_lines};
 use crate::framework::widget_system::interaction::clipboard;
 use crate::framework::widget_system::interaction::input::handle_key;
 use crate::framework::widget_system::runtime::runtime_helpers::TabState;
+use crate::framework::widget_system::runtime::logic::{build_label_suffixes, timer_text};
 use crate::framework::widget_system::runtime_tick::build_display_messages;
 use crate::framework::widget_system::interaction::selection::extract_selection;
 use crate::framework::widget_system::runtime::state::Focus;
@@ -42,7 +43,7 @@ fn handle_ctrl_c(
         if copy_input_selection(&mut tab_state.app) {
             return Ok(Some(false));
         }
-        if copy_chat_selection(&mut tab_state.app, args, msg_width, theme) {
+        if copy_chat_selection(tab_state, args, msg_width, theme) {
             return Ok(Some(false));
         }
     }
@@ -65,11 +66,12 @@ fn copy_input_selection(app: &mut crate::framework::widget_system::runtime::stat
 }
 
 fn copy_chat_selection(
-    app: &mut crate::framework::widget_system::runtime::state::App,
+    tab_state: &mut TabState,
     args: &Args,
     msg_width: usize,
     theme: &RenderTheme,
 ) -> bool {
+    let app = &mut tab_state.app;
     if app.focus != Focus::Chat {
         return false;
     }
@@ -77,10 +79,39 @@ fn copy_chat_selection(
         return false;
     };
     let messages = build_display_messages(app, args);
-    let lines = messages_to_plain_lines(&messages, msg_width, theme);
+    let Some((idx, msg)) = active_message(app, &messages) else {
+        return false;
+    };
+    let label_suffixes = build_label_suffixes(app, &timer_text(app));
+    let params = SingleMessageRenderParams {
+        message: msg,
+        message_index: idx,
+        width: msg_width,
+        theme,
+        label_suffixes: &label_suffixes,
+        streaming: app.pending_assistant == Some(idx),
+        scroll: 0,
+        height: u16::MAX,
+    };
+    let lines = message_to_plain_lines(params, &mut tab_state.render_cache);
     let text = extract_selection(&lines, selection);
     if !text.is_empty() {
         clipboard::set(&text);
     }
     true
+}
+
+fn active_message<'a>(
+    app: &mut crate::framework::widget_system::runtime::state::App,
+    messages: &'a [crate::types::Message],
+) -> Option<(usize, &'a crate::types::Message)> {
+    if messages.is_empty() {
+        app.message_history.selected = 0;
+        return None;
+    }
+    if app.message_history.selected >= messages.len() {
+        app.message_history.selected = messages.len().saturating_sub(1);
+    }
+    let idx = app.message_history.selected;
+    messages.get(idx).map(|msg| (idx, msg))
 }

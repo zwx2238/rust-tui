@@ -1,22 +1,21 @@
 use crate::render::MessageLayout;
+use crate::render::layout::{label_line_layout, label_line_with_button};
 use crate::render::markdown::{
     close_unbalanced_code_fence, count_markdown_lines, render_markdown_lines,
 };
 use crate::render::theme::{RenderTheme, theme_cache_key};
-use crate::render::util::hash_message;
+use crate::render::util::{hash_message, label_for_role, ranges_overlap, suffix_for_index};
 use crate::types::{Message, ROLE_ASSISTANT, ROLE_REASONING, ROLE_SYSTEM, ROLE_TOOL, ROLE_USER};
 use ratatui::text::{Line, Text};
 use std::borrow::Cow;
 
-mod viewport;
-use viewport::ViewportState;
-
-pub struct ViewportRenderParams<'a> {
-    pub messages: &'a [Message],
+pub struct SingleMessageRenderParams<'a> {
+    pub message: &'a Message,
+    pub message_index: usize,
     pub width: usize,
     pub theme: &'a RenderTheme,
     pub label_suffixes: &'a [(usize, String)],
-    pub streaming_idx: Option<usize>,
+    pub streaming: bool,
     pub scroll: u16,
     pub height: u16,
 }
@@ -47,96 +46,43 @@ fn empty_entry(theme_key: u64) -> RenderCacheEntry {
         rendered: false,
     }
 }
-pub fn messages_to_text(
-    messages: &[Message],
-    width: usize,
-    theme: &RenderTheme,
-    label_suffixes: &[(usize, String)],
-    streaming_idx: Option<usize>,
-) -> Text<'static> {
-    let mut cache = Vec::new();
-    messages_to_text_cached(
-        messages,
-        width,
-        theme,
-        label_suffixes,
-        streaming_idx,
-        &mut cache,
-    )
-}
-pub fn messages_to_text_cached(
-    messages: &[Message],
-    width: usize,
-    theme: &RenderTheme,
-    label_suffixes: &[(usize, String)],
-    streaming_idx: Option<usize>,
-    cache: &mut Vec<RenderCacheEntry>,
-) -> Text<'static> {
-    let (text, _) = messages_to_viewport_text_cached(
-        crate::render::ViewportRenderParams {
-            messages,
-            width,
-            theme,
-            label_suffixes,
-            streaming_idx,
-            scroll: 0,
-            height: u16::MAX,
-        },
-        cache,
-    );
-    text
-}
-pub fn messages_to_plain_lines(
-    messages: &[Message],
-    width: usize,
-    theme: &RenderTheme,
-) -> Vec<String> {
-    let mut out = Vec::new();
-    let text = messages_to_text(messages, width, theme, &[], None);
-    for line in text.lines {
-        let mut s = String::new();
-        for span in line.spans {
-            s.push_str(&span.content);
-        }
-        out.push(s);
-    }
-    out
-}
-pub fn messages_to_viewport_text_cached(
-    params: ViewportRenderParams<'_>,
+pub fn message_to_viewport_text_cached(
+    params: SingleMessageRenderParams<'_>,
     cache: &mut Vec<RenderCacheEntry>,
 ) -> (Text<'static>, usize) {
-    let (text, total, _) = messages_to_viewport_text_cached_with_layout(params, cache);
+    let (text, total, _) = message_to_viewport_text_cached_with_layout(params, cache);
     (text, total)
 }
 
-pub fn messages_to_viewport_text_cached_with_layout(
-    params: ViewportRenderParams<'_>,
+pub fn message_to_viewport_text_cached_with_layout(
+    params: SingleMessageRenderParams<'_>,
     cache: &mut Vec<RenderCacheEntry>,
 ) -> (Text<'static>, usize, Vec<MessageLayout>) {
     let theme_key = theme_cache_key(params.theme);
-    trim_cache(cache, params.messages.len());
+    let Some(label) = message_label(&params) else {
+        return (Text::default(), 0, Vec::new());
+    };
+    let entry = ensure_cache_entry(cache, params.message_index, theme_key);
+    update_cache_entry(entry, params.message, params.width, theme_key, params.streaming);
     let start = params.scroll as usize;
     let end = start.saturating_add(params.height as usize);
-    let mut state = ViewportState::new(
-        params.width,
-        params.theme,
-        theme_key,
-        params.label_suffixes,
-        params.streaming_idx,
-        start,
-        end,
-    );
-    for (idx, msg) in params.messages.iter().enumerate() {
-        state.process_message(idx, msg, cache);
-    }
-    state.finish()
+    let layout = build_single_layout(params.message_index, &params.message.role, &label);
+    let mut out = Vec::new();
+    let mut cursor = 0usize;
+    push_line_if_visible(&mut out, label_line_with_button(&params.message.role, &label, params.theme), cursor, start, end);
+    cursor += 1;
+    cursor = push_message_content(&mut out, entry, cursor, start, end, &params);
+    let _ = push_spacing_line(&mut out, cursor, start, end);
+    let total = message_total_lines(entry.line_count);
+    (Text::from(out), total, vec![layout])
 }
 
-fn trim_cache(cache: &mut Vec<RenderCacheEntry>, len: usize) {
-    if cache.len() > len {
-        cache.truncate(len);
-    }
+pub fn message_to_plain_lines(
+    params: SingleMessageRenderParams<'_>,
+    cache: &mut Vec<RenderCacheEntry>,
+) -> Vec<String> {
+    let (text, _) = message_to_viewport_text_cached(params, cache);
+    text_lines(&text)
 }
 
 fn ensure_cache_entry(
@@ -177,6 +123,94 @@ fn update_cache_entry(
     entry.lines.clear();
     entry.rendered = false;
     entry.line_count = count_message_lines(msg, width, streaming);
+}
+
+fn message_label(params: &SingleMessageRenderParams<'_>) -> Option<String> {
+    let suffix = suffix_for_index(params.label_suffixes, params.message_index);
+    label_for_role(&params.message.role, suffix)
+}
+
+fn build_single_layout(index: usize, role: &str, label: &str) -> MessageLayout {
+    let (button_range, label_line) = label_line_layout(role, label, 0);
+    MessageLayout {
+        index,
+        label_line,
+        button_range,
+    }
+}
+
+fn message_total_lines(content_lines: usize) -> usize {
+    content_lines.saturating_add(2)
+}
+
+fn push_line_if_visible(
+    out: &mut Vec<Line<'static>>,
+    line: Line<'static>,
+    cursor: usize,
+    start: usize,
+    end: usize,
+) {
+    if cursor >= start && cursor < end {
+        out.push(line);
+    }
+}
+
+fn push_message_content(
+    out: &mut Vec<Line<'static>>,
+    entry: &mut RenderCacheEntry,
+    cursor: usize,
+    start: usize,
+    end: usize,
+    params: &SingleMessageRenderParams<'_>,
+) -> usize {
+    let content_len = entry.line_count;
+    if content_len == 0 {
+        return cursor;
+    }
+    if ranges_overlap(start, end, cursor, cursor + content_len) && !entry.rendered {
+        entry.lines =
+            render_message_content_lines(params.message, params.width, params.theme, params.streaming);
+        entry.rendered = true;
+        entry.line_count = entry.lines.len();
+    }
+    if cursor + entry.line_count <= start || cursor >= end {
+        return cursor + entry.line_count;
+    }
+    if !entry.rendered {
+        return cursor + entry.line_count;
+    }
+    let mut pos = cursor;
+    for line in &entry.lines {
+        if pos >= start && pos < end {
+            out.push(line.clone());
+        }
+        pos += 1;
+    }
+    pos
+}
+
+fn push_spacing_line(
+    out: &mut Vec<Line<'static>>,
+    cursor: usize,
+    start: usize,
+    end: usize,
+) -> usize {
+    if cursor >= start && cursor < end {
+        out.push(Line::from(""));
+    }
+    cursor + 1
+}
+
+fn text_lines(text: &Text<'_>) -> Vec<String> {
+    let mut out = Vec::new();
+    for line in &text.lines {
+        let mut s = String::new();
+        for span in &line.spans {
+            s.push_str(&span.content);
+        }
+        out.push(s);
+    }
+    out
 }
 pub fn insert_empty_cache_entry(
     cache: &mut Vec<RenderCacheEntry>,

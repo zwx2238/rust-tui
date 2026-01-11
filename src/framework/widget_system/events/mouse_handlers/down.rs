@@ -57,6 +57,7 @@ fn handle_active_tab_click(params: &mut MouseDownParams<'_>) -> Option<usize> {
     if point_in_rect(params.m.column, params.m.row, params.msg_area) {
         return handle_message_click(
             tab_state,
+            params.args,
             params.msg_area,
             params.msg_width,
             params.view_height,
@@ -105,6 +106,7 @@ fn handle_input_click(tab_state: &mut TabState, input_area: Rect, m: MouseEvent)
 
 fn handle_message_click(
     tab_state: &mut TabState,
+    args: &crate::args::Args,
     msg_area: Rect,
     msg_width: usize,
     view_height: u16,
@@ -112,16 +114,17 @@ fn handle_message_click(
     theme: &RenderTheme,
 ) -> Option<usize> {
     if let Some(msg_idx) =
-        handle_message_edit_click(tab_state, msg_area, msg_width, view_height, m, theme)
+        handle_message_edit_click(tab_state, args, msg_area, msg_width, view_height, m, theme)
     {
         return Some(msg_idx);
     }
-    start_chat_selection(tab_state, msg_area, msg_width, view_height, m, theme);
+    start_chat_selection(tab_state, args, msg_area, msg_width, view_height, m, theme);
     None
 }
 
 fn handle_message_edit_click(
     tab_state: &mut TabState,
+    args: &crate::args::Args,
     msg_area: Rect,
     msg_width: usize,
     view_height: u16,
@@ -129,13 +132,16 @@ fn handle_message_edit_click(
     theme: &RenderTheme,
 ) -> Option<usize> {
     let msg_idx = hit_test_edit_button(
-        tab_state,
-        msg_area,
-        msg_width,
-        theme,
-        view_height,
-        m.column,
-        m.row,
+        crate::framework::widget_system::events::helpers::HitTestEditButtonParams {
+            tab_state,
+            args,
+            msg_area,
+            msg_width,
+            theme,
+            view_height,
+            mouse_x: m.column,
+            mouse_y: m.row,
+        },
     )?;
     let app = &mut tab_state.app;
     app.focus = Focus::Chat;
@@ -148,13 +154,14 @@ fn handle_message_edit_click(
 
 fn start_chat_selection(
     tab_state: &mut TabState,
+    args: &crate::args::Args,
     msg_area: Rect,
     msg_width: usize,
     view_height: u16,
     m: MouseEvent,
     theme: &RenderTheme,
 ) {
-    let text = selection_view_text(tab_state, msg_width, theme, view_height);
+    let text = selection_view_text(tab_state, args, msg_width, theme, view_height);
     let app = &mut tab_state.app;
     app.focus = Focus::Chat;
     app.follow = false;

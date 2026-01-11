@@ -29,7 +29,7 @@ pub(crate) fn handle_mouse_drag(params: MouseDragParams<'_>) {
         return;
     }
     if tab_state.app.chat_selecting {
-        drag_chat_selection(tab_state, msg_area, msg_width, view_height, m, theme);
+        drag_chat_selection(tab_state, params.args, msg_area, msg_width, view_height, m, theme);
     }
 }
 
@@ -89,13 +89,14 @@ fn drag_input_selection(
 
 fn drag_chat_selection(
     tab_state: &mut crate::framework::widget_system::runtime::runtime_helpers::TabState,
+    args: &crate::args::Args,
     msg_area: Rect,
     msg_width: usize,
     view_height: u16,
     m: MouseEvent,
     theme: &RenderTheme,
 ) {
-    let text = selection_view_text(tab_state, msg_width, theme, view_height);
+    let text = selection_view_text(tab_state, args, msg_width, theme, view_height);
     let app = &mut tab_state.app;
     let inner = inner_area(msg_area, PADDING_X, PADDING_Y);
     let pos = chat_position_from_mouse(&text, app.scroll, inner, m.column, m.row);
