@@ -192,6 +192,7 @@ fn apply_tab_config(
     for tab in tabs {
         tab.app.tavily_api_key = tavily_api_key.to_string();
         tab.app.prompts_dir = cfg.prompts_dir.clone();
+        tab.app.hooks = cfg.hooks.clone();
         tab.app.set_log_session_id(log_session_id);
     }
 }

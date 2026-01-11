@@ -27,6 +27,11 @@ pub mod conversation;
 /// 处理大语言模型的调用、提示词管理和模板渲染。
 pub mod llm;
 
+/// Hook 模块
+///
+/// 处理可配置的外部脚本调用。
+pub mod hooks;
+
 /// 模型注册表模块
 ///
 /// 管理可用的 AI 模型配置。

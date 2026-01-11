@@ -3,6 +3,7 @@
 //! 提供应用程序配置的加载、解析和管理功能。
 
 use serde::{Deserialize, Serialize};
+use crate::hooks::HookSpec;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -15,6 +16,8 @@ pub struct Config {
     pub default_model: String,
     #[serde(default = "default_prompt_key")]
     pub default_prompt: String,
+    #[serde(default)]
+    pub hooks: Vec<HookSpec>,
     pub prompts_dir: String,
     pub tavily_api_key: String,
 }

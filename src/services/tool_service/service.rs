@@ -1,4 +1,5 @@
 use crate::args::Args;
+use crate::hooks::{EVENT_TOOL_AFTER, EVENT_TOOL_BEFORE, run_hooks};
 use crate::model_registry::{ModelProfile, ModelRegistry};
 use crate::types::ToolCall;
 use crate::ui::events::RuntimeEvent;
@@ -14,6 +15,23 @@ use super::helpers::{
     push_tool_message, push_workspace_error,
 };
 use super::logging::log_modify_file_raw;
+
+#[derive(Copy, Clone)]
+enum ToolHookStatus {
+    Ok,
+    Error,
+    Disabled,
+}
+
+impl ToolHookStatus {
+    fn as_str(self) -> &'static str {
+        match self {
+            ToolHookStatus::Ok => "ok",
+            ToolHookStatus::Error => "error",
+            ToolHookStatus::Disabled => "disabled",
+        }
+    }
+}
 
 pub struct ToolService<'a> {
     registry: &'a ModelRegistry,
@@ -47,6 +65,25 @@ impl<'a> ToolService<'a> {
         call: &ToolCall,
         state: &mut ToolApplyState,
     ) {
+        if tab_state.app.hooks.is_empty() {
+            self.handle_tool_call_inner(tab_state, tab_id, call, state);
+            return;
+        }
+        let base_vars = tool_hook_vars(tab_state, tab_id, call);
+        run_hooks(&tab_state.app.hooks, EVENT_TOOL_BEFORE, base_vars.clone());
+        let status = self.handle_tool_call_inner(tab_state, tab_id, call, state);
+        let mut after_vars = base_vars;
+        after_vars.push(("HOOK_TOOL_STATUS".to_string(), status.as_str().to_string()));
+        run_hooks(&tab_state.app.hooks, EVENT_TOOL_AFTER, after_vars);
+    }
+
+    fn handle_tool_call_inner(
+        &self,
+        tab_state: &mut TabState,
+        tab_id: usize,
+        call: &ToolCall,
+        state: &mut ToolApplyState,
+    ) -> ToolHookStatus {
         match call.function.name.as_str() {
             "web_search" => self.handle_simple_tool(call, tab_state, state, ToolKind::WebSearch),
             "read_file" => self.handle_simple_tool(call, tab_state, state, ToolKind::ReadFile),
@@ -56,7 +93,7 @@ impl<'a> ToolService<'a> {
             "code_exec" => self.handle_code_exec(call, tab_state, tab_id, state),
             "bash_exec" => self.handle_bash_exec(call, tab_state, tab_id, state),
             "ask_questions" => self.handle_question_review(call, tab_state, state),
-            _ => {}
+            _ => ToolHookStatus::Error,
         }
     }
 
@@ -66,16 +103,16 @@ impl<'a> ToolService<'a> {
         tab_state: &mut TabState,
         state: &mut ToolApplyState,
         kind: ToolKind,
-    ) {
+    ) -> ToolHookStatus {
         if !self.tool_enabled(kind) {
             push_tool_disabled(tab_state, call, state);
-            return;
+            return ToolHookStatus::Disabled;
         }
         let workspace = match resolve_workspace(self.args) {
             Ok(val) => val,
             Err(err) => {
                 push_workspace_error(tab_state, call, state, &err);
-                return;
+                return ToolHookStatus::Error;
             }
         };
         let result = run_tool(call, &state.api_key, &workspace);
@@ -83,6 +120,7 @@ impl<'a> ToolService<'a> {
         if result.has_results {
             state.any_results = true;
         }
+        ToolHookStatus::Ok
     }
 
     fn handle_modify_file(
@@ -91,14 +129,20 @@ impl<'a> ToolService<'a> {
         tab_state: &mut TabState,
         _tab_id: usize,
         state: &mut ToolApplyState,
-    ) {
+    ) -> ToolHookStatus {
         log_modify_file_raw(self.args, call);
         if self.reject_modify_file(tab_state, call, state) {
-            return;
+            return ToolHookStatus::Disabled;
         }
         match crate::services::runtime_file_patch::handle_file_patch_request(tab_state, call) {
-            Ok(()) => self.apply_file_patch(tab_state, state),
-            Err(err) => push_tool_error(tab_state, call, state, err),
+            Ok(()) => {
+                self.apply_file_patch(tab_state, state);
+                ToolHookStatus::Ok
+            }
+            Err(err) => {
+                push_tool_error(tab_state, call, state, err);
+                ToolHookStatus::Error
+            }
         }
     }
 
@@ -108,14 +152,20 @@ impl<'a> ToolService<'a> {
         tab_state: &mut TabState,
         tab_id: usize,
         state: &mut ToolApplyState,
-    ) {
+    ) -> ToolHookStatus {
         if !self.args.code_exec_enabled() {
             push_tool_error(tab_state, call, state, "code_exec 未启用");
-            return;
+            return ToolHookStatus::Disabled;
         }
         match handle_code_exec_request(tab_state, call) {
-            Ok(()) => self.apply_code_exec(tab_state, tab_id, state),
-            Err(err) => push_tool_error(tab_state, call, state, err),
+            Ok(()) => {
+                self.apply_code_exec(tab_state, tab_id, state);
+                ToolHookStatus::Ok
+            }
+            Err(err) => {
+                push_tool_error(tab_state, call, state, err);
+                ToolHookStatus::Error
+            }
         }
     }
 
@@ -125,14 +175,20 @@ impl<'a> ToolService<'a> {
         tab_state: &mut TabState,
         tab_id: usize,
         state: &mut ToolApplyState,
-    ) {
+    ) -> ToolHookStatus {
         if !self.args.code_exec_enabled() {
             push_tool_error(tab_state, call, state, "bash_exec 未启用");
-            return;
+            return ToolHookStatus::Disabled;
         }
         match handle_bash_exec_request(tab_state, call) {
-            Ok(()) => self.apply_code_exec(tab_state, tab_id, state),
-            Err(err) => push_tool_error(tab_state, call, state, err),
+            Ok(()) => {
+                self.apply_code_exec(tab_state, tab_id, state);
+                ToolHookStatus::Ok
+            }
+            Err(err) => {
+                push_tool_error(tab_state, call, state, err);
+                ToolHookStatus::Error
+            }
         }
     }
 
@@ -141,10 +197,10 @@ impl<'a> ToolService<'a> {
         call: &ToolCall,
         tab_state: &mut TabState,
         state: &mut ToolApplyState,
-    ) {
+    ) -> ToolHookStatus {
         if !self.args.ask_questions_enabled() {
             push_tool_error(tab_state, call, state, "ask_questions 未启用");
-            return;
+            return ToolHookStatus::Disabled;
         }
         match crate::services::runtime_question_review::handle_question_review_request(
             tab_state,
@@ -154,8 +210,12 @@ impl<'a> ToolService<'a> {
             Ok(()) => {
                 state.needs_approval = true;
                 state.any_results = true;
+                ToolHookStatus::Ok
             }
-            Err(err) => push_tool_error(tab_state, call, state, err),
+            Err(err) => {
+                push_tool_error(tab_state, call, state, err);
+                ToolHookStatus::Error
+            }
         }
     }
 
@@ -256,4 +316,20 @@ impl<'a> ToolService<'a> {
             log_session_id,
         });
     }
+}
+
+fn tool_hook_vars(
+    tab_state: &TabState,
+    tab_id: usize,
+    call: &ToolCall,
+) -> Vec<(String, String)> {
+    vec![
+        ("HOOK_TAB_ID".to_string(), tab_id.to_string()),
+        ("HOOK_CONV_ID".to_string(), tab_state.conversation_id.clone()),
+        ("HOOK_MODEL".to_string(), tab_state.app.model_key.clone()),
+        ("HOOK_PROMPT".to_string(), tab_state.app.prompt_key.clone()),
+        ("HOOK_TOOL_NAME".to_string(), call.function.name.clone()),
+        ("HOOK_TOOL_ARGS".to_string(), call.function.arguments.clone()),
+        ("HOOK_TOOL_CALL_ID".to_string(), call.id.clone()),
+    ]
 }

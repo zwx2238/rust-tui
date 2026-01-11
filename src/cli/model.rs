@@ -36,6 +36,7 @@ fn default_config(prompts_dir: &str) -> Config {
         models: Vec::new(),
         default_model: String::new(),
         default_prompt: "default".to_string(),
+        hooks: Vec::new(),
         prompts_dir: prompts_dir.to_string(),
         tavily_api_key: String::new(),
     }

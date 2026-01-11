@@ -2,6 +2,7 @@ mod args;
 mod config;
 mod conversation;
 mod debug;
+mod hooks;
 mod llm;
 mod model_registry;
 mod question_set;
